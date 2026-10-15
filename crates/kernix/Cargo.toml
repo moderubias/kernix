@@ -1,0 +1,34 @@
+[package]
+name = "kernix"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Experimental N-dimensional tensor shape primitives for Rust."
+readme = "README.md"
+
+keywords = ["tensor", "shape", "linear-algebra"]
+categories = ["mathematics", "science"]
+
+include = [
+    "src/**",
+    "README.md",
+    "LICENSE",
+    "LICENSES/**",
+]
+
+[features]
+default = ["std"]
+std = ["kernix-core/std"]
+
+[dependencies]
+kernix-core.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

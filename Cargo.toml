@@ -1,0 +1,52 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/moderubias/kernix"
+
+[workspace.dependencies]
+kernix-core = { version = "0.1.0", path = "crates/kernix-core", default-features = false }
+kernix-ops = { version = "0.1.0", path = "crates/kernix-ops", default-features = false }
+kernix-traits = { version = "0.1.0", path = "crates/kernix-traits", default-features = false }
+
+thiserror = { version = "2.0.21", default-features = false }
+
+serde = { version = "1.0.229", default-features = false, features = ["derive"] }
+
+smallvec = { version = "1.16.2", default-features = false, features = ["const_generics", "const_new"] }
+
+num-traits = { version = "0.2.19", default-features = false }
+
+rayon = { version = "1.12.0", optional = false }
+
+proptest = "1.11.0"
+criterion = { version = "0.8.2", default-features = false }
+
+serde_json = "1"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+unreachable_pub = "warn"
+# missing_docs = "warn"
+
+[workspace.lints.clippy]
+correctness = "deny"
+suspicious = "warn"
+perf = "warn"
+complexity = "warn"
+style = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[profile.bench]
+inherits = "release"
+debug = true

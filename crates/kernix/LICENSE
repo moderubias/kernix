@@ -1,0 +1,12 @@
+kernix — licensing notice
+
+Copyright (c) 2026 Akayo Kiyoshima
+SPDX-License-Identifier: MIT OR Apache-2.0
+
+This project is dual-licensed at your option under either:
+
+- the MIT License: LICENSES/MIT.txt
+- the Apache License, Version 2.0: LICENSES/Apache-2.0.txt
+
+The complete license texts in LICENSES/ control. The Kiyoshima Open profile and
+KIYOSHIMA.json are machine-readable metadata conventions and add no license terms.

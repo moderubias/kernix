@@ -1,0 +1,41 @@
+[package]
+name = "kernix-ops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Linear algebra and tensor operations for Kernix."
+publish = false
+
+[features]
+default = ["std"]
+
+std = [
+    "kernix-core/std",
+    "kernix-traits/std",
+]
+
+parallel = [
+    "std",
+    "dep:rayon",
+]
+
+serde = [
+    "kernix-core/serde",
+]
+
+[dependencies]
+kernix-core.workspace = true
+kernix-traits.workspace = true
+
+rayon = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
