@@ -11,27 +11,65 @@ use super::{
     error::flatten_build_error,
 };
 
-/// Unary map over logical elements, returning an owned C-contiguous CPU tensor.
+/// Fallible unary transform. `f` is called once for each logical element in
+/// C-order. Its error is returned unchanged; previously constructed output
+/// elements are dropped by the Tensor initializer.
+///
+/// The output is a newly owned, C-contiguous host tensor.
+pub fn try_map<T, U, A, F>(source: &A, mut f: F) -> Result<Tensor<U>, OpsError>
+where
+    A: TensorInput<T>,
+    F: FnMut(&T) -> Result<U, OpsError>,
+{
+    try_map_indexed(source, |value, _indices| f(value))
+}
+
+/// As [`try_map`], but receives the logical coordinates of each input value.
+/// Coordinates are valid only for the duration of the callback.
+pub fn try_map_indexed<T, U, A, F>(source: &A, mut f: F) -> Result<Tensor<U>, OpsError>
+where
+    A: TensorInput<T>,
+    F: FnMut(&T, &[usize]) -> Result<U, OpsError>,
+{
+    let shape = Kahen::new(source.dims())?;
+    Tensor::<U>::try_from_fn(shape, Order::C, align_of::<U>(), |coords| {
+        let value = source.get(coords)?;
+        f(value, coords)
+    })
+    .map_err(flatten_build_error)
+}
+
+/// Unary map over logical elements, returning a new C-contiguous CPU tensor.
 pub fn map<T, U, A, F>(source: &A, mut f: F) -> Result<Tensor<U>, OpsError>
 where
     A: TensorInput<T>,
     F: FnMut(&T) -> U,
 {
-    let shape = Kahen::new(source.dims())?;
-    Tensor::<U>::try_from_fn(shape, Order::C, align_of::<U>(), |coords| {
-        let value = source.get(coords)?;
-        Ok::<U, OpsError>(f(value))
-    })
-    .map_err(flatten_build_error)
+    try_map(source, |value| Ok(f(value)))
 }
 
-/// Binary elementwise map with bidirectional NumPy-style broadcasting.
-/// Both source tensors are only borrowed; all output elements are fresh.
-pub fn zip_map<L, R, U, A, B, F>(left: &A, right: &B, mut f: F) -> Result<Tensor<U>, OpsError>
+/// Fallible binary transform with NumPy-compatible right-aligned broadcasting.
+/// On error, no partially initialized output escapes.
+pub fn try_zip_map<L, R, U, A, B, F>(left: &A, right: &B, mut f: F) -> Result<Tensor<U>, OpsError>
 where
     A: TensorInput<L>,
     B: TensorInput<R>,
-    F: FnMut(&L, &R) -> U,
+    F: FnMut(&L, &R) -> Result<U, OpsError>,
+{
+    try_zip_map_indexed(left, right, |a, b, _indices| f(a, b))
+}
+
+/// Indexed counterpart of [`try_zip_map`]. The coordinate slice refers to
+/// the broadcasted output shape (not either input shape).
+pub fn try_zip_map_indexed<L, R, U, A, B, F>(
+    left: &A,
+    right: &B,
+    mut f: F,
+) -> Result<Tensor<U>, OpsError>
+where
+    A: TensorInput<L>,
+    B: TensorInput<R>,
+    F: FnMut(&L, &R, &[usize]) -> Result<U, OpsError>,
 {
     let dims = broadcast_shape(left.dims(), right.dims())?;
     let shape = Kahen::new(&dims)?;
@@ -42,9 +80,20 @@ where
         project_broadcast(coords, right.dims(), &mut ri);
         let a = left.get(&li)?;
         let b = right.get(&ri)?;
-        Ok::<U, OpsError>(f(a, b))
+        f(a, b, coords)
     })
     .map_err(flatten_build_error)
+}
+
+/// Binary elementwise map with right-aligned broadcasting. Both sources are
+/// borrowed and result elements are freshly allocated in C-order.
+pub fn zip_map<L, R, U, A, B, F>(left: &A, right: &B, mut f: F) -> Result<Tensor<U>, OpsError>
+where
+    A: TensorInput<L>,
+    B: TensorInput<R>,
+    F: FnMut(&L, &R) -> U,
+{
+    try_zip_map(left, right, |a, b| Ok(f(a, b)))
 }
 
 macro_rules! binary_op {
@@ -59,6 +108,7 @@ macro_rules! binary_op {
         }
     };
 }
+
 binary_op!(add, Add, add);
 binary_op!(sub, Sub, sub);
 binary_op!(mul, Mul, mul);

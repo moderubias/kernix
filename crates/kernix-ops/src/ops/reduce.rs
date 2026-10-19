@@ -133,8 +133,8 @@ where
     Ok(acc)
 }
 
-/// Minimum of all elements. `None` means empty input. Unordered values such
-/// as NaN are skipped for comparisons (but an initial NaN stays the result).
+/// Minimum of all elements. `None` means empty input. For floats, any NaN
+/// propagates to the output, independent of its position in the tensor.
 pub fn min_all<T, A>(source: &A) -> Result<Option<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -143,7 +143,7 @@ where
     extreme_all(source, |value, current| value < current)
 }
 
-/// Maximum of all elements. See `min_all` for NaN comparison semantics.
+/// Maximum of all elements. See `min_all` for NaN propagation.
 pub fn max_all<T, A>(source: &A) -> Result<Option<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -152,9 +152,26 @@ where
     extreme_all(source, |value, current| value > current)
 }
 
+/// Keep the first self-unordered value (NaN for IEEE floats) and propagate
+/// a newly observed unordered value. For partially ordered user types,
+/// incomparable *distinct* values otherwise retain the first-wins policy.
+fn choose_extreme<T: PartialOrd, F: Fn(&T, &T) -> bool>(
+    candidate: &T,
+    current: &T,
+    better: &F,
+) -> bool {
+    if current.partial_cmp(current).is_none() {
+        return false;
+    }
+    if candidate.partial_cmp(candidate).is_none() {
+        return true;
+    }
+    better(candidate, current)
+}
+
 fn extreme_all<T, A, F>(source: &A, better: F) -> Result<Option<T>, OpsError>
 where
-    T: Clone,
+    T: PartialOrd + Clone,
     A: TensorInput<T>,
     F: Fn(&T, &T) -> bool,
 {
@@ -163,7 +180,10 @@ where
     let mut result: Option<T> = None;
     for _ in 0..shape.numel() {
         let value = source.get(&coords)?;
-        if result.as_ref().is_none_or(|cur| better(value, cur)) {
+        if result
+            .as_ref()
+            .is_none_or(|cur| choose_extreme(value, cur, &better))
+        {
             result = Some(value.clone());
         }
         next_c(&mut coords, source.dims());
@@ -220,7 +240,7 @@ where
 }
 
 /// Minimum along selected axes, or `EmptyReduction` where no reduced elements
-/// exist for a nonempty output. NaN comparisons follow `min_all` semantics.
+/// exist for a nonempty output. NaNs propagate within each reduced group.
 pub fn min_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -245,7 +265,7 @@ fn extreme_axes<T, A, F>(
     better: F,
 ) -> Result<Tensor<T>, OpsError>
 where
-    T: Clone,
+    T: PartialOrd + Clone,
     A: TensorInput<T>,
     F: Fn(&T, &T) -> bool,
 {
@@ -264,7 +284,10 @@ where
         project_reduction(&coords, &mask, keepdims, &mut dest_coords);
         let value = source.get(&coords)?;
         let dest = output.get_mut(&dest_coords)?;
-        if dest.as_ref().is_none_or(|current| better(value, current)) {
+        if dest
+            .as_ref()
+            .is_none_or(|current| choose_extreme(value, current, &better))
+        {
             *dest = Some(value.clone());
         }
         next_c(&mut coords, source.dims());

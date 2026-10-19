@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
-description = "Experimental N-dimensional tensor shape primitives for Rust."
+description = "Safe N-dimensional tensor primitives and extensible computation foundations for Rust."
 readme = "README.md"
 
 keywords = ["tensor", "shape", "linear-algebra"]

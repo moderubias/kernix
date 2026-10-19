@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::fmt;
 use kernix_core::{shape::ShapeError, tensor::TensorError};
 
@@ -32,6 +33,13 @@ pub enum OpsError {
     ReductionCountOverflow,
     OverlappingOutput,
     InPlaceBroadcastIncompatible,
+    /// Explicit checked integer arithmetic failed at this *output* coordinate.
+    /// Includes division by zero, signed division overflow and out-of-range
+    /// results of add/sub/mul/neg. Normal operators retain native semantics.
+    Arithmetic {
+        operation: &'static str,
+        indices: Vec<usize>,
+    },
 }
 
 impl From<ShapeError> for OpsError {
@@ -75,6 +83,9 @@ impl fmt::Display for OpsError {
             }
             Self::InPlaceBroadcastIncompatible => {
                 f.write_str("right-hand shape cannot broadcast into destination rank")
+            }
+            Self::Arithmetic { operation, indices } => {
+                write!(f, "checked {operation} failed at logical index {indices:?}")
             }
         }
     }

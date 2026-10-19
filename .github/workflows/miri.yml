@@ -1,0 +1,22 @@
+name: Miri memory-safety check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - name: Install Miri sysroot
+        run: cargo +nightly miri setup
+      - name: Exercise unsafe storage and tensor code
+        run: cargo +nightly miri test -p kernix-core --tests

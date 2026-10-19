@@ -1,4 +1,5 @@
 mod broadcast;
+mod checked;
 mod elementwise;
 mod error;
 mod in_place;
@@ -7,7 +8,13 @@ mod linalg;
 mod numeric;
 mod reduce;
 
-pub use elementwise::{add, div, map, mul, neg, rem, sub, zip_map};
+pub use checked::{
+    CheckedInteger, checked_add, checked_div, checked_mul, checked_neg, checked_rem, checked_sub,
+};
+pub use elementwise::{
+    add, div, map, mul, neg, rem, sub, try_map, try_map_indexed, try_zip_map, try_zip_map_indexed,
+    zip_map,
+};
 pub use error::OpsError;
 pub use in_place::{TensorOutput, add_assign, assign, div_assign, mul_assign, sub_assign, zip_mut};
 pub use input::TensorInput;

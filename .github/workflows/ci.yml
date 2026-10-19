@@ -1,0 +1,37 @@
+name: Rust CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Format, test, Clippy, no_std
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Formatting
+        run: cargo fmt --all -- --check
+      - name: Workspace tests
+        run: cargo test --workspace --all-features --locked
+      - name: Strict Clippy
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - name: kernix-core no_std
+        run: cargo check -p kernix-core --no-default-features --locked
+      - name: kernix-ops no_std
+        run: cargo check -p kernix-ops --no-default-features --locked
+
+  msrv:
+    name: Rust 1.86 MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.86.0
+      - name: Build on declared minimum Rust version
+        run: cargo check --workspace --locked
