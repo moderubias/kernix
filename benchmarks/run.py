@@ -33,6 +33,8 @@ def main():
     for size in (32,128):
         a = ((np.arange(size*size) % 13).astype(np.float64)/13).reshape(size,size)
         results[f'matmul_{size}_f64/numpy'] = measure(lambda: a@a)
+        out=np.empty_like(a)
+        results[f'matmul_reuse_{size}_f64/numpy'] = measure(lambda: np.matmul(a,a,out=out))
     a = ((np.arange(256*64)%41).astype(np.float64)/4).reshape(256,64)
     def softmax():
         e = np.exp(a - a.max(axis=-1, keepdims=True))
@@ -60,7 +62,8 @@ def main():
             cells.append(f"{v['p50_ns']/1000:.3f} / {v['p95_ns']/1000:.3f}" if v else 'not measured')
         lines.append('| '+workload+' | '+' | '.join(cells)+' |')
     lines += ['', '## Method and limits', '',
-        'All operations allocate their output except scalar sums. Inputs are preallocated and',
+        'Operations allocate outputs except scalar sums and explicitly named matmul_reuse cases.',
+        'Reuse cases time preallocated output writes in all libraries. Inputs are preallocated and',
         'contiguous. ndarray uses its default matrixmultiply engine (no BLAS feature); NumPy',
         'uses the build recorded in raw.json. BLAS/OMP thread counts are fixed to one.',
         'These are warmed, sequential wall-clock samples on a shared laptop; CPU frequency',

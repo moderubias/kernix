@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Add explicit Device transfers, MatmulDevice capability and private CPU executors.
+- Implement strict optional kernix.toml loading with defaults, no ambient global state.
+- Improve contiguous matmul locality and rowwise softmax while preserving scalar order.
+- Add allocation-reusing matmul_into and serial/parallel conformance tests.
+- Retain comparative reports against ndarray/NumPy for both allocation policies.
+
 ## 0.1.1
 
 - QA: fix representable temperature-scaled softmax differences lost through

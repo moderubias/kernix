@@ -13,3 +13,5 @@ pub mod storage;
 pub use layout::{Layout, LayoutError, LayoutShape, Order};
 
 pub mod tensor;
+
+pub mod device;

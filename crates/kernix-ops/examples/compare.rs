@@ -64,6 +64,23 @@ fn main() {
         let b = tensor(vals.clone(), &[size, size]);
         let na = Array2::from_shape_vec((size, size), vals).unwrap();
         let nb = na.clone();
+        let mut reuse = tensor(vec![0.0; size * size], &[size, size]);
+        let cpu = kernix_ops::execution::CpuExecutor::default();
+        results.insert(
+            format!("matmul_reuse_{size}_f64/kernix"),
+            measure(|| {
+                cpu.matmul_into(&a, &b, &mut reuse).unwrap();
+                black_box(&reuse);
+            }),
+        );
+        let mut nreuse = Array2::<f64>::zeros((size, size));
+        results.insert(
+            format!("matmul_reuse_{size}_f64/ndarray"),
+            measure(|| {
+                ndarray::linalg::general_mat_mul(1.0, &na, &nb, 0.0, &mut nreuse);
+                black_box(&nreuse);
+            }),
+        );
         let reference = na.dot(&nb);
         let actual = matmul(&a, &b).unwrap();
         for (x, y) in actual.storage_slice().iter().zip(reference.iter()) {

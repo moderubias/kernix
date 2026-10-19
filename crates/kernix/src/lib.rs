@@ -15,3 +15,8 @@ pub use kernix_core::tensor::{Tensor, TensorBuildError, TensorError, TensorView,
 /// Portable tensor operations and their numerical contracts.
 pub use kernix_ops as ops;
 pub use kernix_ops::*;
+
+#[cfg(feature = "config")]
+pub mod config;
+pub use kernix_core::device::{self, Cpu, Device};
+pub use kernix_ops::execution::{CpuExecutor, MatmulDevice};

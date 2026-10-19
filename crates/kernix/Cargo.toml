@@ -14,6 +14,8 @@ categories = ["mathematics", "science"]
 
 include = [
     "src/**",
+    "tests/**",
+    "examples/**",
     "README.md",
     "LICENSE",
     "LICENSES/**",
@@ -21,12 +23,16 @@ include = [
 ]
 
 [features]
-default = ["std"]
+default = ["std", "config"]
 std = ["kernix-core/std", "kernix-ops/std"]
 serde = ["kernix-core/serde", "kernix-ops/serde"]
 parallel = ["std", "kernix-ops/parallel"]
 
+config = ["std", "dep:serde", "dep:toml"]
+
 [dependencies]
+serde = { workspace = true, optional = true }
+toml = { version = "0.8", optional = true }
 kernix-core.workspace = true
 kernix-ops.workspace = true
 

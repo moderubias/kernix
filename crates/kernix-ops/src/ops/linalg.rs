@@ -75,23 +75,23 @@ where
     }
 
     // Fast direct-address CPU path for ordinary row-major rank-2 tensors.
-    // Keep k as the innermost loop: floating-point accumulation order matches
-    // the reference kernel. Arbitrary strides, batches and custom inputs
+    // Accumulate k in increasing order for each output while traversing contiguous
+    // columns: locality improves without reassociating each scalar sum. Arbitrary strides, batches and custom inputs
     // retain the fully general checked-indexing fallback below.
     if a.len() == 2 && b.len() == 2 {
         if let (Some(a_data), Some(b_data)) =
             (left.as_c_contiguous_slice(), right.as_c_contiguous_slice())
         {
             if m.checked_mul(k) == Some(a_data.len()) && k.checked_mul(n) == Some(b_data.len()) {
-                let mut values = Vec::with_capacity(output.numel());
+                let mut values = vec![T::zero(); output.numel()];
                 for row in 0..m {
-                    for col in 0..n {
-                        let mut value = T::zero();
-                        for inner in 0..k {
-                            value +=
-                                a_data[row * k + inner].clone() * b_data[inner * n + col].clone();
+                    let out_row = &mut values[row * n..(row + 1) * n];
+                    for inner in 0..k {
+                        let a = &a_data[row * k + inner];
+                        let b_row = &b_data[inner * n..(inner + 1) * n];
+                        for (out, b) in out_row.iter_mut().zip(b_row) {
+                            *out += a.clone() * b.clone();
                         }
-                        values.push(value);
                     }
                 }
                 return Ok(Tensor::from_vec(values, output, Order::C)?);

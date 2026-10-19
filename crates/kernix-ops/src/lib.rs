@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 //! CPU reference implementations of Kernix N-D operations.
 //!
 //! Operations use logical indexing, so C/F layouts, negative strides,
@@ -21,3 +21,5 @@ pub mod prelude {
         tensor::{Tensor, TensorView, TensorViewMut},
     };
 }
+
+pub mod execution;

@@ -323,6 +323,57 @@ fn normalized_exp<T: FloatMath, A: TensorInput<T>>(
     if output.shape().numel() == 0 {
         return Ok(output);
     }
+    if axis + 1 == dims.len() {
+        if let Some(data) = source.as_c_contiguous_slice() {
+            if data.len() == output.numel() {
+                let columns = dims[axis];
+                let out = output.storage_slice_mut();
+                for (row, (input, dest)) in data
+                    .chunks_exact(columns)
+                    .zip(out.chunks_exact_mut(columns))
+                    .enumerate()
+                {
+                    let mut maximum = input[0];
+                    for (col, &value) in input.iter().enumerate() {
+                        if !FloatMath::is_finite(value) {
+                            let mut linear = row * columns + col;
+                            let mut indices = vec![0; dims.len()];
+                            for (index, &dim) in indices.iter_mut().zip(dims).rev() {
+                                *index = linear % dim;
+                                linear /= dim;
+                            }
+                            return Err(OpsError::NonFiniteInput {
+                                operation: if logarithmic {
+                                    "log_softmax"
+                                } else {
+                                    "softmax"
+                                },
+                                indices,
+                            });
+                        }
+                        if value > maximum {
+                            maximum = value;
+                        }
+                    }
+                    let mut sum = T::zero();
+                    for &value in input {
+                        sum = sum + FloatMath::exp(value - maximum);
+                    }
+                    if logarithmic {
+                        let log_sum = FloatMath::ln(sum);
+                        for (dst, &value) in dest.iter_mut().zip(input) {
+                            *dst = (value - maximum) - log_sum;
+                        }
+                    } else {
+                        for (dst, &value) in dest.iter_mut().zip(input) {
+                            *dst = FloatMath::exp(value - maximum) / sum;
+                        }
+                    }
+                }
+                return Ok(output);
+            }
+        }
+    }
     let mut outer_dims = dims.to_vec();
     outer_dims.remove(axis);
     let outer_shape = Kahen::new(&outer_dims)?;

@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.1.1"
+kernix = "0.2.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -36,7 +36,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Linux x86_64 is verified locally. CI is configured for Windows, macOS and Linux.
+Linux x86_64 is verified locally. Release 0.1.1 CI passed on Windows, macOS and Linux.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.1.1", default-features = false }
+kernix = { version = "0.2.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -174,14 +174,43 @@ tolerances rather than claiming 100% mathematical precision.
 `StorageBuffer<T>` exposes element count without requiring a host pointer.
 `HostBuffer<T>` is an additional capability for memory safely borrowable on CPU.
 An accelerator can supply opaque storage without teaching Shape about GPUs or
-pretending a device pointer is a CPU slice. Device execution/transfer interfaces,
-configuration contexts, autodiff and CV/training utilities are under development.
+pretending a device pointer is a CPU slice. Device transfers and matrix multiplication are separate capabilities: `Device<T>`
+provides opaque storage and explicit upload/download/synchronization;
+`MatmulDevice<T>` adds execution. `CpuExecutor` implements both. Future GPU
+backends implement their own capabilities without requiring `HostBuffer`.
+
+`CpuExecutor::matmul_into` writes contiguous rank-two results into an existing
+allocation. The allocating API retains the general strided/batched fallback.
+CPU fast paths keep increasing-k accumulation order for every scalar output.
 
 At this release there is **no GPU execution, automatic differentiation, complete
 neural-network stack or validated 120-FPS CV pipeline**. The CPU operations are a
 reference foundation. Solvers, decompositions and sparse algebra remain future
-work. An empty `kernix.toml` has no effect at this version; applications need not
-create one. Explicit user configuration is planned with validated defaults.
+work. Applications need not create a configuration file. With the default `config`
+feature, an application can explicitly load optional `kernix.toml`:
+
+```toml
+[cpu]
+threads = 1
+```
+
+```rust
+use kernix::config::Context;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let context = Context::from_file("kernix.toml")?;
+    assert!(context.cpu().threads() >= 1);
+    // Use context.cpu().matmul(&a, &b) to apply this scheduling policy.
+    Ok(())
+}
+```
+
+A missing optional file uses defaults. Malformed TOML, unknown keys and zero workers
+are errors. `Context::default()` never reads files. Multiple workers require
+`features = ["parallel"]`; each context owns a private pool and changes no global
+settings. Parallel matmul currently accelerates only contiguous rank-two inputs.
+The arithmetic free functions are deterministic serial operations and do not
+consult ambient configuration. `config` requires `std`; disable default features
+for `no_std` use.
 
 ## Tests, benchmarks and development
 

@@ -1,0 +1,4 @@
+# Optional application configuration. Load explicitly with Context::from_file.
+# No file is required: Context::default() uses exactly these settings.
+[cpu]
+threads = 1
