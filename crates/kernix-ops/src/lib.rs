@@ -26,3 +26,9 @@ pub mod execution;
 
 pub mod neural;
 pub mod vision;
+
+pub mod linalg;
+
+pub use linalg::{
+    Cholesky, LinalgError, LinalgFloat, Lu, Qr, determinant, inverse, least_squares, solve,
+};

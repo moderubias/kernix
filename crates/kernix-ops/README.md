@@ -1,7 +1,7 @@
 # kernix-ops
 
 Portable CPU tensor operations for [Kernix](https://github.com/moderubias/kernix).
-Use `kernix = "0.3.0"` for the complete public facade, or add `kernix-ops` and
+Use `kernix = "0.4.0"` for the complete public facade, or add `kernix-ops` and
 `kernix-core` directly. The crate supports `no_std` with `alloc`; the `std` feature
 is enabled by default. No BLAS, GPU driver or system math library is required.
 
@@ -25,7 +25,12 @@ Floating precision is finite, and no implicit dtype promotion occurs.
 The API includes arithmetic/maps, reductions/statistics, batched matmul,
 contractions, structural transforms, indexing, sorting and stable activations.
 See https://docs.rs/kernix-ops for contracts and runnable function examples.
-This release provides reference CPU kernels, not a GPU or complete ML engine.
+Dense f32/f64 GEMM uses checked Rust matrixmultiply kernels; ordered reference
+matmul and compensated sums remain explicit choices. `linalg` provides pivoted LU,
+Cholesky, Householder QR, solves, inverse/determinants and least squares. `neural`
+provides convolution/pooling/losses; `vision` provides borrowed RGB preprocessing.
+The facade adds explicit autodiff, trainable layers, optimizers and checkpoints.
+There is no GPU backend. Native kernels can change floating accumulation order.
 Developed with OpenAI Codex (GPT-6 agent), under human direction.
 
 Kiyoshima Open profile: MIT OR Apache-2.0. See LICENSE, LICENSES and KIYOSHIMA.json.

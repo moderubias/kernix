@@ -96,10 +96,11 @@ fn main() {
     let w = Tensor::from_vec(wv.clone(), Kahen::new([8, 3, 3, 3]).unwrap(), Order::C).unwrap();
     let na = Array4::from_shape_vec((1, 3, 32, 32), av).unwrap();
     let nw = Array4::from_shape_vec((8, 3, 3, 3), wv).unwrap();
-    assert_eq!(
-        conv2d(&a, &w, Default::default()).unwrap().storage_slice(),
-        ndarray_conv(&na, &nw).as_slice().unwrap()
-    );
+    let actual = conv2d(&a, &w, Default::default()).unwrap();
+    let reference = ndarray_conv(&na, &nw);
+    for (&x, &y) in actual.storage_slice().iter().zip(reference.iter()) {
+        assert!((x - y).abs() < 2e-6 * (1.0 + y.abs()));
+    }
     results.insert(
         "conv_1x3x32x32_8x3x3x3_f32/kernix".into(),
         measure(|| {

@@ -10,6 +10,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 use crate::OpsError;
+use alloc::vec::Vec;
 use kernix_core::{Order, shape::Kahen, tensor::Tensor};
 fn invalid(parameter: &'static str) -> OpsError {
     OpsError::InvalidParameter {
@@ -112,18 +113,21 @@ impl<'a> RgbFrame<'a> {
         let mut output = Tensor::filled(Kahen::new([1, 3, height, width])?, Order::C, 4, 0.0)?;
         let out = output.storage_slice_mut();
         let plane = height * width;
+        let columns: Vec<_> = (0..width)
+            .map(|ox| {
+                let sx = ((ox as f64 + 0.5) * self.width as f64 / width as f64 - 0.5)
+                    .clamp(0.0, (self.width - 1) as f64);
+                let x0 = sx as usize;
+                (x0, (x0 + 1).min(self.width - 1), sx - x0 as f64)
+            })
+            .collect();
         for oy in 0..height {
             let sy = ((oy as f64 + 0.5) * self.height as f64 / height as f64 - 0.5)
                 .clamp(0.0, (self.height - 1) as f64);
             let y0 = sy as usize;
             let y1 = (y0 + 1).min(self.height - 1);
             let fy = sy - y0 as f64;
-            for ox in 0..width {
-                let sx = ((ox as f64 + 0.5) * self.width as f64 / width as f64 - 0.5)
-                    .clamp(0.0, (self.width - 1) as f64);
-                let x0 = sx as usize;
-                let x1 = (x0 + 1).min(self.width - 1);
-                let fx = sx - x0 as f64;
+            for (ox, &(x0, x1, fx)) in columns.iter().enumerate() {
                 for c in 0..3 {
                     let at = |y, x| self.bytes[y * self.row_stride + x * 3 + c] as f64;
                     let upper = at(y0, x0) * (1.0 - fx) + at(y0, x1) * fx;

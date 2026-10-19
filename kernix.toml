@@ -2,3 +2,6 @@
 # No file is required: Context::default() uses exactly these settings.
 [cpu]
 threads = 1
+
+# true selects scalar increasing-k accumulation instead of native CPU GEMM.
+ordered_matmul = false

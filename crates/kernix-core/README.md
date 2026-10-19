@@ -1,7 +1,7 @@
 # kernix-core
 
 Validated shapes, affine layouts, opaque backend storage and checked tensor views.
-Part of [Kernix](https://github.com/moderubias/kernix); add `kernix = "0.3.0"` for
+Part of [Kernix](https://github.com/moderubias/kernix); add `kernix = "0.4.0"` for
 the facade and numerical operations. Core supports `no_std` with `alloc`; no GPU,
 BLAS or platform-specific runtime is required. CPU element types must be nonzero-sized.
 

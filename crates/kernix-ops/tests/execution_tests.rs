@@ -25,7 +25,7 @@ fn locality_optimization_preserves_scalar_accumulation_bits() {
     for (m, k, n) in [(3, 7, 5), (0, 2, 3), (3, 0, 5), (2, 3, 0), (17, 31, 19)] {
         let a = tensor(m, k);
         let b = tensor(k, n);
-        let fast = matmul(&a, &b).unwrap();
+        let fast = kernix_ops::matmul_reference(&a, &b).unwrap();
         let slow = matmul(&Indexed(&a), &Indexed(&b)).unwrap();
         assert_eq!(fast.storage_slice(), slow.storage_slice());
     }
@@ -65,7 +65,7 @@ fn explicit_serial_executor_and_bad_settings() {
 #[cfg(feature = "parallel")]
 #[test]
 fn private_pool_keeps_output_bits_and_arbitrary_layout_fallback() {
-    let cpu = CpuExecutor::new(2).unwrap();
+    let cpu = CpuExecutor::new(2).unwrap().with_ordered_matmul(true);
     assert_eq!(cpu.threads(), 2);
     let a = tensor(17, 31);
     let b = tensor(31, 19);
@@ -76,7 +76,9 @@ fn private_pool_keeps_output_bits_and_arbitrary_layout_fallback() {
     let t = a.transpose().unwrap();
     assert_eq!(
         cpu.matmul(&t, &a).unwrap().storage_slice(),
-        matmul(&t, &a).unwrap().storage_slice()
+        kernix_ops::matmul_reference(&t, &a)
+            .unwrap()
+            .storage_slice()
     );
 }
 

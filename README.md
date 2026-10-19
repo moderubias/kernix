@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.3.0"
+kernix = "0.4.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -36,7 +36,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Linux x86_64 is verified locally. Release 0.1.1 CI passed on Windows, macOS and Linux.
+Linux x86_64 is verified locally. Release 0.3.0 CI passed on Windows, macOS and Linux.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -45,11 +45,32 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.3.0", default-features = false }
+kernix = { version = "0.4.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
 many operations allocate. CPU storage rejects zero-sized element types.
+
+## Solve a linear system
+
+```rust
+use kernix::{solve, residual_norm, Kahen, Order, Tensor};
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let a = Tensor::from_vec(vec![4.0f64,1.0,1.0,3.0], Kahen::new([2,2])?, Order::C)?;
+    let b = Tensor::from_vec(vec![1.0,2.0], Kahen::new([2])?, Order::C)?;
+    let x = solve(&a, &b)?;
+    assert!(residual_norm(&a, &x, &b)? < 1e-14);
+    Ok(())
+}
+```
+
+`Lu` reuses partial-pivoted factors for multiple solves, inverse, determinant and
+signed log determinant. `Cholesky` factors symmetric positive-definite systems.
+`Qr` exposes thin Householder factors and full-column-rank least squares without
+forming normal equations. Both f32 and f64 support arbitrary input strides.
+Pivot tolerances are explicit rejection policies; a small residual does not prove
+small solution error for an ill-conditioned matrix. SVD, eigenproblems, sparse and
+complex algebra are planned extensions, rather than available APIs.
 
 ## First tensor computation
 
@@ -181,17 +202,24 @@ backends implement their own capabilities without requiring `HostBuffer`.
 
 `CpuExecutor::matmul_into` writes contiguous rank-two results into an existing
 allocation. The allocating API retains the general strided/batched fallback.
-CPU fast paths keep increasing-k accumulation order for every scalar output.
+f32/f64 rank-two GEMM dispatches to checked matrixmultiply kernels, including signed
+strides. This Rust dependency requires no external BLAS. Native SIMD/FMA and packed
+summation can change last bits. `matmul_reference` or
+`CpuExecutor::default().with_ordered_matmul(true)` selects increasing-k scalar order.
+`sum_all` uses pairwise contiguous reduction; `sum_sequential_all` fixes logical order;
+`sum_compensated_all` uses Neumaier compensation for finite inputs.
+`portable-math` selects libm even with std; otherwise std uses the platform math
+implementation. Neither setting promises bitwise identity on every architecture.
 
-At this release there is **no GPU execution, automatic differentiation or validated
-120-FPS CV pipeline**. Portable neural and vision primitives are available. The CPU operations are a
-reference foundation. Solvers, decompositions and sparse algebra remain future
-work. Applications need not create a configuration file. With the default `config`
+This release includes CPU decompositions, reverse-mode differentiation, trainable
+layers and checked checkpoints. GPU execution, SVD, eigen and sparse algebra remain
+future work. Applications need not create a configuration file. With the default `config`
 feature, an application can explicitly load optional `kernix.toml`:
 
 ```toml
 [cpu]
 threads = 1
+ordered_matmul = false
 ```
 
 ```rust
@@ -208,8 +236,8 @@ A missing optional file uses defaults. Malformed TOML, unknown keys and zero wor
 are errors. `Context::default()` never reads files. Multiple workers require
 `features = ["parallel"]`; each context owns a private pool and changes no global
 settings. Parallel matmul currently accelerates only contiguous rank-two inputs.
-The arithmetic free functions are deterministic serial operations and do not
-consult ambient configuration. `config` requires `std`; disable default features
+Free functions use a serial execution policy and do not consult ambient
+configuration. Native SIMD/FMA selection and platform math can affect rounding. `config` requires `std`; disable default features
 for `no_std` use.
 
 ## Vision and neural building blocks
@@ -245,12 +273,37 @@ See the neural API examples and gradient checks for exact contracts. These are
 building blocks; model architecture, training data and application behavior belong
 to the caller.
 
+## Training and explicit temporal state
+
+`autograd::Tape` records supported operations with explicit graph ownership.
+`training::Parameter`, seeded Xavier initialization, SGD, Adam/AdamW and finite-gradient
+clipping provide training primitives. `nn::Linear` and `nn::Conv2d` support both direct
+inference and recording. Shared parameters record once per tape; clear or create a
+new tape after updating weights. Checkpoints preserve named weights and optional
+Adam state in a versioned, bounded, checked f32/f64 format.
+
+```sh
+cargo run -p kernix --example train_patterns
+cargo run -p kernix --example temporal_state
+```
+
+The first example learns synthetic stripe classes, then saves and restores a
+checkpoint. The second carries an explicit hidden-state tensor between observations.
+They illustrate composition rather than prescribing an application model.
+Read the [user guide](https://github.com/moderubias/kernix/blob/main/docs/USER_GUIDE.md)
+and [numerical contracts](https://github.com/moderubias/kernix/blob/main/docs/NUMERICS.md)
+for graph lifetime, gradients, serialization, precision and performance choices.
+Not every free numerical operation has an autodiff counterpart; unsupported operations
+are explicit, and solvers are currently inference-only. Graph recording validates
+and owns tensors, so it has overhead compared with hand-written derivatives.
+
 ## Tests, benchmarks and development
 
 ```sh
 git clone https://github.com/moderubias/kernix.git
 cd kernix
 cargo fmt --all -- --check
+cargo test --workspace --locked
 cargo test --workspace --all-features --locked
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
@@ -262,8 +315,8 @@ examples. Property tests check shape invariants; regression tests cover layouts,
 aliasing, integer errors, nonfinite math and extreme softmax inputs. Unsafe aligned
 storage has a Miri CI workflow; a configured workflow does not certify an unrun test.
 
-Comparative benchmarks require Python 3 + NumPy, Pandoc and XeLaTeX only for report
-generation; none is a runtime dependency. On Arch: install `python-numpy pandoc-cli
+Comparative benchmarks require Python 3 + NumPy + Matplotlib, Pandoc and XeLaTeX only for report
+generation; none is a runtime dependency. On Arch: install `python-numpy python-matplotlib pandoc-cli
 texlive-xetex texlive-latexextra`; on other systems install equivalent tools.
 
 ```sh
@@ -273,7 +326,8 @@ python benchmarks/run.py my-unique-run
 Results are saved without overwriting previous runs in
 [`benchmarks/results`](benchmarks/results): raw measurements, environment metadata,
 Markdown tables and printable PDF. The harness compares allocation-inclusive CPU
-operations with ndarray and NumPy using a single-thread policy. It verifies matrix
+operations with ndarray, nalgebra and NumPy using a single-thread policy and
+Linux CPU affinity where available. Source snapshots accompany new reports. It verifies matrix
 results before timing. Read each report's limits; measured improvements on a laptop
 are not performance guarantees on all systems. A 120-Hz vision pipeline has an
 8.333-ms **complete frame** budget, including capture, preprocessing and inference.

@@ -9,11 +9,8 @@
 //! assert_eq!(out.storage_slice(), &[7.0,10.0,15.0,22.0]);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-use crate::{OpsError, TensorInput, Zero};
-#[cfg(feature = "parallel")]
-use alloc::vec;
+use crate::{OpsError, TensorInput};
 use alloc::vec::Vec;
-use core::ops::{AddAssign, Mul};
 use kernix_core::{
     device::{Cpu, Device},
     shape::Kahen,
@@ -43,6 +40,7 @@ pub trait MatmulDevice<T>: Device<T> {
 /// restricted to C-contiguous rank-two inputs; other layouts use the serial fallback.
 #[derive(Clone, Default)]
 pub struct CpuExecutor {
+    ordered_matmul: bool,
     #[cfg(feature = "parallel")]
     pool: Option<alloc::sync::Arc<rayon::ThreadPool>>,
 }
@@ -60,6 +58,7 @@ impl CpuExecutor {
         #[cfg(feature = "parallel")]
         {
             Ok(Self {
+                ordered_matmul: false,
                 pool: Some(alloc::sync::Arc::new(
                     rayon::ThreadPoolBuilder::new()
                         .num_threads(threads)
@@ -71,6 +70,16 @@ impl CpuExecutor {
         #[cfg(not(feature = "parallel"))]
         Err(invalid_threads())
     }
+    /// Select strictly increasing-k matrix accumulation instead of native packed
+    /// floating kernels. Ordered mode also avoids packing allocation in matmul_into.
+    pub fn with_ordered_matmul(mut self, ordered: bool) -> Self {
+        self.ordered_matmul = ordered;
+        self
+    }
+    /// Whether native floating GEMM dispatch is disabled for this context.
+    pub fn ordered_matmul(&self) -> bool {
+        self.ordered_matmul
+    }
     /// Number of explicitly configured workers; one denotes serial execution.
     pub fn threads(&self) -> usize {
         #[cfg(feature = "parallel")]
@@ -79,54 +88,47 @@ impl CpuExecutor {
         }
         1
     }
-    /// Allocate matrix multiplication output with deterministic scalar accumulation
-    /// order per element. The contiguous rank-two path can distribute rows across
+    /// Allocate matrix multiplication output with native packed floating kernels,
+    /// or increasing-k scalar accumulation when ordered_matmul is enabled. The contiguous rank-two path can distribute rows across
     /// workers; all other validated layouts use portable reference matmul.
     pub fn matmul<T, A, B>(&self, left: &A, right: &B) -> Result<Tensor<T>, OpsError>
     where
-        T: Zero + Clone + AddAssign<T> + Mul<Output = T> + Send + Sync,
+        T: crate::MatmulElement + Send + Sync,
         A: TensorInput<T> + Sync,
         B: TensorInput<T> + Sync,
     {
         #[cfg(feature = "parallel")]
-        if let Some(pool) = &self.pool {
+        if self.pool.is_some() {
             let a = left.dims();
             let b = right.dims();
-            if a.len() == 2 && b.len() == 2 && a[1] == b[0] {
-                if let (Some(av), Some(bv)) =
-                    (left.as_c_contiguous_slice(), right.as_c_contiguous_slice())
-                {
-                    let (m, k, n) = (a[0], a[1], b[1]);
-                    let shape = Kahen::new([m, n])?;
-                    if m.checked_mul(k) == Some(av.len())
-                        && k.checked_mul(n) == Some(bv.len())
-                        && n > 0
-                    {
-                        use rayon::prelude::*;
-                        let mut values = vec![T::zero(); shape.numel()];
-                        pool.install(|| {
-                            values.par_chunks_mut(n).enumerate().for_each(|(row, out)| {
-                                for inner in 0..k {
-                                    for (dst, b) in
-                                        out.iter_mut().zip(&bv[inner * n..(inner + 1) * n])
-                                    {
-                                        *dst += av[row * k + inner].clone() * b.clone();
-                                    }
-                                }
-                            })
-                        });
-                        return Ok(Tensor::from_vec(values, shape, kernix_core::Order::C)?);
-                    }
-                }
+            if a.len() == 2
+                && b.len() == 2
+                && a[1] == b[0]
+                && left.as_c_contiguous_slice().is_some()
+                && right.as_c_contiguous_slice().is_some()
+            {
+                let mut output = Tensor::filled(
+                    Kahen::new([a[0], b[1]])?,
+                    kernix_core::Order::C,
+                    core::mem::align_of::<T>(),
+                    T::zero(),
+                )?;
+                self.matmul_into(left, right, &mut output)?;
+                return Ok(output);
             }
         }
-        crate::matmul(left, right)
+        if self.ordered_matmul {
+            crate::matmul_reference(left, right)
+        } else {
+            crate::matmul(left, right)
+        }
     }
     /// Write rank-two C-contiguous matmul into an existing output allocation.
     ///
-    /// No tensor or temporary element buffer is allocated. All shape/contiguity
+    /// Output tensor storage is reused. Native kernels may allocate packed workspace;
+    /// with_ordered_matmul(true) avoids element-buffer allocations. All shape/contiguity
     /// checks happen before writes. Output shape must be `[m,n]`; per-element
-    /// accumulation follows increasing k. Scalar operator panics retain Rust
+    /// accumulation follows the selected native/ordered policy. Scalar operator panics retain Rust
     /// semantics and can leave a partially updated output. Parallel contexts
     /// distribute independent rows. Other layouts should use [`Self::matmul`].
     ///
@@ -146,7 +148,7 @@ impl CpuExecutor {
         output: &mut Tensor<T>,
     ) -> Result<(), OpsError>
     where
-        T: Zero + Clone + AddAssign<T> + Mul<Output = T> + Send + Sync,
+        T: crate::MatmulElement + Send + Sync,
         A: TensorInput<T> + Sync,
         B: TensorInput<T> + Sync,
     {
@@ -178,21 +180,31 @@ impl CpuExecutor {
         if values.is_empty() {
             return Ok(());
         }
-        let write_row = |(row, out): (usize, &mut [T])| {
-            out.fill(T::zero());
-            for inner in 0..k {
-                for (dst, b) in out.iter_mut().zip(&bv[inner * n..(inner + 1) * n]) {
-                    *dst += av[row * k + inner].clone() * b.clone();
-                }
-            }
-        };
         #[cfg(feature = "parallel")]
         if let Some(pool) = &self.pool {
             use rayon::prelude::*;
-            pool.install(|| values.par_chunks_mut(n).enumerate().for_each(write_row));
+            let rows_per_chunk = m.clamp(1, 32);
+            let chunk_size = n * rows_per_chunk;
+            pool.install(|| {
+                values
+                    .par_chunks_mut(chunk_size)
+                    .enumerate()
+                    .for_each(|(chunk, out)| {
+                        let row = chunk * rows_per_chunk;
+                        let rows = out.len() / n;
+                        let input = &av[row * k..(row + rows) * k];
+                        if !self.ordered_matmul && T::try_dense_matmul(input, bv, out, rows, k, n) {
+                            return;
+                        }
+                        crate::ops::dense_matmul(input, bv, out, rows, k, n, false);
+                    })
+            });
             return Ok(());
         }
-        values.chunks_mut(n).enumerate().for_each(write_row);
+        if !self.ordered_matmul && T::try_dense_matmul(av, bv, values, m, k, n) {
+            return Ok(());
+        }
+        crate::ops::dense_matmul(av, bv, values, m, k, n, false);
         Ok(())
     }
 }
@@ -220,7 +232,7 @@ impl<T: Clone> Device<T> for CpuExecutor {
 }
 impl<T> MatmulDevice<T> for CpuExecutor
 where
-    T: Zero + Clone + AddAssign<T> + Mul<Output = T> + Send + Sync,
+    T: crate::MatmulElement + Send + Sync,
 {
     type KernelError = OpsError;
     fn matmul(&self, left: &Tensor<T>, right: &Tensor<T>) -> Result<Tensor<T>, OpsError> {

@@ -127,7 +127,10 @@ where
     reduce_axes(source, axes, keepdims, T::one(), |acc, val| *acc *= val)
 }
 
-/// Sum of all elements, including zero for an empty tensor.
+/// Sum of all elements, including zero for an empty tensor. Contiguous inputs
+/// use eight-lane pairwise summation for speed and reduced rounding-error growth.
+/// Strided inputs use sequential logical order, so float last bits may differ by
+/// layout. Use sum_sequential_all for fixed order or sum_compensated_all for cancellation.
 ///
 /// # Examples
 ///
@@ -146,11 +149,7 @@ where
     let shape = Kahen::new(source.dims())?;
     if let Some(values) = source.as_c_contiguous_slice() {
         if values.len() == shape.numel() {
-            let mut acc = T::zero();
-            for value in values {
-                acc += value.clone();
-            }
-            return Ok(acc);
+            return Ok(pairwise_sum(values));
         }
     }
     let mut coords = vec![0; source.dims().len()];
@@ -444,4 +443,110 @@ where
         .map(|value| value.ok_or(OpsError::EmptyReduction))
         .collect();
     Ok(Tensor::from_vec(values?, output_shape, Order::C)?)
+}
+
+fn pairwise_sum<T: Zero + AddAssign<T> + Clone>(values: &[T]) -> T {
+    if values.len() > 128 {
+        let middle = values.len() / 2 / 8 * 8;
+        let mut result = pairwise_sum(&values[..middle]);
+        result += pairwise_sum(&values[middle..]);
+        return result;
+    }
+    let mut lanes: [T; 8] = core::array::from_fn(|_| T::zero());
+    let mut chunks = values.chunks_exact(8);
+    for chunk in &mut chunks {
+        for (lane, value) in lanes.iter_mut().zip(chunk) {
+            *lane += value.clone();
+        }
+    }
+    for (lane, value) in lanes.iter_mut().zip(chunks.remainder()) {
+        *lane += value.clone();
+    }
+    let mut a = lanes[0].clone();
+    a += lanes[1].clone();
+    let mut b = lanes[2].clone();
+    b += lanes[3].clone();
+    let mut c = lanes[4].clone();
+    c += lanes[5].clone();
+    let mut d = lanes[6].clone();
+    d += lanes[7].clone();
+    a += b;
+    c += d;
+    a += c;
+    a
+}
+
+/// Sum in strictly sequential logical C order, including contiguous inputs.
+/// This preserves the original accumulation order when exact last-bit compatibility
+/// matters. Native scalar overflow/IEEE semantics apply. O(numel*rank), O(rank) memory.
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// let a=Tensor::from_vec(vec![1.0f64,2.0,3.0],Kahen::new([3])?,Order::C)?;
+/// assert_eq!(kernix_ops::sum_sequential_all(&a)?,6.0);
+/// # Ok::<(),Box<dyn std::error::Error>>(())
+/// ```
+pub fn sum_sequential_all<T: Zero + AddAssign<T> + Clone, A: TensorInput<T>>(
+    source: &A,
+) -> Result<T, OpsError> {
+    let shape = Kahen::new(source.dims())?;
+    let mut sum = T::zero();
+    if let Some(data) = source.as_c_contiguous_slice() {
+        if data.len() == shape.numel() {
+            for value in data {
+                sum += value.clone();
+            }
+            return Ok(sum);
+        }
+    }
+    let mut index = vec![0; shape.rank()];
+    for _ in 0..shape.numel() {
+        sum += source.get(&index)?.clone();
+        next_c(&mut index, shape.dims());
+    }
+    Ok(sum)
+}
+/// Neumaier-compensated floating sum in logical C order. This improves many
+/// cancellation-heavy sums without changing dtype. Reject nonfinite inputs and
+/// overflowing intermediate sums; this is not arbitrary precision arithmetic.
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// let a=Tensor::from_vec(vec![1e16f64,1.0,-1e16],Kahen::new([3])?,Order::C)?;
+/// assert_eq!(kernix_ops::sum_compensated_all(&a)?,1.0);
+/// # Ok::<(),Box<dyn std::error::Error>>(())
+/// ```
+pub fn sum_compensated_all<T: super::FloatMath, A: TensorInput<T>>(
+    source: &A,
+) -> Result<T, OpsError> {
+    let shape = Kahen::new(source.dims())?;
+    let mut sum = T::zero();
+    let mut correction = T::zero();
+    let mut index = vec![0; shape.rank()];
+    for _ in 0..shape.numel() {
+        let value = *source.get(&index)?;
+        let next = sum + value;
+        if !super::FloatMath::is_finite(value) || !super::FloatMath::is_finite(next) {
+            return Err(OpsError::NonFiniteInput {
+                operation: "sum_compensated_all",
+                indices: index,
+            });
+        }
+        correction = correction
+            + if super::FloatMath::abs(sum) >= super::FloatMath::abs(value) {
+                (sum - next) + value
+            } else {
+                (value - next) + sum
+            };
+        sum = next;
+        next_c(&mut index, shape.dims());
+    }
+    let result = sum + correction;
+    if !super::FloatMath::is_finite(result) {
+        return Err(OpsError::NonFiniteInput {
+            operation: "sum_compensated_all",
+            indices: index,
+        });
+    }
+    Ok(result)
 }

@@ -22,3 +22,12 @@ pub use kernix_core::device::{self, Cpu, Device};
 pub use kernix_ops::execution::{CpuExecutor, MatmulDevice};
 
 pub use kernix_ops::{neural, vision};
+
+extern crate alloc;
+pub mod autograd;
+pub mod checkpoint;
+pub mod training;
+
+pub mod nn;
+
+pub use kernix_ops::linalg;

@@ -232,8 +232,14 @@ impl<'a, T, S: LayoutShape> TensorViewMut<'a, T, S> {
         self.layout.is_empty()
     }
 
-    /// Borrow one element at checked logical coordinates. Rank or bounds mismatches
-    /// return an error. Signed/zero strides are respected. O(rank).
+    /// Borrow the initialized physical backing of this exclusive view. Metadata
+    /// gaps are included; the immutable borrow prevents concurrent mutable access.
+    pub fn storage_slice(&self) -> &[T] {
+        self.elements
+    }
+
+    /// Borrow an element at checked logical coordinates, respecting signed strides.
+    /// Invalid rank or bounds return an error. O(rank).
     pub fn get(&self, indices: &[usize]) -> Result<&T, TensorError> {
         let offset = self.layout.offset_of(indices)?;
         Ok(&self.elements[offset])

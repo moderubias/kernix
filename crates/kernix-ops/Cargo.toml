@@ -11,9 +11,12 @@ include = ["src/**", "tests/**", "examples/**", "README.md", "LICENSE", "LICENSE
 
 [features]
 default = ["std"]
+portable-math = []
 
 std = [
     "kernix-core/std",
+    "thiserror/std",
+    "matrixmultiply/std",
 ]
 
 parallel = [
@@ -26,12 +29,15 @@ serde = [
 ]
 
 [dependencies]
+thiserror.workspace = true
+matrixmultiply = { version = "0.3.11", default-features = false }
 kernix-core.workspace = true
 
 rayon = { workspace = true, optional = true }
 libm = { version = "0.2", default-features = false }
 
 [dev-dependencies]
+nalgebra = { version = "0.35", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
 serde_json.workspace = true
 proptest.workspace = true

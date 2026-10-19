@@ -20,3 +20,5 @@ jobs:
         run: cargo +nightly miri setup
       - name: Exercise unsafe storage and tensor code
         run: cargo +nightly miri test -p kernix-core --tests
+      - name: Exercise checked native matrix wrappers
+        run: cargo +nightly miri test -p kernix-ops --test native_kernel_tests

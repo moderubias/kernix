@@ -22,16 +22,21 @@ pub struct Config {
     /// Portable CPU execution settings.
     pub cpu: CpuConfig,
 }
-/// CPU scheduling settings; deterministic scalar summation order is preserved.
+/// CPU scheduling and explicit native/ordered matrix arithmetic policy.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CpuConfig {
     /// Worker count. Default one; more than one requires the `parallel` feature.
     pub threads: usize,
+    /// Use ordered scalar matmul instead of native packed floating kernels.
+    pub ordered_matmul: bool,
 }
 impl Default for CpuConfig {
     fn default() -> Self {
-        Self { threads: 1 }
+        Self {
+            threads: 1,
+            ordered_matmul: false,
+        }
     }
 }
 
@@ -126,7 +131,9 @@ pub struct Context {
 impl Context {
     /// Validate settings and construct the requested CPU scheduling policy.
     pub fn new(config: Config) -> Result<Self, ConfigError> {
-        let cpu = CpuExecutor::new(config.cpu.threads).map_err(ConfigError::Execution)?;
+        let cpu = CpuExecutor::new(config.cpu.threads)
+            .map_err(ConfigError::Execution)?
+            .with_ordered_matmul(config.cpu.ordered_matmul);
         Ok(Self { config, cpu })
     }
     /// Load optional TOML from a caller-chosen path, then validate executor support.

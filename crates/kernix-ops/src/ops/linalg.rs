@@ -13,8 +13,10 @@ use super::{OpsError, TensorInput, Zero, broadcast::broadcast_shape, error::flat
 /// Rank-1 × rank-1 produces a scalar; rank-1 × rank-N and rank-N × rank-1
 /// remove the corresponding singleton matrix dimension. All batch axes
 /// broadcast right-aligned. Zero contracted dimension yields additive zero.
-/// The implementation is the portable CPU reference O(batch*m*n*k) kernel;
-/// it does not imply BLAS/SIMD acceleration.
+/// Contiguous f32/f64 rank-two inputs use runtime-dispatched packed CPU kernels
+/// (matrixmultiply), with no external BLAS requirement. Floating accumulation/FMA
+/// order may differ from matmul_reference. Other layouts/ranks use the checked
+/// portable fallback. Integer scalar arithmetic retains native overflow semantics.
 ///
 /// # Examples
 ///
@@ -25,7 +27,48 @@ use super::{OpsError, TensorInput, Zero, broadcast::broadcast_shape, error::flat
 /// let result = matmul(&a, &a)?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn matmul<T, A, B>(left: &A, right: &B) -> Result<Tensor<T>, OpsError>
+pub fn matmul<T: super::MatmulElement, A: TensorInput<T>, B: TensorInput<T>>(
+    left: &A,
+    right: &B,
+) -> Result<Tensor<T>, OpsError> {
+    matmul_impl(
+        left,
+        right,
+        if T::HAS_NATIVE_MATMUL {
+            Some((T::try_dense_matmul, T::try_strided_matmul))
+        } else {
+            None
+        },
+    )
+}
+
+/// Matrix multiplication with increasing-k scalar accumulation and no fused-multiply
+/// policy changes. Supports custom Zero/Clone/AddAssign/Mul scalars and the same
+/// vector/batch/stride API as matmul. Useful as a numerical reference and for exact
+/// compatibility with Kernix's original operation order. O(batch*m*n*k).
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// let a=Tensor::from_vec(vec![1.0f64,2.0,3.0,4.0],Kahen::new([2,2])?,Order::C)?;
+/// assert_eq!(kernix_ops::matmul_reference(&a,&a)?.storage_slice(),&[7.0,10.0,15.0,22.0]);
+/// # Ok::<(),Box<dyn std::error::Error>>(())
+/// ```
+pub fn matmul_reference<T, A, B>(left: &A, right: &B) -> Result<Tensor<T>, OpsError>
+where
+    T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
+    A: TensorInput<T>,
+    B: TensorInput<T>,
+{
+    matmul_impl(left, right, None)
+}
+
+type StridedKernel<T> = fn(super::MatrixInput<'_, T>, super::MatrixInput<'_, T>, &mut [T]) -> bool;
+type DenseKernel<T> = fn(&[T], &[T], &mut [T], usize, usize, usize) -> bool;
+fn matmul_impl<T, A, B>(
+    left: &A,
+    right: &B,
+    kernel: Option<(DenseKernel<T>, StridedKernel<T>)>,
+) -> Result<Tensor<T>, OpsError>
 where
     T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
     A: TensorInput<T>,
@@ -84,17 +127,20 @@ where
         {
             if m.checked_mul(k) == Some(a_data.len()) && k.checked_mul(n) == Some(b_data.len()) {
                 let mut values = vec![T::zero(); output.numel()];
-                for row in 0..m {
-                    let out_row = &mut values[row * n..(row + 1) * n];
-                    for inner in 0..k {
-                        let a = &a_data[row * k + inner];
-                        let b_row = &b_data[inner * n..(inner + 1) * n];
-                        for (out, b) in out_row.iter_mut().zip(b_row) {
-                            *out += a.clone() * b.clone();
-                        }
-                    }
+                if !kernel.is_some_and(|kernel| kernel.0(a_data, b_data, &mut values, m, k, n)) {
+                    dense_matmul(a_data, b_data, &mut values, m, k, n, true);
                 }
                 return Ok(Tensor::from_vec(values, output, Order::C)?);
+            }
+        }
+    }
+    if a.len() == 2 && b.len() == 2 {
+        if let Some((_, strided)) = kernel {
+            if let (Some(a), Some(b)) = (left.as_matrix(), right.as_matrix()) {
+                let mut values = vec![T::zero(); output.numel()];
+                if strided(a, b, &mut values) {
+                    return Ok(Tensor::from_vec(values, output, Order::C)?);
+                }
             }
         }
     }
@@ -136,4 +182,88 @@ where
         Ok::<T, OpsError>(value)
     })
     .map_err(flatten_build_error)
+}
+
+// Four-by-four register tiles preserve increasing-k order for each output.
+// Packed panels are optional so allocation-reusing execution can remain allocation-free.
+pub(crate) fn dense_matmul<T>(
+    a: &[T],
+    b: &[T],
+    out: &mut [T],
+    m: usize,
+    k: usize,
+    n: usize,
+    pack: bool,
+) where
+    T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
+{
+    out.fill(T::zero());
+    let rows = m / 4 * 4;
+    let cols = n / 4 * 4;
+    let mut panel = if pack && rows > 0 && cols > 0 {
+        vec![T::zero(); k * 4]
+    } else {
+        Vec::new()
+    };
+    for col in (0..cols).step_by(4) {
+        if !panel.is_empty() {
+            for p in 0..k {
+                panel[p * 4..p * 4 + 4].clone_from_slice(&b[p * n + col..p * n + col + 4]);
+            }
+        }
+        for row in (0..rows).step_by(4) {
+            if panel.is_empty() {
+                tile::<T, false>(a, b, out, row, col, k, n);
+            } else {
+                tile::<T, true>(a, &panel, out, row, col, k, n);
+            }
+        }
+    }
+    for row in 0..m {
+        for col in cols..n {
+            let mut value = T::zero();
+            for p in 0..k {
+                value += a[row * k + p].clone() * b[p * n + col].clone();
+            }
+            out[row * n + col] = value;
+        }
+    }
+    for row in rows..m {
+        for col in 0..cols {
+            let mut value = T::zero();
+            for p in 0..k {
+                value += a[row * k + p].clone() * b[p * n + col].clone();
+            }
+            out[row * n + col] = value;
+        }
+    }
+}
+#[inline]
+fn tile<T, const PACKED: bool>(
+    a: &[T],
+    b: &[T],
+    out: &mut [T],
+    row: usize,
+    col: usize,
+    k: usize,
+    n: usize,
+) where
+    T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
+{
+    let arows: [&[T]; 4] = core::array::from_fn(|r| &a[(row + r) * k..(row + r + 1) * k]);
+    let mut acc: [[T; 4]; 4] = core::array::from_fn(|_| core::array::from_fn(|_| T::zero()));
+    for (p, _) in arows[0].iter().enumerate() {
+        let start = if PACKED { p * 4 } else { p * n + col };
+        let br = &b[start..start + 4];
+        for r in 0..4 {
+            let av = &arows[r][p];
+            acc[r][0] += av.clone() * br[0].clone();
+            acc[r][1] += av.clone() * br[1].clone();
+            acc[r][2] += av.clone() * br[2].clone();
+            acc[r][3] += av.clone() * br[3].clone();
+        }
+    }
+    for (r, values) in acc.into_iter().enumerate() {
+        out[(row + r) * n + col..(row + r) * n + col + 4].clone_from_slice(&values);
+    }
 }

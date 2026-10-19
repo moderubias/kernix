@@ -24,13 +24,15 @@ include = [
 
 [features]
 default = ["std", "config"]
-std = ["kernix-core/std", "kernix-ops/std"]
+portable-math = ["kernix-ops/portable-math"]
+std = ["kernix-core/std", "kernix-ops/std", "thiserror/std"]
 serde = ["kernix-core/serde", "kernix-ops/serde"]
 parallel = ["std", "kernix-ops/parallel"]
 
 config = ["std", "dep:serde", "dep:toml"]
 
 [dependencies]
+thiserror.workspace = true
 serde = { workspace = true, optional = true }
 toml = { version = "0.8", optional = true }
 kernix-core.workspace = true
@@ -42,3 +44,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "train_patterns"
+required-features = ["std"]
+
+[dev-dependencies]
+ndarray = "0.17.2"
+serde_json.workspace = true

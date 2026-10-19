@@ -31,31 +31,87 @@ pub trait FloatTrig: FloatMath {
 
 impl FloatTrig for f32 {
     fn sin(self) -> Self {
-        libm::sinf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::sin(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::sinf(self)
+        }
     }
     fn cos(self) -> Self {
-        libm::cosf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::cos(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::cosf(self)
+        }
     }
     fn atan2(self, x: Self) -> Self {
-        libm::atan2f(self, x)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::atan2(self, x)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::atan2f(self, x)
+        }
     }
     fn hypot(self, x: Self) -> Self {
-        libm::hypotf(self, x)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::hypot(self, x)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::hypotf(self, x)
+        }
     }
 }
 
 impl FloatTrig for f64 {
     fn sin(self) -> Self {
-        libm::sin(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::sin(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::sin(self)
+        }
     }
     fn cos(self) -> Self {
-        libm::cos(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::cos(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::cos(self)
+        }
     }
     fn atan2(self, x: Self) -> Self {
-        libm::atan2(self, x)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::atan2(self, x)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::atan2(self, x)
+        }
     }
     fn hypot(self, x: Self) -> Self {
-        libm::hypot(self, x)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::hypot(self, x)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::hypot(self, x)
+        }
     }
 }
 

@@ -12,6 +12,7 @@ mod linalg_extra;
 mod manipulate;
 mod math;
 mod math_extra;
+mod matmul_element;
 mod numeric;
 mod ordering;
 mod reduce;
@@ -31,11 +32,12 @@ pub use elementwise::{
 pub use error::OpsError;
 pub use in_place::{TensorOutput, add_assign, assign, div_assign, mul_assign, sub_assign, zip_mut};
 pub use input::TensorInput;
-pub use linalg::matmul;
+pub use linalg::{matmul, matmul_reference};
+pub use matmul_element::{MatmulElement, MatrixInput};
 pub use numeric::{FloatElement, One, Zero};
 pub use reduce::{
     max_all, max_axes, mean_all, mean_axes, min_all, min_axes, prod_all, prod_axes, sum_all,
-    sum_axes,
+    sum_axes, sum_compensated_all, sum_sequential_all,
 };
 
 // High-level elementwise comparisons and Boolean selection.
@@ -77,3 +79,5 @@ pub use ordering::{SortDirection, TotalOrder, argsort_axis, sort_axis, topk_axis
 pub use linalg_extra::{dot, outer, tensordot, trace};
 // Stable reductions and explicit dtype conversion contracts.
 pub use stable::{cast, l2_norm_all, l2_norm_axis, logsumexp_all, logsumexp_axis, try_cast};
+
+pub(crate) use linalg::dense_matmul;

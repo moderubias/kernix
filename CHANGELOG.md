@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0
+
+- Add general dense algebra: reusable pivoted LU/Cholesky/Householder QR,
+  square and least-squares solves, inverse, determinant/slogdet and residuals.
+- Accelerate f32/f64 rank-two GEMM, including signed strides, through checked
+  matrixmultiply kernels; retain explicit ordered reference arithmetic.
+- Add pairwise/ordered/compensated sum policies, cached softmax exponentials,
+  std/libm math selection, bounded tiled GEMM convolution and hoisted RGB coordinates.
+- Add explicit reverse-mode tapes, broadcast VJPs, shared parameters and detach.
+- Add trainable dense/convolution layers, seeded Xavier, SGD, Adam/AdamW and clipping.
+- Add checked versioned named weight/optimizer checkpoints with exact resume tests.
+- Add generic synthetic training and temporal-state examples, detailed user/numerics
+  guides, retained nalgebra/ndarray/NumPy comparisons and exact source snapshots.
+- Native kernels can round differently from ordered scalar arithmetic; choose the
+  documented reference APIs when accumulation order matters. Decompositions are
+  inference APIs; SVD, sparse/complex algebra and GPU execution remain future work.
+
 ## 0.3.0
 
 - Add NCHW grouped/dilated convolution and explicit input/weight gradients.

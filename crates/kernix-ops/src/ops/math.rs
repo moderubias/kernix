@@ -51,22 +51,64 @@ pub trait FloatMath:
 
 impl FloatMath for f32 {
     fn exp(self) -> Self {
-        libm::expf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::exp(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::expf(self)
+        }
     }
     fn ln(self) -> Self {
-        libm::logf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::ln(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::logf(self)
+        }
     }
     fn ln_1p(self) -> Self {
-        libm::log1pf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::ln_1p(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::log1pf(self)
+        }
     }
     fn exp_m1(self) -> Self {
-        libm::expm1f(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::exp_m1(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::expm1f(self)
+        }
     }
     fn sqrt(self) -> Self {
-        libm::sqrtf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::sqrt(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::sqrtf(self)
+        }
     }
     fn tanh(self) -> Self {
-        libm::tanhf(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f32::tanh(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::tanhf(self)
+        }
     }
     fn erf(self) -> Self {
         libm::erff(self)
@@ -83,22 +125,64 @@ impl FloatMath for f32 {
 }
 impl FloatMath for f64 {
     fn exp(self) -> Self {
-        libm::exp(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::exp(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::exp(self)
+        }
     }
     fn ln(self) -> Self {
-        libm::log(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::ln(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::log(self)
+        }
     }
     fn ln_1p(self) -> Self {
-        libm::log1p(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::ln_1p(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::log1p(self)
+        }
     }
     fn exp_m1(self) -> Self {
-        libm::expm1(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::exp_m1(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::expm1(self)
+        }
     }
     fn sqrt(self) -> Self {
-        libm::sqrt(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::sqrt(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::sqrt(self)
+        }
     }
     fn tanh(self) -> Self {
-        libm::tanh(self)
+        #[cfg(all(feature = "std", not(feature = "portable-math")))]
+        {
+            f64::tanh(self)
+        }
+        #[cfg(any(not(feature = "std"), feature = "portable-math"))]
+        {
+            libm::tanh(self)
+        }
     }
     fn erf(self) -> Self {
         libm::erf(self)
@@ -356,17 +440,22 @@ fn normalized_exp<T: FloatMath, A: TensorInput<T>>(
                         }
                     }
                     let mut sum = T::zero();
-                    for &value in input {
-                        sum = sum + FloatMath::exp(value - maximum);
-                    }
                     if logarithmic {
+                        for &value in input {
+                            sum = sum + FloatMath::exp(value - maximum);
+                        }
                         let log_sum = FloatMath::ln(sum);
                         for (dst, &value) in dest.iter_mut().zip(input) {
                             *dst = (value - maximum) - log_sum;
                         }
                     } else {
                         for (dst, &value) in dest.iter_mut().zip(input) {
-                            *dst = FloatMath::exp(value - maximum) / sum;
+                            let e = FloatMath::exp(value - maximum);
+                            *dst = e;
+                            sum = sum + e;
+                        }
+                        for dst in dest {
+                            *dst = *dst / sum;
                         }
                     }
                 }

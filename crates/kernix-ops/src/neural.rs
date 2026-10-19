@@ -158,7 +158,9 @@ fn read4<T: Copy, A: TensorInput<T>>(
 /// Allocates C-order output. No bias is implicit: broadcast-add `[1,out_channels,1,1]`.
 /// Invalid ranks/channel groups/zero kernel or overflowing geometry return errors.
 /// An effective kernel larger than the padded input yields an empty spatial axis.
-/// Arbitrary input/weight strides are respected. Scalar IEEE arithmetic is retained.
+/// Arbitrary strides are respected. Finite contiguous floats use bounded tiled
+/// im2col/GEMM with native FMA/order; conv2d_reference keeps scalar order. Scratch
+/// storage is O((kernel elements+output channels/groups)*min(output pixels,128)).
 /// Cost O(batch*out_channels*oh*ow*in_channels/groups*kh*kw).
 ///
 /// # Examples
@@ -172,10 +174,34 @@ fn read4<T: Copy, A: TensorInput<T>>(
 /// assert_eq!(out.shape().dims(),&[1,1,3,3]);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn conv2d<T: FloatMath + AddAssign, A: TensorInput<T>, B: TensorInput<T>>(
+pub fn conv2d<T: FloatMath + crate::MatmulElement, A: TensorInput<T>, B: TensorInput<T>>(
     input: &A,
     weight: &B,
     options: Conv2dOptions,
+) -> Result<Tensor<T>, OpsError> {
+    conv_impl(input, weight, options, true)
+}
+
+/// Ordered scalar NCHW convolution with the same geometry as conv2d, without
+/// native GEMM/FMA dispatch. Useful for operation-order compatibility and numerical
+/// reference checks. See the module example and conv2d options.
+pub fn conv2d_reference<
+    T: FloatMath + crate::MatmulElement,
+    A: TensorInput<T>,
+    B: TensorInput<T>,
+>(
+    input: &A,
+    weight: &B,
+    options: Conv2dOptions,
+) -> Result<Tensor<T>, OpsError> {
+    conv_impl(input, weight, options, false)
+}
+
+fn conv_impl<T: FloatMath + crate::MatmulElement, A: TensorInput<T>, B: TensorInput<T>>(
+    input: &A,
+    weight: &B,
+    options: Conv2dOptions,
+    native: bool,
 ) -> Result<Tensor<T>, OpsError> {
     let g = ConvGeometry::new(input.dims(), weight.dims(), options)?;
     let ni = Kahen::new(g.input)?.numel();
@@ -183,6 +209,135 @@ pub fn conv2d<T: FloatMath + AddAssign, A: TensorInput<T>, B: TensorInput<T>>(
     let iv = input.as_c_contiguous_slice().filter(|v| v.len() == ni);
     let wv = weight.as_c_contiguous_slice().filter(|v| v.len() == nw);
 
+    if native
+        && T::HAS_NATIVE_MATMUL
+        && iv.is_some_and(|v| v.iter().all(|x| FloatMath::is_finite(*x)))
+        && wv.is_some_and(|v| v.iter().all(|x| FloatMath::is_finite(*x)))
+    {
+        let input = iv.expect("contiguous capability checked");
+        let weights = wv.expect("contiguous capability checked");
+        let mut output =
+            Tensor::filled(Kahen::new(g.output)?, Order::C, align_of::<T>(), T::zero())?;
+        if output.is_empty() {
+            return Ok(output);
+        }
+        let spatial = g.output[2] * g.output[3];
+        let block = spatial.min(128);
+        let co = g.weight[0] / options.groups;
+        let kernel = Kahen::new(&g.weight[1..])?.numel();
+        let mut columns = Tensor::filled(
+            Kahen::new([kernel, block])?,
+            Order::C,
+            align_of::<T>(),
+            T::zero(),
+        )?;
+        let mut product = Tensor::filled(
+            Kahen::new([co, block])?,
+            Order::C,
+            align_of::<T>(),
+            T::zero(),
+        )?;
+        let dst = output.storage_slice_mut();
+        for batch in 0..g.output[0] {
+            for group in 0..options.groups {
+                for start in (0..spatial).step_by(block) {
+                    let count = (spatial - start).min(block);
+                    let col = &mut columns.storage_slice_mut()[..kernel * count];
+                    for ci in 0..g.weight[1] {
+                        for ky in 0..g.weight[2] {
+                            for kx in 0..g.weight[3] {
+                                let row = (ci * g.weight[2] + ky) * g.weight[3] + kx;
+                                let target = &mut col[row * count..(row + 1) * count];
+                                if options == Conv2dOptions::default() {
+                                    let mut p = 0;
+                                    while p < count {
+                                        let linear = start + p;
+                                        let y = linear / g.output[3];
+                                        let x = linear % g.output[3];
+                                        let run = (g.output[3] - x).min(count - p);
+                                        let from =
+                                            ((batch * g.input[1] + ci) * g.input[2] + y + ky)
+                                                * g.input[3]
+                                                + x
+                                                + kx;
+                                        target[p..p + run]
+                                            .copy_from_slice(&input[from..from + run]);
+                                        p += run;
+                                    }
+                                } else {
+                                    for (p, value) in target.iter_mut().enumerate() {
+                                        let linear = start + p;
+                                        *value = if let Some((y, x)) = g.position(
+                                            linear / g.output[3],
+                                            linear % g.output[3],
+                                            ky,
+                                            kx,
+                                        ) {
+                                            input[offset4(
+                                                [batch, group * g.weight[1] + ci, y, x],
+                                                g.input,
+                                            )]
+                                        } else {
+                                            T::zero()
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    let weight = &weights[group * co * kernel..(group + 1) * co * kernel];
+                    let values = &mut product.storage_slice_mut()[..co * count];
+                    if !T::try_dense_matmul(weight, col, values, co, kernel, count) {
+                        crate::ops::dense_matmul(weight, col, values, co, kernel, count, false);
+                    }
+                    for channel in 0..co {
+                        let base = ((batch * g.weight[0] + group * co + channel) * spatial) + start;
+                        dst[base..base + count]
+                            .copy_from_slice(&values[channel * count..(channel + 1) * count]);
+                    }
+                }
+            }
+        }
+        return Ok(output);
+    }
+    if options == Conv2dOptions::default() {
+        if let (Some(input), Some(weight)) = (iv, wv) {
+            let mut output =
+                Tensor::filled(Kahen::new(g.output)?, Order::C, align_of::<T>(), T::zero())?;
+            if output.is_empty() {
+                return Ok(output);
+            }
+            let [n, co, oh, ow] = g.output;
+            let ci = g.input[1];
+            let h = g.input[2];
+            let w = g.input[3];
+            let kh = g.weight[2];
+            let kw = g.weight[3];
+            let values = output.storage_slice_mut();
+            for batch in 0..n {
+                for channel in 0..co {
+                    for y in 0..oh {
+                        for x in 0..ow {
+                            let mut sum = T::zero();
+                            for inner in 0..ci {
+                                for ky in 0..kh {
+                                    let ai = ((batch * ci + inner) * h + y + ky) * w + x;
+                                    let wi = ((channel * ci + inner) * kh + ky) * kw;
+                                    for (&a, &b) in
+                                        input[ai..ai + kw].iter().zip(&weight[wi..wi + kw])
+                                    {
+                                        sum += a * b;
+                                    }
+                                }
+                            }
+                            values[((batch * co + channel) * oh + y) * ow + x] = sum;
+                        }
+                    }
+                }
+            }
+            return Ok(output);
+        }
+    }
     Tensor::try_from_fn(Kahen::new(g.output)?, Order::C, align_of::<T>(), |i| {
         let [n, co, oy, ox] = [i[0], i[1], i[2], i[3]];
         let group = co / (g.weight[0] / options.groups);
