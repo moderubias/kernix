@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.2.0"
+kernix = "0.3.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.2.0", default-features = false }
+kernix = { version = "0.3.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -183,8 +183,8 @@ backends implement their own capabilities without requiring `HostBuffer`.
 allocation. The allocating API retains the general strided/batched fallback.
 CPU fast paths keep increasing-k accumulation order for every scalar output.
 
-At this release there is **no GPU execution, automatic differentiation, complete
-neural-network stack or validated 120-FPS CV pipeline**. The CPU operations are a
+At this release there is **no GPU execution, automatic differentiation or validated
+120-FPS CV pipeline**. Portable neural and vision primitives are available. The CPU operations are a
 reference foundation. Solvers, decompositions and sparse algebra remain future
 work. Applications need not create a configuration file. With the default `config`
 feature, an application can explicitly load optional `kernix.toml`:
@@ -211,6 +211,39 @@ settings. Parallel matmul currently accelerates only contiguous rank-two inputs.
 The arithmetic free functions are deterministic serial operations and do not
 consult ambient configuration. `config` requires `std`; disable default features
 for `no_std` use.
+
+## Vision and neural building blocks
+
+`kernix::neural` provides grouped NCHW convolution with stride/padding/dilation,
+input/weight VJPs, average/maximum pooling and VJPs, dense affine transforms,
+layer normalization and mean classification/regression losses. Convolution uses
+cross-correlation (no kernel flip), as is usual in neural networks. Weights are
+`[out_channels,in_channels/groups,kh,kw]`; biases can be broadcast-added separately.
+
+`kernix::vision::RgbFrame` borrows packed RGB8 bytes or padded rows. A crop is a
+borrowed view, and bilinear resize fuses RGB normalization into a C-contiguous
+`[1,3,height,width]` f32 tensor. It uses half-pixel sampling with edge clamping.
+There is no full-resolution floating intermediate. Capture and decoding remain
+application choices, allowing the same interface on different operating systems.
+
+```rust
+use kernix::vision::RgbFrame;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pixels = vec![128u8; 1920 * 1080 * 3]; // synthetic RGB frame
+    let frame = RgbFrame::new(&pixels, 1920, 1080)?;
+    let input = frame.resize_nchw([224,224], [0.0;3], [1.0;3])?;
+    assert_eq!(input.shape().dims(), &[1,3,224,224]);
+    Ok(())
+}
+```
+
+Losses accept finite data with documented domains: integer labels for categorical
+cross-entropy, targets in `[0,1]` for binary cross-entropy with logits, and identical
+shapes for MSE. Cross-entropy scales before otherwise overflowing logit differences
+when the final mean remains representable. Pooling ties/NaNs use first-winner rules.
+See the neural API examples and gradient checks for exact contracts. These are
+building blocks; model architecture, training data and application behavior belong
+to the caller.
 
 ## Tests, benchmarks and development
 

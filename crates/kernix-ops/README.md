@@ -1,7 +1,7 @@
 # kernix-ops
 
 Portable CPU tensor operations for [Kernix](https://github.com/moderubias/kernix).
-Use `kernix = "0.2.0"` for the complete public facade, or add `kernix-ops` and
+Use `kernix = "0.3.0"` for the complete public facade, or add `kernix-ops` and
 `kernix-core` directly. The crate supports `no_std` with `alloc`; the `std` feature
 is enabled by default. No BLAS, GPU driver or system math library is required.
 

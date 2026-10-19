@@ -23,3 +23,6 @@ pub mod prelude {
 }
 
 pub mod execution;
+
+pub mod neural;
+pub mod vision;

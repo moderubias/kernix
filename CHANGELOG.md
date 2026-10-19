@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Add NCHW grouped/dilated convolution and explicit input/weight gradients.
+- Add average/max pooling and VJPs, affine transforms, layer norm and stable losses.
+- Add borrowed/cropped RGB frames and fused bilinear resize/normalization.
+- Fix optional config paths on Windows by distinguishing directories from absent files.
+- Add Full HD preprocessing and convolution comparison reports.
+
 ## 0.2.0
 
 - Add explicit Device transfers, MatmulDevice capability and private CPU executors.

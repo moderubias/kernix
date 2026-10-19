@@ -20,3 +20,5 @@ pub use kernix_ops::*;
 pub mod config;
 pub use kernix_core::device::{self, Cpu, Device};
 pub use kernix_ops::execution::{CpuExecutor, MatmulDevice};
+
+pub use kernix_ops::{neural, vision};

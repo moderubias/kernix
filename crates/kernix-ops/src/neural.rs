@@ -1,0 +1,744 @@
+//! Portable neural-network primitives with explicit NCHW geometry.
+//!
+//! ```
+//! use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+//! use kernix_ops::neural::{conv2d, Conv2dOptions, avg_pool2d};
+//! let image=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+//! let filter=Tensor::from_vec(vec![1.0f32;9],Kahen::new([1,1,3,3])?,Order::C)?;
+//! let features=conv2d(&image,&filter,Conv2dOptions::default())?;
+//! assert_eq!(avg_pool2d(&features,[2,2],[2,2])?.storage_slice(), &[9.0]);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+use crate::{FloatMath, OpsError, TensorInput};
+use alloc::{vec, vec::Vec};
+use core::{mem::align_of, ops::AddAssign};
+use kernix_core::{
+    Order,
+    shape::Kahen,
+    tensor::{Tensor, TensorBuildError},
+};
+
+/// Two-dimensional cross-correlation options (the usual neural-network convolution).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Conv2dOptions {
+    /// Vertical/horizontal output step. Both must be positive.
+    pub stride: [usize; 2],
+    /// Symmetric top/bottom and left/right zero padding.
+    pub padding: [usize; 2],
+    /// Vertical/horizontal kernel dilation. Both must be positive.
+    pub dilation: [usize; 2],
+    /// Independent channel groups; positive and divides both channel counts.
+    pub groups: usize,
+}
+impl Default for Conv2dOptions {
+    fn default() -> Self {
+        Self {
+            stride: [1, 1],
+            padding: [0, 0],
+            dilation: [1, 1],
+            groups: 1,
+        }
+    }
+}
+fn invalid(operation: &'static str, parameter: &'static str) -> OpsError {
+    OpsError::InvalidParameter {
+        operation,
+        parameter,
+    }
+}
+fn rank4(dims: &[usize], op: &'static str) -> Result<[usize; 4], OpsError> {
+    Kahen::new(dims)?;
+    dims.try_into().map_err(|_| OpsError::ExactRank {
+        operation: op,
+        expected: 4,
+        actual: dims.len(),
+    })
+}
+fn extent(
+    size: usize,
+    kernel: usize,
+    stride: usize,
+    padding: usize,
+    dilation: usize,
+) -> Result<usize, OpsError> {
+    if kernel == 0 || stride == 0 || dilation == 0 {
+        return Err(invalid(
+            "spatial geometry",
+            "kernel, stride and dilation must be positive",
+        ));
+    }
+    let effective = (kernel - 1)
+        .checked_mul(dilation)
+        .and_then(|x| x.checked_add(1))
+        .ok_or(OpsError::DimensionOverflow { axis: 2 })?;
+    let padded = padding
+        .checked_mul(2)
+        .and_then(|p| size.checked_add(p))
+        .ok_or(OpsError::DimensionOverflow { axis: 2 })?;
+    Ok(if padded < effective {
+        0
+    } else {
+        (padded - effective) / stride + 1
+    })
+}
+struct ConvGeometry {
+    input: [usize; 4],
+    weight: [usize; 4],
+    output: [usize; 4],
+    options: Conv2dOptions,
+}
+impl ConvGeometry {
+    fn new(input: &[usize], weight: &[usize], options: Conv2dOptions) -> Result<Self, OpsError> {
+        let input = rank4(input, "conv2d")?;
+        let weight = rank4(weight, "conv2d weights")?;
+        let [n, ci, h, w] = input;
+        let [co, cg, kh, kw] = weight;
+        let g = options.groups;
+        if g == 0 || ci == 0 || co == 0 || ci % g != 0 || co % g != 0 || cg != ci / g {
+            return Err(invalid(
+                "conv2d",
+                "groups and input/output channels must agree",
+            ));
+        }
+        let oh = extent(
+            h,
+            kh,
+            options.stride[0],
+            options.padding[0],
+            options.dilation[0],
+        )?;
+        let ow = extent(
+            w,
+            kw,
+            options.stride[1],
+            options.padding[1],
+            options.dilation[1],
+        )?;
+        let output = [n, co, oh, ow];
+        Kahen::new(output)?;
+        Ok(Self {
+            input,
+            weight,
+            output,
+            options,
+        })
+    }
+    fn position(&self, oy: usize, ox: usize, ky: usize, kx: usize) -> Option<(usize, usize)> {
+        let y = (oy * self.options.stride[0] + ky * self.options.dilation[0])
+            .checked_sub(self.options.padding[0])?;
+        let x = (ox * self.options.stride[1] + kx * self.options.dilation[1])
+            .checked_sub(self.options.padding[1])?;
+        (y < self.input[2] && x < self.input[3]).then_some((y, x))
+    }
+}
+fn flatten<E: Into<OpsError>>(err: TensorBuildError<E>) -> OpsError {
+    match err {
+        TensorBuildError::Tensor(e) => e.into(),
+        TensorBuildError::Initialize { error, .. } => error.into(),
+    }
+}
+
+fn offset4(i: [usize; 4], dims: [usize; 4]) -> usize {
+    ((i[0] * dims[1] + i[1]) * dims[2] + i[2]) * dims[3] + i[3]
+}
+fn read4<T: Copy, A: TensorInput<T>>(
+    input: &A,
+    values: Option<&[T]>,
+    i: [usize; 4],
+    dims: [usize; 4],
+) -> Result<T, OpsError> {
+    if let Some(values) = values {
+        Ok(values[offset4(i, dims)])
+    } else {
+        Ok(*input.get(&i)?)
+    }
+}
+/// NCHW cross-correlation with weights `[out_channels, in_channels/groups, kh, kw]`.
+///
+/// Allocates C-order output. No bias is implicit: broadcast-add `[1,out_channels,1,1]`.
+/// Invalid ranks/channel groups/zero kernel or overflowing geometry return errors.
+/// An effective kernel larger than the padded input yields an empty spatial axis.
+/// Arbitrary input/weight strides are respected. Scalar IEEE arithmetic is retained.
+/// Cost O(batch*out_channels*oh*ow*in_channels/groups*kh*kw).
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let w=Tensor::from_vec(vec![1.0f32;4],Kahen::new([1,1,2,2])?,Order::C)?;
+/// let out=conv2d(&a,&w,Conv2dOptions::default())?;
+/// assert_eq!(out.shape().dims(),&[1,1,3,3]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn conv2d<T: FloatMath + AddAssign, A: TensorInput<T>, B: TensorInput<T>>(
+    input: &A,
+    weight: &B,
+    options: Conv2dOptions,
+) -> Result<Tensor<T>, OpsError> {
+    let g = ConvGeometry::new(input.dims(), weight.dims(), options)?;
+    let ni = Kahen::new(g.input)?.numel();
+    let nw = Kahen::new(g.weight)?.numel();
+    let iv = input.as_c_contiguous_slice().filter(|v| v.len() == ni);
+    let wv = weight.as_c_contiguous_slice().filter(|v| v.len() == nw);
+
+    Tensor::try_from_fn(Kahen::new(g.output)?, Order::C, align_of::<T>(), |i| {
+        let [n, co, oy, ox] = [i[0], i[1], i[2], i[3]];
+        let group = co / (g.weight[0] / options.groups);
+        let mut sum = T::zero();
+        for ci in 0..g.weight[1] {
+            for ky in 0..g.weight[2] {
+                for kx in 0..g.weight[3] {
+                    if let Some((y, x)) = g.position(oy, ox, ky, kx) {
+                        sum += read4(input, iv, [n, group * g.weight[1] + ci, y, x], g.input)?
+                            * read4(weight, wv, [co, ci, ky, kx], g.weight)?;
+                    }
+                }
+            }
+        }
+        Ok::<T, OpsError>(sum)
+    })
+    .map_err(flatten)
+}
+/// Vector-Jacobian product of conv2d, returning (input_gradient, weight_gradient).
+///
+/// Gradient dimensions must exactly equal forward output geometry. Results are
+/// fresh zero-initialized C-order tensors; overlapping windows accumulate. Options
+/// and strides follow conv2d. Cost equals the reference forward contraction order.
+/// See the [module example](self) for the forward geometry.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let w=Tensor::from_vec(vec![1.0f32;4],Kahen::new([1,1,2,2])?,Order::C)?;
+/// let g=conv2d(&a,&w,Conv2dOptions::default())?;
+/// let (dx,dw)=conv2d_backward(&a,&w,&g,Conv2dOptions::default())?;
+/// assert_eq!(dx.shape().dims(),a.shape().dims());
+/// assert_eq!(dw.shape().dims(),w.shape().dims());
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn conv2d_backward<
+    T: FloatMath + AddAssign,
+    A: TensorInput<T>,
+    B: TensorInput<T>,
+    G: TensorInput<T>,
+>(
+    input: &A,
+    weight: &B,
+    gradient: &G,
+    options: Conv2dOptions,
+) -> Result<(Tensor<T>, Tensor<T>), OpsError> {
+    let g = ConvGeometry::new(input.dims(), weight.dims(), options)?;
+    let ni = Kahen::new(g.input)?.numel();
+    let nw = Kahen::new(g.weight)?.numel();
+    let iv = input.as_c_contiguous_slice().filter(|v| v.len() == ni);
+    let wv = weight.as_c_contiguous_slice().filter(|v| v.len() == nw);
+
+    if gradient.dims() != g.output {
+        return Err(invalid(
+            "conv2d_backward",
+            "gradient shape differs from forward output",
+        ));
+    }
+    let mut dx = Tensor::filled(Kahen::new(g.input)?, Order::C, align_of::<T>(), T::zero())?;
+    let mut dw = Tensor::filled(Kahen::new(g.weight)?, Order::C, align_of::<T>(), T::zero())?;
+    if gradient.dims().contains(&0) {
+        return Ok((dx, dw));
+    }
+    for n in 0..g.output[0] {
+        for co in 0..g.output[1] {
+            for oy in 0..g.output[2] {
+                for ox in 0..g.output[3] {
+                    let dy = *gradient.get(&[n, co, oy, ox])?;
+                    let group = co / (g.weight[0] / options.groups);
+                    for ci in 0..g.weight[1] {
+                        for ky in 0..g.weight[2] {
+                            for kx in 0..g.weight[3] {
+                                if let Some((y, x)) = g.position(oy, ox, ky, kx) {
+                                    let ai = [n, group * g.weight[1] + ci, y, x];
+                                    let wi = [co, ci, ky, kx];
+                                    *dx.get_mut(&ai)? += dy * read4(weight, wv, wi, g.weight)?;
+                                    *dw.get_mut(&wi)? += dy * read4(input, iv, ai, g.input)?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok((dx, dw))
+}
+fn pool_dims(
+    dims: &[usize],
+    window: [usize; 2],
+    stride: [usize; 2],
+) -> Result<[usize; 4], OpsError> {
+    let [n, c, h, w] = rank4(dims, "pool2d")?;
+    window[0]
+        .checked_mul(window[1])
+        .ok_or(OpsError::ReductionCountOverflow)?;
+    Ok([
+        n,
+        c,
+        extent(h, window[0], stride[0], 0, 1)?,
+        extent(w, window[1], stride[1], 0, 1)?,
+    ])
+}
+fn pool<T: FloatMath, A: TensorInput<T>>(
+    input: &A,
+    window: [usize; 2],
+    stride: [usize; 2],
+    maximum: bool,
+) -> Result<Tensor<T>, OpsError> {
+    let dims = pool_dims(input.dims(), window, stride)?;
+    Tensor::try_from_fn(Kahen::new(dims)?, Order::C, align_of::<T>(), |i| {
+        let mut sum = T::zero();
+        let mut best = None;
+        for y in 0..window[0] {
+            for x in 0..window[1] {
+                let value =
+                    *input.get(&[i[0], i[1], i[2] * stride[0] + y, i[3] * stride[1] + x])?;
+                if maximum {
+                    if best.is_none_or(|b| {
+                        !FloatMath::is_nan(b) && (FloatMath::is_nan(value) || value > b)
+                    }) {
+                        best = Some(value);
+                    }
+                } else {
+                    sum = sum + value;
+                }
+            }
+        }
+        Ok::<T, OpsError>(if maximum {
+            best.expect("positive window")
+        } else {
+            sum / T::from_count(window[0] * window[1])
+        })
+    })
+    .map_err(flatten)
+}
+/// NCHW average pooling without padding, using positive window and stride.
+/// Incomplete trailing windows are omitted. Allocates a C-order result. Invalid
+/// ranks/zero geometry/overflow return errors; oversized windows yield empty axes.
+/// See the [module example](self) for a 2x2 reduction.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let out=avg_pool2d(&a,[2,2],[2,2])?;
+/// assert_eq!(out.storage_slice(),&[1.0;4]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn avg_pool2d<T: FloatMath, A: TensorInput<T>>(
+    input: &A,
+    window: [usize; 2],
+    stride: [usize; 2],
+) -> Result<Tensor<T>, OpsError> {
+    pool(input, window, stride, false)
+}
+/// NCHW maximum pooling without padding. First ties and first NaNs win in
+/// row-major window order. Geometry/allocation follows avg_pool2d.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let out=max_pool2d(&a,[2,2],[2,2])?;
+/// assert_eq!(out.storage_slice(),&[1.0;4]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn max_pool2d<T: FloatMath, A: TensorInput<T>>(
+    input: &A,
+    window: [usize; 2],
+    stride: [usize; 2],
+) -> Result<Tensor<T>, OpsError> {
+    pool(input, window, stride, true)
+}
+/// Average-pooling VJP for an original NCHW shape. Overlapping window contributions
+/// add; uncovered input elements receive zero. Reject mismatched gradient geometry.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let g=avg_pool2d(&a,[2,2],[2,2])?;
+/// let dx=avg_pool2d_backward(a.shape().dims(),&g,[2,2],[2,2])?;
+/// assert_eq!(dx.storage_slice(),&[0.25;16]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn avg_pool2d_backward<T: FloatMath + AddAssign, G: TensorInput<T>>(
+    input_dims: impl AsRef<[usize]>,
+    gradient: &G,
+    window: [usize; 2],
+    stride: [usize; 2],
+) -> Result<Tensor<T>, OpsError> {
+    let dims = input_dims.as_ref();
+    let out = pool_dims(dims, window, stride)?;
+    if gradient.dims() != out {
+        return Err(invalid(
+            "avg_pool2d_backward",
+            "gradient shape differs from forward output",
+        ));
+    }
+    let mut dx = Tensor::filled(Kahen::new(dims)?, Order::C, align_of::<T>(), T::zero())?;
+    if out.contains(&0) {
+        return Ok(dx);
+    }
+    for n in 0..out[0] {
+        for c in 0..out[1] {
+            for y in 0..out[2] {
+                for x in 0..out[3] {
+                    let dy = *gradient.get(&[n, c, y, x])? / T::from_count(window[0] * window[1]);
+                    for ky in 0..window[0] {
+                        for kx in 0..window[1] {
+                            *dx.get_mut(&[n, c, y * stride[0] + ky, x * stride[1] + kx])? += dy;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(dx)
+}
+/// Maximum-pooling VJP. Route each gradient to the first maximum (first NaN
+/// takes priority), and sum overlapping contributions. Input values are required
+/// to select winners; mismatched output gradients return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let g=max_pool2d(&a,[2,2],[2,2])?;
+/// let dx=max_pool2d_backward(&a,&g,[2,2],[2,2])?;
+/// assert_eq!(dx.storage_slice()[0],1.0);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn max_pool2d_backward<T: FloatMath + AddAssign, A: TensorInput<T>, G: TensorInput<T>>(
+    input: &A,
+    gradient: &G,
+    window: [usize; 2],
+    stride: [usize; 2],
+) -> Result<Tensor<T>, OpsError> {
+    let out = pool_dims(input.dims(), window, stride)?;
+    if gradient.dims() != out {
+        return Err(invalid(
+            "max_pool2d_backward",
+            "gradient shape differs from forward output",
+        ));
+    }
+    let mut dx = Tensor::filled(
+        Kahen::new(input.dims())?,
+        Order::C,
+        align_of::<T>(),
+        T::zero(),
+    )?;
+    if out.contains(&0) {
+        return Ok(dx);
+    }
+    for n in 0..out[0] {
+        for c in 0..out[1] {
+            for y in 0..out[2] {
+                for x in 0..out[3] {
+                    let mut best = None;
+                    let mut winner = [0; 4];
+                    for ky in 0..window[0] {
+                        for kx in 0..window[1] {
+                            let idx = [n, c, y * stride[0] + ky, x * stride[1] + kx];
+                            let v = *input.get(&idx)?;
+                            if best.is_none_or(|b| {
+                                !FloatMath::is_nan(b) && (FloatMath::is_nan(v) || v > b)
+                            }) {
+                                best = Some(v);
+                                winner = idx;
+                            }
+                        }
+                    }
+                    *dx.get_mut(&winner)? += *gradient.get(&[n, c, y, x])?;
+                }
+            }
+        }
+    }
+    Ok(dx)
+}
+/// Dense affine transform of the last input axis; weights use `[out,in]`, bias `[out]`.
+/// Leading batch/sequence axes are retained. No implicit dtype conversion occurs.
+/// Invalid dimensions or access/allocation errors fail explicitly. Allocates C-order.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let weights=Tensor::from_vec(vec![1.0f32;8],Kahen::new([2,4])?,Order::C)?;
+/// let out=linear(&a,&weights,None)?;
+/// assert_eq!(out.shape().dims(),&[1,1,4,2]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn linear<T: FloatMath + AddAssign, A: TensorInput<T>, W: TensorInput<T>>(
+    input: &A,
+    weight: &W,
+    bias: Option<&dyn TensorInput<T>>,
+) -> Result<Tensor<T>, OpsError> {
+    let dims = input.dims();
+    let w = weight.dims();
+    Kahen::new(dims)?;
+    Kahen::new(w)?;
+    if dims.is_empty() || w.len() != 2 || dims[dims.len() - 1] != w[1] {
+        return Err(invalid(
+            "linear",
+            "input [...,in] and weight [out,in] required",
+        ));
+    }
+    if bias.is_some_and(|b| b.dims() != [w[0]]) {
+        return Err(invalid("linear", "bias must have shape [out]"));
+    }
+    let mut out = dims.to_vec();
+    let last = out.len() - 1;
+    out[last] = w[0];
+    let mut from = vec![0; dims.len()];
+    Tensor::try_from_fn(Kahen::new(out)?, Order::C, align_of::<T>(), |i| {
+        from.copy_from_slice(i);
+        let co = i[last];
+        let mut value = if let Some(b) = bias {
+            *b.get(&[co])?
+        } else {
+            T::zero()
+        };
+        for k in 0..w[1] {
+            from[last] = k;
+            value += *input.get(&from)? * *weight.get(&[co, k])?;
+        }
+        Ok::<T, OpsError>(value)
+    })
+    .map_err(flatten)
+}
+/// Mean categorical cross-entropy of finite logits `[...,classes]` and flattened
+/// integer labels (one per leading-index row). Uses shifted log-domain sums, avoiding log(0)
+/// from underflowed probabilities. Mean scaling precedes overflowing differences.
+/// Empty batches/classes, invalid labels or unrepresentable mean losses fail.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let logits=a.reshape_view([4,4],Order::C)?;
+/// let loss=cross_entropy_with_logits(&logits,&[0,1,2,3])?;
+/// assert!((loss-4.0f32.ln()).abs()<1e-6);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn cross_entropy_with_logits<T: FloatMath, A: TensorInput<T>>(
+    logits: &A,
+    targets: &[usize],
+) -> Result<T, OpsError> {
+    let dims = logits.dims();
+    if dims.is_empty() || dims[dims.len() - 1] == 0 {
+        return Err(invalid(
+            "cross_entropy_with_logits",
+            "nonempty class axis required",
+        ));
+    }
+    let classes = dims[dims.len() - 1];
+    let rows = Kahen::new(&dims[..dims.len() - 1])?.numel();
+    if rows == 0 || rows != targets.len() {
+        return Err(invalid(
+            "cross_entropy_with_logits",
+            "one target per nonempty logit row required",
+        ));
+    }
+    for &target in targets {
+        if target >= classes {
+            return Err(OpsError::IndexOutOfBounds {
+                axis: dims.len() - 1,
+                index: target,
+                dim: classes,
+            });
+        }
+    }
+    let mut loss = T::zero();
+    let count = T::from_count(rows);
+    let mut index = vec![0; dims.len()];
+    for (row, &target) in targets.iter().enumerate() {
+        let mut linear = row;
+        for axis in (0..dims.len() - 1).rev() {
+            index[axis] = linear % dims[axis];
+            linear /= dims[axis];
+        }
+        let mut maximum = None;
+        for class in 0..classes {
+            index[dims.len() - 1] = class;
+            let value = *logits.get(&index)?;
+            if !FloatMath::is_finite(value) {
+                return Err(OpsError::NonFiniteInput {
+                    operation: "cross_entropy_with_logits",
+                    indices: index.clone(),
+                });
+            }
+            if maximum.is_none_or(|m| value > m) {
+                maximum = Some(value);
+            }
+        }
+        let maximum = maximum.expect("positive class count");
+        let mut exp_sum = T::zero();
+        for class in 0..classes {
+            index[dims.len() - 1] = class;
+            exp_sum = exp_sum + FloatMath::exp(*logits.get(&index)? - maximum);
+        }
+        index[dims.len() - 1] = target;
+        let chosen = *logits.get(&index)?;
+        let difference = maximum - chosen;
+        let scaled = if FloatMath::is_finite(difference) {
+            difference / count
+        } else {
+            maximum / count - chosen / count
+        };
+        loss = loss + scaled + FloatMath::ln(exp_sum) / count;
+    }
+    if !FloatMath::is_finite(loss) {
+        return Err(invalid(
+            "cross_entropy_with_logits",
+            "mean loss outside element range",
+        ));
+    }
+
+    Ok(loss)
+}
+/// Mean squared error over identically shaped tensors. Empty inputs fail;
+/// nonfinite operands or unrepresentable squared differences return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// assert_eq!(mse_loss(&a,&a)?,0.0);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn mse_loss<T: FloatMath, A: TensorInput<T>, B: TensorInput<T>>(
+    prediction: &A,
+    target: &B,
+) -> Result<T, OpsError> {
+    if prediction.dims() != target.dims() {
+        return Err(invalid(
+            "mse_loss",
+            "prediction and target shapes must match",
+        ));
+    }
+    let delta = crate::zip_map(prediction, target, |a, b| *a - *b)?;
+    if delta.numel() == 0 {
+        return Err(OpsError::EmptyReduction);
+    }
+    let mut mean = T::zero();
+    for (i, &v) in delta.storage_slice().iter().enumerate() {
+        let sq = v * v;
+        if !FloatMath::is_finite(sq) {
+            return Err(OpsError::NonFiniteInput {
+                operation: "mse_loss",
+                indices: vec![i],
+            });
+        }
+        mean = mean + sq / T::from_count(delta.numel());
+    }
+    Ok(mean)
+}
+/// Mean binary cross-entropy from finite logits and targets in `[0,1]`, of equal
+/// shapes. Uses stable softplus branches; no probabilities are materialized.
+/// Empty input, invalid targets or nonfinite logits return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let loss=binary_cross_entropy_with_logits(&a,&a)?;
+/// assert!((loss-(-1.0f32).exp().ln_1p()).abs()<1e-6);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn binary_cross_entropy_with_logits<T: FloatMath, A: TensorInput<T>, B: TensorInput<T>>(
+    logits: &A,
+    targets: &B,
+) -> Result<T, OpsError> {
+    if logits.dims() != targets.dims() {
+        return Err(invalid(
+            "binary_cross_entropy_with_logits",
+            "logits and target shapes must match",
+        ));
+    }
+    let losses = crate::try_zip_map(logits, targets, |x, y| {
+        if !FloatMath::is_finite(*x) || !FloatMath::is_finite(*y) || *y < T::zero() || *y > T::one()
+        {
+            return Err(invalid(
+                "binary_cross_entropy_with_logits",
+                "finite logits and targets in `[0,1]` required",
+            ));
+        }
+        let high = if *x > T::zero() { *x } else { T::zero() };
+        Ok(high - *x * *y + FloatMath::ln_1p(FloatMath::exp(-FloatMath::abs(*x))))
+    })?;
+    if losses.numel() == 0 {
+        return Err(OpsError::EmptyReduction);
+    }
+    let mut mean = T::zero();
+    for &v in losses.storage_slice() {
+        mean = mean + v / T::from_count(losses.numel());
+    }
+    Ok(mean)
+}
+/// Normalize the last normalized_rank axes independently for each leading group,
+/// using population Welford variance and positive finite epsilon. Allocates C-order;
+/// no learned scale/bias is implicit. Invalid rank/epsilon/reduction returns an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order,shape::Kahen,tensor::Tensor};
+/// use kernix_ops::neural::*;
+/// let a=Tensor::from_vec(vec![1.0f32;16],Kahen::new([1,1,4,4])?,Order::C)?;
+/// let out=layer_norm(&a,2,1e-5)?;
+/// assert_eq!(out.storage_slice(),&[0.0;16]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn layer_norm<T: FloatMath + AddAssign, A: TensorInput<T>>(
+    input: &A,
+    normalized_rank: usize,
+    epsilon: T,
+) -> Result<Tensor<T>, OpsError> {
+    let rank = input.dims().len();
+    if normalized_rank == 0
+        || normalized_rank > rank
+        || !FloatMath::is_finite(epsilon)
+        || epsilon <= T::zero()
+    {
+        return Err(invalid(
+            "layer_norm",
+            "normalized_rank in 1..=rank and positive finite epsilon required",
+        ));
+    }
+    let axes: Vec<isize> = ((rank - normalized_rank)..rank)
+        .map(|x| x as isize)
+        .collect();
+    let mean = crate::mean_axes(input, &axes, true)?;
+    let variance = crate::variance_axes(input, &axes, true, 0)?;
+    let centered = crate::sub(input, &mean)?;
+    crate::zip_map(&centered, &variance, |x, v| {
+        *x / FloatMath::sqrt(*v + epsilon)
+    })
+}

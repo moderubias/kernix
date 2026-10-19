@@ -90,14 +90,30 @@ impl Config {
     /// permission/read/UTF-8/schema errors are preserved with the requested path.
     pub fn load_optional(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
-        match std::fs::read_to_string(path) {
-            Ok(input) => Self::from_toml(&input),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(source) => Err(ConfigError::Io {
-                path: path.to_path_buf(),
-                source,
-            }),
+        match std::fs::metadata(path) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Self::default()),
+            Err(source) => {
+                return Err(ConfigError::Io {
+                    path: path.to_path_buf(),
+                    source,
+                });
+            }
+            Ok(metadata) if !metadata.is_file() => {
+                return Err(ConfigError::Io {
+                    path: path.to_path_buf(),
+                    source: std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "configuration path is not a regular file",
+                    ),
+                });
+            }
+            Ok(_) => (),
         }
+        let input = std::fs::read_to_string(path).map_err(|source| ConfigError::Io {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        Self::from_toml(&input)
     }
 }
 /// An application-owned CPU context. Does not modify global settings or inspect
