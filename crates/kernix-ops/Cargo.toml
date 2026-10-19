@@ -29,6 +29,7 @@ kernix-core = { path = "../kernix-core", default-features = false }
 kernix-traits.workspace = true
 
 rayon = { workspace = true, optional = true }
+libm = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 proptest.workspace = true

@@ -10,3 +10,14 @@ extern crate alloc;
 
 mod ops;
 pub use ops::*;
+
+/// Common tensor types and traits for concise CPU-operation applications.
+/// This intentionally does not glob-import hundreds of operations.
+pub mod prelude {
+    pub use crate::{FloatMath, TensorInput, TensorOutput};
+    pub use kernix_core::{
+        layout::{Layout, Order},
+        shape::{Kahen, Kotei, Shape},
+        tensor::{Tensor, TensorView, TensorViewMut},
+    };
+}

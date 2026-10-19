@@ -30,6 +30,35 @@ pub enum OpsError {
         axis: usize,
     },
     EmptyReduction,
+    InvalidDegreesOfFreedom {
+        count: usize,
+        correction: usize,
+    },
+    EmptyInputSequence {
+        operation: &'static str,
+    },
+    DimensionMismatch {
+        axis: usize,
+        expected: usize,
+        actual: usize,
+    },
+    DimensionOverflow {
+        axis: usize,
+    },
+    IndexOutOfBounds {
+        axis: usize,
+        index: usize,
+        dim: usize,
+    },
+    PaddingRankMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    InvalidBounds,
+    NonFiniteInput {
+        operation: &'static str,
+        indices: Vec<usize>,
+    },
     ReductionCountOverflow,
     OverlappingOutput,
     InPlaceBroadcastIncompatible,
@@ -74,6 +103,36 @@ impl fmt::Display for OpsError {
                 write!(f, "axis {axis} is out of bounds for rank {rank}")
             }
             Self::DuplicateAxis { axis } => write!(f, "duplicate reduction axis {axis}"),
+            Self::EmptyInputSequence { operation } => {
+                write!(f, "{operation} requires at least one input tensor")
+            }
+            Self::DimensionMismatch {
+                axis,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "dimension mismatch at axis {axis}: expected {expected}, got {actual}"
+            ),
+            Self::DimensionOverflow { axis } => write!(f, "dimension size overflow at axis {axis}"),
+            Self::IndexOutOfBounds { axis, index, dim } => {
+                write!(f, "index {index} out of bounds at axis {axis} (size {dim})")
+            }
+            Self::PaddingRankMismatch { expected, actual } => write!(
+                f,
+                "padding rank mismatch: expected {expected} axes, got {actual}"
+            ),
+            Self::InvalidBounds => {
+                f.write_str("invalid clamp bounds (minimum > maximum or unordered)")
+            }
+            Self::NonFiniteInput { operation, indices } => write!(
+                f,
+                "{operation} requires finite inputs; invalid value at {indices:?}"
+            ),
+            Self::InvalidDegreesOfFreedom { count, correction } => write!(
+                f,
+                "variance/std requires count > correction, got count {count}, correction {correction}"
+            ),
             Self::EmptyReduction => {
                 f.write_str("reduction has no elements (no identity/undefined mean)")
             }

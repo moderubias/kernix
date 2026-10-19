@@ -7,7 +7,7 @@ use kernix_core::{layout::Order, shape::Kahen, tensor::Tensor};
 
 use super::{FloatElement, One, OpsError, TensorInput, Zero, broadcast::next_c, elementwise::map};
 
-fn axes_mask(rank: usize, axes: &[isize]) -> Result<Vec<bool>, OpsError> {
+pub(super) fn axes_mask(rank: usize, axes: &[isize]) -> Result<Vec<bool>, OpsError> {
     let mut mask = vec![false; rank];
     for &axis in axes {
         let normalized = if axis < 0 {
@@ -26,7 +26,7 @@ fn axes_mask(rank: usize, axes: &[isize]) -> Result<Vec<bool>, OpsError> {
     Ok(mask)
 }
 
-fn reduced_dims(dims: &[usize], mask: &[bool], keepdims: bool) -> Vec<usize> {
+pub(super) fn reduced_dims(dims: &[usize], mask: &[bool], keepdims: bool) -> Vec<usize> {
     let mut out = Vec::with_capacity(dims.len());
     for (&dim, &reduce) in dims.iter().zip(mask) {
         if reduce {
@@ -40,7 +40,12 @@ fn reduced_dims(dims: &[usize], mask: &[bool], keepdims: bool) -> Vec<usize> {
     out
 }
 
-fn project_reduction(coords: &[usize], mask: &[bool], keepdims: bool, output: &mut [usize]) {
+pub(super) fn project_reduction(
+    coords: &[usize],
+    mask: &[bool],
+    keepdims: bool,
+    output: &mut [usize],
+) {
     let mut dst = 0;
     for (axis, &reduce) in mask.iter().enumerate() {
         if reduce {
@@ -55,7 +60,7 @@ fn project_reduction(coords: &[usize], mask: &[bool], keepdims: bool, output: &m
     }
 }
 
-fn reduce_axes<T, A, F>(
+pub(super) fn reduce_axes<T, A, F>(
     source: &A,
     axes: &[isize],
     keepdims: bool,
