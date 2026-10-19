@@ -89,3 +89,18 @@ available NumPy configuration.
 Final local candidate totals after the parser regression: all features 461,
 default 459, plus eight downstream README/guide examples. Rust 1.86 all-feature
 library compilation also passed. No tolerance was relaxed to obtain these results.
+
+## Publication record
+
+kernix-core, kernix-ops and kernix 0.4.0 were published successfully to crates.io.
+Cargo verified each package against registry dependencies. Kiyoshima policy checks
+also passed on all three extracted package payloads. A separate registry-only
+consumer downloaded 0.4.0 and passed a solve/residual, autodiff, SGD update and
+checkpoint encode/decode smoke test.
+
+Additional local compile checks passed for Windows x86_64 GNU and macOS aarch64
+with all features, plus Linux aarch64 without default features. These are compile
+checks, not runtime tests. Remote run 39279448007 was still queued at publication;
+no successful current-version Windows/macOS runtime result is claimed. The optional
+larger tiled-convolution Miri run was stopped before completion; the three smaller
+native-wrapper Miri tests and 18 storage tests passed as recorded above.
