@@ -17,6 +17,11 @@ pub enum OpsError {
         left: usize,
         right: usize,
     },
+    ExactRank {
+        operation: &'static str,
+        expected: usize,
+        actual: usize,
+    },
     InvalidRank {
         operation: &'static str,
         minimum: usize,
@@ -53,6 +58,22 @@ pub enum OpsError {
     PaddingRankMismatch {
         expected: usize,
         actual: usize,
+    },
+    SplitSizesMismatch {
+        axis: usize,
+        expected: usize,
+        actual: usize,
+    },
+    ContractAxesMismatch {
+        left: usize,
+        right: usize,
+    },
+    InvalidParameter {
+        operation: &'static str,
+        parameter: &'static str,
+    },
+    Cast {
+        indices: Vec<usize>,
     },
     InvalidBounds,
     NonFiniteInput {
@@ -94,6 +115,11 @@ impl fmt::Display for OpsError {
             Self::ContractDimensionMismatch { left, right } => {
                 write!(f, "matmul contraction mismatch: {left} vs {right}")
             }
+            Self::ExactRank {
+                operation,
+                expected,
+                actual,
+            } => write!(f, "{operation} requires rank {expected}, got {actual}"),
             Self::InvalidRank {
                 operation,
                 minimum,
@@ -122,6 +148,23 @@ impl fmt::Display for OpsError {
                 f,
                 "padding rank mismatch: expected {expected} axes, got {actual}"
             ),
+            Self::SplitSizesMismatch {
+                axis,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "split sizes at axis {axis} sum to {actual}, expected {expected}"
+            ),
+            Self::ContractAxesMismatch { left, right } => write!(
+                f,
+                "tensordot contracted axis count mismatch: {left} vs {right}"
+            ),
+            Self::InvalidParameter {
+                operation,
+                parameter,
+            } => write!(f, "{operation}: invalid {parameter}"),
+            Self::Cast { indices } => write!(f, "checked dtype conversion failed at {indices:?}"),
             Self::InvalidBounds => {
                 f.write_str("invalid clamp bounds (minimum > maximum or unordered)")
             }

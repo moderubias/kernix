@@ -4,15 +4,20 @@ mod compare;
 mod elementwise;
 mod error;
 mod in_place;
+mod indexed;
 mod input;
 mod linalg;
+mod linalg_extra;
 mod manipulate;
 mod math;
 mod numeric;
+mod ordering;
 mod reduce;
 mod reduce_extra;
 mod scan;
+mod stable;
 mod stats;
+mod structural;
 
 pub use checked::{
     CheckedInteger, checked_add, checked_div, checked_mul, checked_neg, checked_rem, checked_sub,
@@ -51,3 +56,14 @@ pub use math::{
 };
 
 pub use stats::{std_all, std_axes, variance_all, variance_axes};
+
+// Extended logical-index operations.
+pub use indexed::{masked_select, nonzero, scatter_axis, take_axis};
+// Structural transforms and sliding windows.
+pub use structural::{chunk_axis, fold_axis, roll_axis, split_axis, tile, unfold_axis};
+// Stable total-order sorting and top-k selection.
+pub use ordering::{SortDirection, TotalOrder, argsort_axis, sort_axis, topk_axis};
+// General contractions and vector/matrix convenience operations.
+pub use linalg_extra::{dot, outer, tensordot, trace};
+// Stable reductions and explicit dtype conversion contracts.
+pub use stable::{cast, l2_norm_all, l2_norm_axis, logsumexp_all, logsumexp_axis, try_cast};
