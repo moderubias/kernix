@@ -2,9 +2,4 @@
 
 pub use kernix_core::shape;
 
-pub use kernix_core::shape::{
-    Kahen,
-    Kotei,
-    Shape,
-    ShapeError,
-};
+pub use kernix_core::shape::{Kahen, Kotei, Shape, ShapeError};

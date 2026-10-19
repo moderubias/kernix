@@ -25,7 +25,7 @@ serde = [
 ]
 
 [dependencies]
-kernix-core.workspace = true
+kernix-core = { path = "../kernix-core" }
 kernix-traits.workspace = true
 
 rayon = { workspace = true, optional = true }
