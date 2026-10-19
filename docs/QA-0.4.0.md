@@ -10,6 +10,9 @@ verification from remote checks. Historical results remain in previous QA record
 - Workspace all features: 460 passed, including 176 doctests, before that regression.
   The added parser regression and facade suite were rerun after the fix; the final
   candidate CI reruns complete default and all-feature suites on all three OSes.
+- All eight README/user-guide code blocks passed as downstream doctests. This extra
+  check caught a missing residual_norm facade reexport; the export was fixed and
+  the documentation check is now a permanent CI step.
 - Full no-default workspace suite passed; Rust 1.86 library check passed.
 - Strict Clippy (all targets/features), formatting and warnings-as-errors rustdoc passed.
 - wasm32-unknown-unknown and i686-unknown-linux-gnu no-default compilation passed.

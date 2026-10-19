@@ -30,5 +30,6 @@ pub mod vision;
 pub mod linalg;
 
 pub use linalg::{
-    Cholesky, LinalgError, LinalgFloat, Lu, Qr, determinant, inverse, least_squares, solve,
+    Cholesky, LinalgError, LinalgFloat, Lu, Qr, determinant, inverse, least_squares, residual_norm,
+    solve,
 };

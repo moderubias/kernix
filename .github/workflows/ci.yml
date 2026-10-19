@@ -19,6 +19,7 @@ jobs:
       - run: cargo test --workspace --all-features --locked
       - run: cargo run -p kernix --example train_patterns --locked
       - run: cargo run -p kernix --example temporal_state --locked
+      - run: python tools/check_doc_examples.py
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - run: cargo check -p kernix --no-default-features --locked
       - run: cargo doc --workspace --all-features --no-deps --locked
