@@ -18,3 +18,9 @@ Kernix and ndarray now share matrixmultiply for native GEMM. Native FMA/order ca
 change last bits; ordered matmul, reference convolution and compensated sums are
 explicit choices. QR/Cholesky and reverse-mode graph overhead remain optimization
 work; the current report preserves these unfavorable comparisons too.
+
+The [additional OpenBLAS run](0.4.0-openblas/README.md) uses the same NumPy version
+with an optimized bundled BLAS, in an isolated environment. Prefer it when assessing
+the NumPy comparison: GEMM128 is Kernix 84.936 us vs NumPy 78.261 us. The original
+0.4 report uses system CBLAS 3.12 and remains available unchanged. Both show current
+QR/Cholesky gaps, rather than implying general superiority from the reference build.

@@ -73,3 +73,19 @@ baseline. These gaps remain on the general algebra/performance roadmap.
 
 No GPU backend, SVD/eigen, sparse/complex implementation or complete-model 120 Hz
 measurement is claimed. No floating algorithm promises exact real arithmetic.
+
+### Additional optimized competitor build
+
+A second retained run, `benchmarks/results/0.4.0-openblas`, uses the same NumPy
+2.5.4 version installed in an isolated virtual environment with bundled OpenBLAS
+0.3.34.106.0. It does not change the user's system NumPy. The first report used
+system CBLAS/LAPACK 3.12, so its larger NumPy GEMM gap must not be generalized.
+With OpenBLAS, GEMM128 medians are Kernix 84.936 us, ndarray 82.527 us and NumPy
+78.261 us; QR is 89.340 us, nalgebra 32.176 us and NumPy 39.819 us. Both reports
+retain all measurements and source snapshots. This comparison confirms remaining
+factorization work and avoids presenting a reference BLAS build as the fastest
+available NumPy configuration.
+
+Final local candidate totals after the parser regression: all features 461,
+default 459, plus eight downstream README/guide examples. Rust 1.86 all-feature
+library compilation also passed. No tolerance was relaxed to obtain these results.

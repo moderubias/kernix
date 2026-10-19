@@ -90,7 +90,8 @@ impl CpuExecutor {
     }
     /// Allocate matrix multiplication output with native packed floating kernels,
     /// or increasing-k scalar accumulation when ordered_matmul is enabled. The contiguous rank-two path can distribute rows across
-    /// workers; all other validated layouts use portable reference matmul.
+    /// workers; other validated layouts use serial native dispatch or the portable
+    /// fallback, according to layout/scalar capabilities and the selected policy.
     pub fn matmul<T, A, B>(&self, left: &A, right: &B) -> Result<Tensor<T>, OpsError>
     where
         T: crate::MatmulElement + Send + Sync,
