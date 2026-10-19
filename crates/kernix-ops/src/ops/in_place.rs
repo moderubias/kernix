@@ -11,7 +11,11 @@ use super::{OpsError, TensorInput, broadcast::next_c};
 /// Exclusive writable host tensor contract. Operations require provably
 /// nonoverlapping logical elements (not merely a mutable backing slice).
 pub trait TensorOutput<T>: TensorInput<T> {
+    /// Exclusively borrow one element at checked logical coordinates. The borrow
+    /// is tied to self, preserving safety even for overlapping layouts. O(rank).
     fn get_mut(&mut self, indices: &[usize]) -> Result<&mut T, TensorError>;
+    /// Return true only when distinct logical output indices are proven disjoint.
+    /// Unknown overlap must return false; CPU in-place kernels reject such outputs.
     fn is_non_overlapping(&self) -> bool;
 }
 
@@ -35,6 +39,17 @@ impl<T, S: LayoutShape> TensorOutput<T> for TensorViewMut<'_, T, S> {
 
 /// Applies a per-element mutation. RHS may broadcast to the exact LHS shape.
 /// On a panic in `update`, already updated elements remain updated.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::zip_mut;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let b = a.clone();
+/// let result = zip_mut(&mut a,&b,|x,y| *x+=*y)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn zip_mut<T, U, D, S, F>(dest: &mut D, source: &S, mut update: F) -> Result<(), OpsError>
 where
     D: TensorOutput<T>,
@@ -76,6 +91,20 @@ where
     Ok(())
 }
 
+/// Copy source values into a proven nonoverlapping destination.
+/// The source must broadcast to the existing destination shape. Reject shape/overlap
+/// errors before mutation; a later user-defined access error may leave partial updates.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::assign;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let b = a.clone();
+/// let result = assign(&mut a,&b)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn assign<T, D, S>(dest: &mut D, source: &S) -> Result<(), OpsError>
 where
     T: Clone,
@@ -87,6 +116,9 @@ where
 
 macro_rules! assign_op {
     ($name:ident, $trait_name:ident, $method:ident) => {
+        /// Update a proven nonoverlapping destination using broadcast source values.
+        /// Reject incompatible shapes or unproven disjointness before writes; native
+        /// scalar arithmetic semantics apply, and later read errors may leave partial updates.
         pub fn $name<T, D, S>(dest: &mut D, source: &S) -> Result<(), OpsError>
         where
             T: Clone + $trait_name<T>,

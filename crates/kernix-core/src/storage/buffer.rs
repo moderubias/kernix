@@ -13,8 +13,10 @@ use super::cpu::CpuBuffer;
 /// The element count is logical; backing allocation and synchronization are
 /// properties of the concrete backend.
 pub trait StorageBuffer<T> {
+    /// Return the number of stored elements (or addressed span elements for a span).
     fn len(&self) -> usize;
 
+    /// Return whether there are no logical elements. A scalar is not empty.
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -26,7 +28,9 @@ pub trait StorageBuffer<T> {
 /// rules. A device buffer must not implement this trait unless it can uphold
 /// those contracts for the lifetime of each borrow.
 pub trait HostBuffer<T>: StorageBuffer<T> {
+    /// Borrow the initialized host elements in physical order, not logical tensor order.
     fn as_slice(&self) -> &[T];
+    /// Exclusively borrow initialized host elements in physical order.
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
@@ -39,12 +43,15 @@ pub struct Storage<T, B: StorageBuffer<T> = CpuBuffer<T>> {
     marker: PhantomData<fn() -> T>,
 }
 
+/// CPU-owned initialized storage with checked allocation and alignment.
 pub type CpuStorage<T> = Storage<T, CpuBuffer<T>>;
 
+/// Atomic shared ownership of backend storage; mutation requires exclusive ownership.
 #[cfg(target_has_atomic = "ptr")]
 pub type SharedStorage<T, B = CpuBuffer<T>> = alloc::sync::Arc<Storage<T, B>>;
 
 impl<T, B: StorageBuffer<T>> Storage<T, B> {
+    /// Wrap backend storage; tensor construction additionally validates the reachable layout span.
     pub fn from_buffer(buffer: B) -> Self {
         Self {
             buffer,
@@ -52,22 +59,29 @@ impl<T, B: StorageBuffer<T>> Storage<T, B> {
         }
     }
 
+    /// Borrow the backend buffer without changing its ownership.
     pub fn buffer(&self) -> &B {
         &self.buffer
     }
+    /// Exclusively borrow the backend buffer. Layout bindings must be validated
+    /// again after changing the allocation or its length.
     pub fn buffer_mut(&mut self) -> &mut B {
         &mut self.buffer
     }
+    /// Consume this storage wrapper and return its backend buffer without copying.
     pub fn into_buffer(self) -> B {
         self.buffer
     }
+    /// Return the number of stored elements (or addressed span elements for a span).
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
+    /// Return whether there are no logical elements. A scalar is not empty.
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
+    /// Move storage into an atomic reference-counted owner without copying elements.
     #[cfg(target_has_atomic = "ptr")]
     pub fn into_shared(self) -> SharedStorage<T, B> {
         alloc::sync::Arc::new(self)
@@ -89,9 +103,11 @@ impl<T, B: StorageBuffer<T> + fmt::Debug> fmt::Debug for Storage<T, B> {
 }
 
 impl<T, B: HostBuffer<T>> Storage<T, B> {
+    /// Borrow the initialized host elements in physical order, not logical tensor order.
     pub fn as_slice(&self) -> &[T] {
         self.buffer.as_slice()
     }
+    /// Exclusively borrow initialized host elements in physical order.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.buffer.as_mut_slice()
     }

@@ -13,11 +13,17 @@ use super::{
 /// `None` denotes overflow, division by zero, or a result that is not
 /// representable in the integer type.
 pub trait CheckedInteger: Copy {
+    /// Return checked integer addition; None denotes overflow.
     fn checked_add(self, rhs: Self) -> Option<Self>;
+    /// Return checked integer subtraction; None denotes overflow or unsigned underflow.
     fn checked_sub(self, rhs: Self) -> Option<Self>;
+    /// Return checked integer multiplication; None denotes overflow.
     fn checked_mul(self, rhs: Self) -> Option<Self>;
+    /// Return checked integer division; None denotes zero divisor or signed MIN / -1.
     fn checked_div(self, rhs: Self) -> Option<Self>;
+    /// Return checked integer remainder; None denotes zero divisor or signed MIN % -1.
     fn checked_rem(self, rhs: Self) -> Option<Self>;
+    /// Return checked integer negation; None denotes an unrepresentable result.
     fn checked_neg(self) -> Option<Self>;
 }
 
@@ -67,6 +73,16 @@ checked_binary!(checked_rem, checked_rem, "rem");
 
 /// Checked integer negation. For unsigned integers, only zero has a valid
 /// negation. For signed integers, `MIN` is an overflow.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::checked_neg;
+/// let mut a = Tensor::from_vec(vec![1,2,3,4], Kahen::new([2,2])?, Order::C)?;
+/// let result = checked_neg(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn checked_neg<T, A>(source: &A) -> Result<Tensor<T>, OpsError>
 where
     T: CheckedInteger,

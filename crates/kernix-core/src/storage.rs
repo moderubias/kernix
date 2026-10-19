@@ -17,5 +17,6 @@ pub use view::{StorageView, StorageViewMut};
 #[cfg(target_has_atomic = "ptr")]
 pub use buffer::SharedStorage;
 
+/// Atomic shared ownership of CPU storage, available on pointer-atomic targets.
 #[cfg(target_has_atomic = "ptr")]
 pub type SharedCpuStorage<T> = SharedStorage<T, CpuBuffer<T>>;

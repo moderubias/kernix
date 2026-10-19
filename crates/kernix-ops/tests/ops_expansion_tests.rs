@@ -1,3 +1,4 @@
+//! Integration regressions for ops expansion tests.
 use kernix_core::{
     layout::{Layout, Order},
     shape::{Kahen, Kotei},

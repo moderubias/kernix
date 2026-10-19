@@ -220,6 +220,8 @@ impl<T> CpuBuffer<T> {
         })
     }
 
+    /// Allocate aligned storage initialized by cloning a value.
+    /// Reject invalid alignment, zero-sized types, extent overflow or allocation failure.
     pub fn try_filled(len: usize, alignment: usize, value: T) -> Result<Self, StorageError>
     where
         T: Clone,
@@ -227,6 +229,8 @@ impl<T> CpuBuffer<T> {
         Self::try_from_fn(len, alignment, |_| value.clone())
     }
 
+    /// Allocate aligned storage initialized with T::default().
+    /// Reject invalid alignment, zero-sized types, extent overflow or allocation failure.
     pub fn try_default(len: usize, alignment: usize) -> Result<Self, StorageError>
     where
         T: Default,
@@ -234,9 +238,11 @@ impl<T> CpuBuffer<T> {
         Self::try_from_fn(len, alignment, |_| T::default())
     }
 
+    /// Return the number of stored elements (or addressed span elements for a span).
     pub fn len(&self) -> usize {
         self.as_slice().len()
     }
+    /// Return whether there are no logical elements. A scalar is not empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -250,6 +256,8 @@ impl<T> CpuBuffer<T> {
         }
     }
 
+    /// Test live pointer alignment; reject zero/non-power-of-two alignments.
+    /// Empty storage satisfies every valid alignment without making a pointer guarantee.
     pub fn is_aligned_to(&self, alignment: usize) -> bool {
         if alignment == 0 || !alignment.is_power_of_two() {
             return false;
@@ -260,6 +268,7 @@ impl<T> CpuBuffer<T> {
         (self.as_slice().as_ptr() as usize) % alignment == 0
     }
 
+    /// Borrow the initialized host elements in physical order, not logical tensor order.
     pub fn as_slice(&self) -> &[T] {
         match &self.backing {
             Backing::Vec(v) => v.as_slice(),
@@ -267,6 +276,7 @@ impl<T> CpuBuffer<T> {
         }
     }
 
+    /// Exclusively borrow initialized host elements in physical order.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match &mut self.backing {
             Backing::Vec(v) => v.as_mut_slice(),
@@ -323,21 +333,30 @@ impl<T> fmt::Debug for CpuBuffer<T> {
 }
 
 impl<T> Storage<T, CpuBuffer<T>> {
+    /// Adopt initialized Vec elements without copies; reject zero-sized element types
+    /// and CPU byte extents exceeding isize::MAX.
     pub fn try_from_vec(values: Vec<T>) -> Result<Self, StorageError> {
         CpuBuffer::try_from_vec(values).map(Self::from_buffer)
     }
+    /// Adopt a boxed slice without copies, checking element type and CPU byte extent.
     pub fn try_from_box(values: Box<[T]>) -> Result<Self, StorageError> {
         CpuBuffer::try_from_box(values).map(Self::from_buffer)
     }
+    /// Adopt physical values, moving into an aligned allocation when needed.
+    /// Reject invalid alignment/extent or allocation failure; runs in O(len) when moving.
     pub fn try_from_vec_aligned(values: Vec<T>, alignment: usize) -> Result<Self, StorageError> {
         CpuBuffer::try_from_vec_aligned(values, alignment).map(Self::from_buffer)
     }
+    /// Allocate and initialize elements using a fallible callback. On the first error,
+    /// return its physical index and clean up the initialized prefix. No partial tensor escapes.
     pub fn try_from_fn<F>(len: usize, alignment: usize, init: F) -> Result<Self, StorageError>
     where
         F: FnMut(usize) -> T,
     {
         CpuBuffer::try_from_fn(len, alignment, init).map(Self::from_buffer)
     }
+    /// Allocate aligned storage with a fallible per-slot initializer.
+    /// Return the first error and drop the initialized prefix exactly once, including on panic.
     pub fn try_from_fn_fallible<E, F>(
         len: usize,
         alignment: usize,
@@ -348,24 +367,34 @@ impl<T> Storage<T, CpuBuffer<T>> {
     {
         CpuBuffer::try_from_fn_fallible(len, alignment, init).map(Self::from_buffer)
     }
+    /// Allocate aligned storage initialized by cloning a value.
+    /// Reject invalid alignment, zero-sized types, extent overflow or allocation failure.
     pub fn try_filled(len: usize, alignment: usize, value: T) -> Result<Self, StorageError>
     where
         T: Clone,
     {
         CpuBuffer::try_filled(len, alignment, value).map(Self::from_buffer)
     }
+    /// Allocate aligned storage initialized with T::default().
+    /// Reject invalid alignment, zero-sized types, extent overflow or allocation failure.
     pub fn try_default(len: usize, alignment: usize) -> Result<Self, StorageError>
     where
         T: Default,
     {
         CpuBuffer::try_default(len, alignment).map(Self::from_buffer)
     }
+    /// Consume storage into physical-order Vec elements. Vec-backed storage is moved
+    /// without copying; explicitly aligned storage moves elements into a new Vec allocation.
     pub fn into_vec(self) -> Vec<T> {
         self.into_buffer().into_vec()
     }
+    /// Return the allocation alignment guarantee in bytes. For empty allocations,
+    /// this records the requirement rather than guaranteeing an over-aligned pointer.
     pub fn alignment(&self) -> usize {
         self.buffer().alignment()
     }
+    /// Test live pointer alignment; reject zero/non-power-of-two alignments.
+    /// Empty storage satisfies every valid alignment without making a pointer guarantee.
     pub fn is_aligned_to(&self, alignment: usize) -> bool {
         self.buffer().is_aligned_to(alignment)
     }

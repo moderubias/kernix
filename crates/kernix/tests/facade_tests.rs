@@ -1,3 +1,4 @@
+//! Integration regressions for facade tests.
 use kernix::{Kahen, Layout, Order, Tensor, layout, shape, tensor};
 
 #[test]

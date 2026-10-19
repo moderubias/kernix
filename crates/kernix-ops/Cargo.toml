@@ -5,14 +5,15 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 description = "Linear algebra and tensor operations for Kernix."
-publish = false
+repository.workspace = true
+readme = "README.md"
+include = ["src/**", "tests/**", "examples/**", "README.md", "LICENSE", "LICENSES/**", "KIYOSHIMA.json"]
 
 [features]
 default = ["std"]
 
 std = [
     "kernix-core/std",
-    "kernix-traits/std",
 ]
 
 parallel = [
@@ -25,13 +26,14 @@ serde = [
 ]
 
 [dependencies]
-kernix-core = { path = "../kernix-core", default-features = false }
-kernix-traits.workspace = true
+kernix-core.workspace = true
 
 rayon = { workspace = true, optional = true }
 libm = { version = "0.2", default-features = false }
 
 [dev-dependencies]
+ndarray = "0.17.2"
+serde_json.workspace = true
 proptest.workspace = true
 
 [lints]

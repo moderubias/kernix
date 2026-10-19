@@ -6,10 +6,14 @@ use smallvec::SmallVec;
 /// Implementations must return validated shapes from `with_same_rank_dims`.
 /// The method must reject a rank change.
 pub trait LayoutShape: Shape + Clone {
+    /// Owned stride representation with exactly one element stride per axis.
     type Strides: AsRef<[isize]> + AsMut<[isize]> + Clone + core::fmt::Debug + PartialEq + Eq;
 
+    /// Create one zero element stride per axis, preserving the shape rank.
     fn zeroed_strides(&self) -> Self::Strides;
 
+    /// Construct a validated shape with replacement dimensions; reject rank
+    /// changes and nonzero element-count overflow.
     fn with_same_rank_dims(&self, dims: &[usize]) -> Result<Self, ShapeError>;
 }
 

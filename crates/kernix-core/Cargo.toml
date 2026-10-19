@@ -18,6 +18,7 @@ include = [
     "README.md",
     "LICENSE",
     "LICENSES/**",
+    "KIYOSHIMA.json",
 ]
 
 [features]
@@ -35,8 +36,6 @@ serde = [
 ]
 
 [dependencies]
-# kernix-traits.workspace = true
-
 thiserror.workspace = true
 smallvec.workspace = true
 

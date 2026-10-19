@@ -16,6 +16,8 @@ pub struct TensorIter<'a, T, S: LayoutShape> {
 }
 
 impl<'a, T, S: LayoutShape> TensorIter<'a, T, S> {
+    /// Construct a logical iterator from a host slice and layout.
+    /// Reject invalid element/byte extent before iteration; no stored elements are copied.
     pub fn new(elements: &'a [T], layout: Layout<S>, order: Order) -> Result<Self, TensorError> {
         layout.validate_cpu_storage::<T>(elements.len())?;
         let coords = core::iter::repeat_n(0, layout.rank()).collect();

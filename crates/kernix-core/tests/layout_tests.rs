@@ -1,3 +1,4 @@
+//! Integration regressions for layout tests.
 use kernix_core::layout::{Layout, LayoutError, LayoutShape, Order, Overlap, StorageSpan};
 use kernix_core::shape::{Kahen, Kotei};
 

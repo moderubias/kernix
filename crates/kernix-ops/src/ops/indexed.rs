@@ -20,6 +20,17 @@ pub(super) fn normalized_axis(rank: usize, axis: isize) -> Result<usize, OpsErro
 /// NumPy-like `take`: replace the selected source axis with all dimensions
 /// of `indices`. A scalar index removes that axis. Duplicate indices are
 /// allowed. Every index is validated even if other axes make output empty.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::take_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let indices = Tensor::from_vec(vec![1usize,0],Kahen::new([2])?,Order::C)?;
+/// let result = take_axis(&a,-1,&indices)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn take_axis<T: Clone, A: TensorInput<T>, I: TensorInput<usize>>(
     source: &A,
     axis: isize,
@@ -60,6 +71,16 @@ pub fn take_axis<T: Clone, A: TensorInput<T>, I: TensorInput<usize>>(
 /// tensor. The update shape equals `source.shape` except for its selected axis,
 /// whose length must equal `indices.len()`. Duplicate destination indices
 /// are resolved deterministically: the last update in logical C-order wins.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::scatter_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = scatter_axis(&a,-1,&[1,0],&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn scatter_axis<T: Clone, A: TensorInput<T>, U: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -114,6 +135,17 @@ pub fn scatter_axis<T: Clone, A: TensorInput<T>, U: TensorInput<T>>(
 /// Flattens values selected by a broadcast-compatible boolean mask into a
 /// one-dimensional C-order tensor. A mask can broadcast to the source shape;
 /// it must not expand the source into a larger shape.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::masked_select;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let mask = Tensor::from_vec(vec![true, false], Kahen::new([2])?, Order::C)?;
+/// let result = masked_select(&a,&mask)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn masked_select<T: Clone, A: TensorInput<T>, M: TensorInput<bool>>(
     source: &A,
     mask: &M,
@@ -154,6 +186,16 @@ pub fn masked_select<T: Clone, A: TensorInput<T>, M: TensorInput<bool>>(
 
 /// C-order coordinates of nonzero values, with output shape `[count, rank]`.
 /// Scalars use rank zero, so a true scalar has shape `[1, 0]` and no data.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::nonzero;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = nonzero(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn nonzero<T: PartialEq + super::Zero, A: TensorInput<T>>(
     source: &A,
 ) -> Result<Tensor<usize>, OpsError> {

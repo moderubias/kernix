@@ -1,3 +1,4 @@
+// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
 //! General contraction and small linear-algebra reference kernels.
 use alloc::{vec, vec::Vec};
 use core::{
@@ -12,6 +13,16 @@ use super::{
 };
 
 /// Vector dot product, returning a scalar. Empty vectors yield additive zero.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::dot;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = dot(&a.reshape_view([4],Order::C)?,&a.reshape_view([4],Order::C)?)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn dot<T, A, B>(left: &A, right: &B) -> Result<T, OpsError>
 where
     T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
@@ -38,6 +49,16 @@ where
             right: right.dims()[0],
         });
     }
+    // Zero-allocation direct-address path for contiguous vector inputs.
+    if let (Some(a), Some(b)) = (left.as_c_contiguous_slice(), right.as_c_contiguous_slice()) {
+        if a.len() == left.dims()[0] && b.len() == right.dims()[0] {
+            let mut total = T::zero();
+            for (lhs, rhs) in a.iter().zip(b) {
+                total += lhs.clone() * rhs.clone();
+            }
+            return Ok(total);
+        }
+    }
     let mut total = T::zero();
     for i in 0..left.dims()[0] {
         total += left.get(&[i])?.clone() * right.get(&[i])?.clone();
@@ -46,6 +67,16 @@ where
 }
 
 /// Outer product of two vectors. Result shape `[m, n]`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::outer;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = outer(&a.reshape_view([4],Order::C)?,&a.reshape_view([4],Order::C)?)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn outer<T, A, B>(left: &A, right: &B) -> Result<Tensor<T>, OpsError>
 where
     T: Clone + Mul<Output = T>,
@@ -79,6 +110,16 @@ where
 
 /// Trace of a rank-2 tensor. `offset > 0` chooses superdiagonal; `offset < 0`
 /// chooses subdiagonal. Diagonals outside the matrix yield additive zero.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::trace;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = trace(&a,0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn trace<T, A>(source: &A, offset: isize) -> Result<T, OpsError>
 where
     T: Zero + Clone + AddAssign<T>,
@@ -110,6 +151,16 @@ where
 /// planner. Result axes are the uncontracted left axes followed by the
 /// uncontracted right axes; the contracted dimensions must match pairwise.
 /// Duplicate contraction axes are errors, and an empty contract means outer.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::tensordot;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = tensordot(&a,&a,&[1],&[0])?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn tensordot<T, A, B>(
     left: &A,
     right: &B,

@@ -1,3 +1,4 @@
+// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
 use alloc::{vec, vec::Vec};
 use core::{
     mem::align_of,
@@ -14,6 +15,16 @@ use super::{OpsError, TensorInput, Zero, broadcast::broadcast_shape, error::flat
 /// broadcast right-aligned. Zero contracted dimension yields additive zero.
 /// The implementation is the portable CPU reference O(batch*m*n*k) kernel;
 /// it does not imply BLAS/SIMD acceleration.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::matmul;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = matmul(&a, &a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn matmul<T, A, B>(left: &A, right: &B) -> Result<Tensor<T>, OpsError>
 where
     T: Zero + Clone + AddAssign<T> + Mul<Output = T>,
@@ -59,6 +70,34 @@ where
         out_dims.push(n);
     }
     let output = Kahen::new(out_dims)?;
+    if output.numel() == 0 {
+        return Ok(Tensor::from_vec(Vec::new(), output, Order::C)?);
+    }
+
+    // Fast direct-address CPU path for ordinary row-major rank-2 tensors.
+    // Keep k as the innermost loop: floating-point accumulation order matches
+    // the reference kernel. Arbitrary strides, batches and custom inputs
+    // retain the fully general checked-indexing fallback below.
+    if a.len() == 2 && b.len() == 2 {
+        if let (Some(a_data), Some(b_data)) =
+            (left.as_c_contiguous_slice(), right.as_c_contiguous_slice())
+        {
+            if m.checked_mul(k) == Some(a_data.len()) && k.checked_mul(n) == Some(b_data.len()) {
+                let mut values = Vec::with_capacity(output.numel());
+                for row in 0..m {
+                    for col in 0..n {
+                        let mut value = T::zero();
+                        for inner in 0..k {
+                            value +=
+                                a_data[row * k + inner].clone() * b_data[inner * n + col].clone();
+                        }
+                        values.push(value);
+                    }
+                }
+                return Ok(Tensor::from_vec(values, output, Order::C)?);
+            }
+        }
+    }
     let batch_rank = batch.len();
     let mut ai = vec![0; a.len()];
     let mut bi = vec![0; b.len()];

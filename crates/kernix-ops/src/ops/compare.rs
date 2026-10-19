@@ -12,6 +12,16 @@ use super::{
 };
 
 /// Elementwise equality (including ordinary IEEE NaN != NaN semantics).
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::equal;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = equal(&a, &a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn equal<T: PartialEq, A: TensorInput<T>, B: TensorInput<T>>(
     left: &A,
     right: &B,
@@ -20,6 +30,16 @@ pub fn equal<T: PartialEq, A: TensorInput<T>, B: TensorInput<T>>(
 }
 
 /// Elementwise inequality.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::not_equal;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = not_equal(&a, &a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn not_equal<T: PartialEq, A: TensorInput<T>, B: TensorInput<T>>(
     left: &A,
     right: &B,
@@ -29,6 +49,8 @@ pub fn not_equal<T: PartialEq, A: TensorInput<T>, B: TensorInput<T>>(
 
 macro_rules! comparison {
     ($name:ident, $op:tt) => {
+        /// Allocate an elementwise ordered comparison with trailing-axis broadcasting.
+        /// IEEE comparisons with NaNs are false. Results are C-order Boolean values.
         pub fn $name<T: PartialOrd, A: TensorInput<T>, B: TensorInput<T>>(
             left: &A, right: &B,
         ) -> Result<Tensor<bool>, OpsError> {
@@ -41,10 +63,33 @@ comparison!(less_equal, <=);
 comparison!(greater, >);
 comparison!(greater_equal, >=);
 
+/// Elementwise Boolean negation, allocating a C-order Boolean tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logical_not;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = logical_not(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logical_not<A: TensorInput<bool>>(source: &A) -> Result<Tensor<bool>, OpsError> {
     map(source, |value| !*value)
 }
 
+/// Elementwise Boolean conjunction with trailing-axis broadcasting.
+/// Incompatible shapes, invalid reads or allocation failures return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logical_and;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = logical_and(&a,&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logical_and<A: TensorInput<bool>, B: TensorInput<bool>>(
     left: &A,
     right: &B,
@@ -52,6 +97,18 @@ pub fn logical_and<A: TensorInput<bool>, B: TensorInput<bool>>(
     zip_map(left, right, |a, b| *a && *b)
 }
 
+/// Elementwise Boolean disjunction with trailing-axis broadcasting.
+/// Incompatible shapes, invalid reads or allocation failures return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logical_or;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = logical_or(&a,&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logical_or<A: TensorInput<bool>, B: TensorInput<bool>>(
     left: &A,
     right: &B,
@@ -59,6 +116,18 @@ pub fn logical_or<A: TensorInput<bool>, B: TensorInput<bool>>(
     zip_map(left, right, |a, b| *a || *b)
 }
 
+/// Elementwise exclusive OR with trailing-axis broadcasting.
+/// Incompatible shapes, invalid reads or allocation failures return an error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logical_xor;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = logical_xor(&a,&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logical_xor<A: TensorInput<bool>, B: TensorInput<bool>>(
     left: &A,
     right: &B,
@@ -69,6 +138,17 @@ pub fn logical_xor<A: TensorInput<bool>, B: TensorInput<bool>>(
 /// Selects one of two values at each logical coordinate. All three operands
 /// are broadcast together; `false` selects `no`, `true` selects `yes`.
 /// The output is a newly allocated C-contiguous tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::where_select;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let mask = Tensor::from_vec(vec![true, false], Kahen::new([2])?, Order::C)?;
+/// let result = where_select(&mask,&a,&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn where_select<T: Clone, C, A, B>(
     condition: &C,
     yes: &A,
@@ -100,6 +180,16 @@ where
 
 /// Clamps values between inclusive scalar bounds. Unordered bounds (NaN) and
 /// `minimum > maximum` are rejected. A NaN in the input propagates unchanged.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::clamp;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = clamp(&a, 0.0, 3.0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn clamp<T: PartialOrd + Clone, A: TensorInput<T>>(
     source: &A,
     minimum: T,

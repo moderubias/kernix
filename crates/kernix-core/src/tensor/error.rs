@@ -10,24 +10,43 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum TensorError {
+    /// Affine layout construction or transformation failed.
     #[error(transparent)]
     Layout(#[from] LayoutError),
 
+    /// Storage allocation or validation failed; contains the underlying error.
     #[error(transparent)]
     Storage(#[from] StorageError),
 
+    /// The number of supplied values differs from the shape element count.
     #[error("shape requires {expected} elements, provided {actual}")]
-    ElementCountMismatch { expected: usize, actual: usize },
+    ElementCountMismatch {
+        #[doc = "Required rank, length or extent."]
+        expected: usize,
+        #[doc = "Observed rank, length or extent."]
+        actual: usize,
+    },
 
+    /// The logical tensor cannot be borrowed as a slice in the requested order.
     #[error("tensor cannot be exposed as a {order:?}-contiguous slice")]
-    NotContiguous { order: Order },
+    NotContiguous {
+        #[doc = "Requested logical contiguous traversal order."]
+        order: Order,
+    },
 }
 
 /// Allocation/layout error, or an error from a user-supplied initializer.
 #[derive(Debug)]
 pub enum TensorBuildError<E> {
+    /// Tensor validation or allocation failed; contains the underlying tensor error.
     Tensor(TensorError),
-    Initialize { index: usize, error: E },
+    /// A fallible initializer failed; the initialized prefix has been cleaned up.
+    Initialize {
+        #[doc = "Failing logical or physical element index as specified by the variant."]
+        index: usize,
+        #[doc = "Original initializer error, preserved without conversion."]
+        error: E,
+    },
 }
 
 impl<E> From<TensorError> for TensorBuildError<E> {

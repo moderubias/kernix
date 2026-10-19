@@ -1,82 +1,225 @@
 # Kernix
 
-**An experimental, type-safe N-dimensional tensor toolkit for Rust.**
+Kernix is an experimental Rust library for linear algebra, N-dimensional tensors
+and extensible computation. Its foundation separates validated shapes, affine
+layouts, storage ownership and numerical operations. The default implementation
+runs on the CPU and needs no BLAS installation, GPU driver or configuration file.
 
-Kernix provides a device-independent Shape/Layout model, checked CPU storage,
-zero-copy tensor views and an expanding `no_std`-capable collection of CPU
-reference operations. The library is under active development; **SIMD/GPU
-execution, autodiff and a complete ML/CV stack are not yet implemented**.
+The project is being developed with **OpenAI Codex (GPT-6 agent)**, under human
+direction and review. Generated code is subject to the same tests and numerical
+checks as other contributions. This is early software, with an evolving API.
 
-## API at a glance
+## Install
+
+Install stable Rust and Cargo from [rustup](https://rustup.rs), then:
+
+```sh
+cargo new tensor-demo
+cd tensor-demo
+cargo add kernix
+```
+
+```toml
+[dependencies]
+kernix = "0.1.1"
+```
+
+The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
+recommended. A C/C++ compiler or native linear algebra runtime is not needed by
+Kernix itself; the Rust target still needs its normal linker/system SDK.
+
+| System | Setup |
+|---|---|
+| Linux (Arch) | `sudo pacman -S rustup base-devel`, then `rustup default stable` |
+| Linux (Debian/Ubuntu) | Install `build-essential`, then Rust with rustup |
+| Windows | Install rustup and Visual Studio Build Tools with Desktop development with C++ / Windows SDK for the default MSVC target |
+| macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
+| Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
+
+Linux x86_64 is verified locally. CI is configured for Windows, macOS and Linux.
+WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
+and selected features; a portable API is not evidence that every target was tested.
+No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
+Optional future backends must not prevent use of the portable CPU path.
+
+For an allocator-equipped `no_std` application:
+
+```toml
+kernix = { version = "0.1.1", default-features = false }
+```
+
+`no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
+many operations allocate. CPU storage rejects zero-sized element types.
+
+## First tensor computation
 
 ```rust
-use kernix::{Kahen, Order, Tensor};
-use kernix_ops::{add, softmax};
+use kernix::{add, softmax, Kahen, Order, Tensor};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let shape = Kahen::new([2, 3])?;
-    let a = Tensor::from_vec(vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0], shape, Order::C)?;
-    let b = Tensor::from_vec(vec![0.5f32, 1.0, -0.5], Kahen::new([3])?, Order::C)?;
-    let result = add(&a, &b)?;         // NumPy-style right-aligned broadcasting
-    let probabilities = softmax(&result, -1)?;
+    let a = Tensor::from_vec(
+        vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0],
+        Kahen::new([2, 3])?, Order::C,
+    )?;
+    let bias = Tensor::from_vec(vec![0.5, 1.0, -0.5], Kahen::new([3])?, Order::C)?;
+    let logits = add(&a, &bias)?;
+    let probabilities = softmax(&logits, -1)?;
     assert_eq!(probabilities.shape().dims(), &[2, 3]);
+    assert_eq!(a.get(&[1, 2])?, &6.0);
     Ok(())
 }
 ```
 
-The high-level `kernix` crate exports `Kahen`, `Kotei<N>`, `Shape`, `Layout`,
-`Storage`, `Tensor` and their errors. Numerical functions currently live in the
-separate `kernix-ops` crate; add **both dependencies** when using the example.
+Use `kernix::ops::add` or the root `kernix::add`; both are the same function.
+The [API reference](https://docs.rs/kernix) describes individual functions and
+contains executable examples. See also [core](https://docs.rs/kernix-core) and
+[operations](https://docs.rs/kernix-ops).
 
-`Kahen` (可変, variable rank) and `Kotei` (固定, fixed rank) are intentional
-Japanese-inspired type names. Common mathematical functions keep their
-industry-standard English names.
+## Shapes
 
-## Crates
+`Kahen` means variable in Japanese: its rank is determined at runtime.
+`Kotei<N>` means fixed: its **rank**, not its dimension sizes, is fixed at compile
+time. Method names and documentation are English. Both types validate dimensions
+at construction and expose only immutable dimension slices.
+
+```rust
+use kernix::{Kahen, Kotei};
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+let image = Kotei::<4>::new([1, 3, 224, 224])?;
+let dynamic = Kahen::from(image);
+assert_eq!(dynamic.dim(-1)?, 224);
+assert_eq!(dynamic.unsqueeze(0)?.squeeze_axis(0)?, dynamic);
+assert_eq!(Kahen::scalar().numel(), 1);
+assert_eq!(Kahen::new([usize::MAX, 2, 0])?.numel(), 0);
+assert_eq!(Kahen::new([2, 1])?.broadcast(&Kahen::new([1, 3])?)?.dims(), &[2, 3]);
+Ok(())
+}
+```
+
+Shapes know nothing about dtype, device, strides or memory order. Shape transforms
+include insertion/removal, squeezing, permutation and broadcasting. `remove_axis`
+can change element count, while `squeeze_axis` requires a singleton. Removing a
+zero axis can expose overflow and therefore returns an error. A scalar has rank
+zero and one element; a shape with any zero dimension has zero elements.
+
+Broadcasting aligns trailing axes: equal sizes are retained, and a singleton
+takes the other size (including zero). `can_broadcast_to` is directional; it does
+not ask whether two shapes merely have a common broadcast result.
+
+With `features = ["serde"]`, shapes serialize as dimension sequences and validate
+rank/overflow during deserialization. Invalid metadata cannot bypass constructors.
+
+## Layouts and views
+
+`Order::C` is row-major; `Order::F` is column-major. Strides are **element** strides,
+may be negative or zero, and include an origin within storage. Tensor operations
+read logical elements, respecting permutations, gaps, reverse slices and broadcast
+views. Inputs never silently change dtype or device.
+
+```rust
+use kernix::{Kahen, Order, Tensor};
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+let tensor = Tensor::from_vec(vec![1, 2, 3, 4, 5, 6], Kahen::new([2, 3])?, Order::C)?;
+let transposed = tensor.transpose()?; // owns metadata, borrows the same elements
+assert_eq!(transposed.shape().dims(), &[3, 2]);
+assert_eq!(transposed.get(&[2, 1])?, &6);
+let copy = transposed.to_owned_contiguous(Order::C)?;
+assert_eq!(copy.storage_slice(), &[1, 4, 2, 5, 3, 6]);
+Ok(())
+}
+```
+
+`reshape_view` belongs to Layout/Tensor and fails when stride chunks cannot
+represent the requested traversal without copying. `storage_slice` exposes the
+physical backing, which may include gaps and extra elements. Use logical iteration
+or `to_owned_contiguous` when you need logical contents. Mutable views hold an
+exclusive borrow; in-place numerical operations reject unproven disjointness.
+
+## Operations and numerical behavior
+
+The portable CPU API includes:
+
+- Elementwise arithmetic, checked integer arithmetic, user-defined maps, comparisons,
+  Boolean masks and selection, casts and in-place updates.
+- Sum/product/mean/extrema, axis reductions, argmin/argmax, nonzero counts, cumulative
+  sums/products, Welford variance/std, scaled L2 norms and stable log-sum-exp.
+- Vector products, batched/vector/matrix `matmul`, `tensordot`, outer products and trace.
+- Concatenation, stacking, gather/scatter, padding, repeat/tile, splits, rolling,
+  sliding windows and overlap-add folding.
+- Stable sorting, argsort, top-k, elementary math and activations, temperature/masked
+  softmax and online normalization variants.
+
+Allocating operations return C-order CPU tensors. Free functions accept owned or
+borrowed tensors through `TensorInput`, including fixed-rank and strided inputs.
+Scalar arithmetic follows the element type: native integer operations can panic on
+overflow in debug or wrap in release. Use `checked_*` for checked integer errors.
+Floating operations round according to the dtype; no implicit dtype promotion,
+fast-math policy or promise of exact real arithmetic is made.
+
+Softmax/log-sum-exp reject nonfinite logits with coordinates. Elementwise functions
+follow their documented IEEE domain behavior; for example `ln(-1)` is NaN.
+Extrema and arg-extrema have documented NaN/tie policies. Float sorting uses IEEE
+total ordering, which includes NaNs and signed zeros. Reduction order can differ
+from NumPy/BLAS and produce different last bits. Numerical tests use explicit
+tolerances rather than claiming 100% mathematical precision.
+
+## Architecture and extension
 
 | Crate | Responsibility |
 |---|---|
-| `kernix` | Public facade for core types |
-| `kernix-core` | Shape, Layout, Storage, Tensor and borrowed views |
-| `kernix-ops` | Portable CPU reference operations on logical tensor indices |
-| `kernix-traits` | Numeric/algebraic traits |
+| `kernix` | User-facing entry point, core types and numerical functions |
+| `kernix-core` | Shapes, affine layouts, opaque storage and tensors |
+| `kernix-ops` | Portable CPU implementations and host tensor contracts |
 
-## Important semantics
+`StorageBuffer<T>` exposes element count without requiring a host pointer.
+`HostBuffer<T>` is an additional capability for memory safely borrowable on CPU.
+An accelerator can supply opaque storage without teaching Shape about GPUs or
+pretending a device pointer is a CPU slice. Device execution/transfer interfaces,
+configuration contexts, autodiff and CV/training utilities are under development.
 
-- **Storage order differs from logical order.** Tensor operations respect C/F
-  layout, transpositions, negative strides and broadcasting strides.
-- **Views can be zero-copy.** Structural operations that return owned tensors
-  (including `concat`, `scatter_axis`, `tile`, `unfold_axis`) allocate and copy.
-- **Native integer arithmetic** (`add`, `matmul`, reductions) retains Rust's
-  normal overflow semantics. Use `checked_add/sub/mul/div/rem/neg` where
-  fallible checked integer arithmetic is required.
-- **Float ordering:** `sort_axis`, `argsort_axis`, `topk_axis` use IEEE total
-  ordering for `f32/f64`, including NaN and signed zero; argmin/argmax use
-  the separate, documented first-NaN policy.
-- `cast` relies on Rust `From` (infallible). `try_cast` uses `TryFrom` and
-  returns the first failing logical index. No implicit dtype promotion.
-- `kernix-ops` is a **CPU reference layer**, not yet a benchmark-proven
-  high-performance kernel engine.
+At this release there is **no GPU execution, automatic differentiation, complete
+neural-network stack or validated 120-FPS CV pipeline**. The CPU operations are a
+reference foundation. Solvers, decompositions and sparse algebra remain future
+work. An empty `kernix.toml` has no effect at this version; applications need not
+create one. Explicit user configuration is planned with validated defaults.
 
-For the complete function inventory and remaining work, see
-[`docs/CAPABILITY-MATRIX.md`](docs/CAPABILITY-MATRIX.md).
-
-## Verify locally
+## Tests, benchmarks and development
 
 ```sh
+git clone https://github.com/moderubias/kernix.git
+cd kernix
 cargo fmt --all -- --check
-cargo test --workspace --all-features
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo check -p kernix-core --no-default-features
-cargo check -p kernix-ops --no-default-features
+cargo test --workspace --all-features --locked
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
+cargo check -p kernix --no-default-features --locked
 ```
 
-The required Rust minimum version is **1.86** (Edition 2024). Core currently
-supports `no_std` with `alloc`; this is *not* a claim of allocation-free or
-embedded-target compatibility.
+Every public API is subject to `missing_docs = deny`. Doctests compile and execute
+examples. Property tests check shape invariants; regression tests cover layouts,
+aliasing, integer errors, nonfinite math and extreme softmax inputs. Unsafe aligned
+storage has a Miri CI workflow; a configured workflow does not certify an unrun test.
+
+Comparative benchmarks require Python 3 + NumPy, Pandoc and XeLaTeX only for report
+generation; none is a runtime dependency. On Arch: install `python-numpy pandoc-cli
+texlive-xetex texlive-latexextra`; on other systems install equivalent tools.
+
+```sh
+python benchmarks/run.py my-unique-run
+```
+
+Results are saved without overwriting previous runs in
+[`benchmarks/results`](benchmarks/results): raw measurements, environment metadata,
+Markdown tables and printable PDF. The harness compares allocation-inclusive CPU
+operations with ndarray and NumPy using a single-thread policy. It verifies matrix
+results before timing. Read each report's limits; measured improvements on a laptop
+are not performance guarantees on all systems. A 120-Hz vision pipeline has an
+8.333-ms **complete frame** budget, including capture, preprocessing and inference.
 
 ## License
 
-Dual-licensed under **MIT OR Apache-2.0**. See [licensing](docs/README-LICENSING.md)
-and [KIYOSHIMA.json](KIYOSHIMA.json). The "Kiyoshima Open" profile does not
-add restrictions beyond the controlling licenses.
+Kiyoshima Licensing **Open profile**, **MIT OR Apache-2.0**, at your option.
+[LICENSE](LICENSE) declares the license; complete texts are in [LICENSES](LICENSES).
+[KIYOSHIMA.json](KIYOSHIMA.json) records the machine-readable passport. The profile
+adds no restrictions to the controlling standard licenses. Verify with
+`klicense verify-project .` using the Kiyoshima licensing utility.

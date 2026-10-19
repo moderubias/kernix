@@ -11,6 +11,17 @@ use super::{
     reduce::{reduce_axes, sum_axes},
 };
 
+/// Return whether any Boolean element is true. Empty input returns false.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::any_all;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = any_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn any_all<A: TensorInput<bool>>(source: &A) -> Result<bool, OpsError> {
     let shape = Kahen::new(source.dims())?;
     let mut coords = vec![0; source.dims().len()];
@@ -23,6 +34,17 @@ pub fn any_all<A: TensorInput<bool>>(source: &A) -> Result<bool, OpsError> {
     Ok(false)
 }
 
+/// Return whether every Boolean element is true. Empty input returns true.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::all_all;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = all_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn all_all<A: TensorInput<bool>>(source: &A) -> Result<bool, OpsError> {
     let shape = Kahen::new(source.dims())?;
     let mut coords = vec![0; source.dims().len()];
@@ -36,6 +58,16 @@ pub fn all_all<A: TensorInput<bool>>(source: &A) -> Result<bool, OpsError> {
 }
 
 /// Logical OR over `axes`. `false` is the identity for an empty reduction.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::any_axes;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = any_axes(&a,&[-1],true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn any_axes<A: TensorInput<bool>>(
     source: &A,
     axes: &[isize],
@@ -45,6 +77,16 @@ pub fn any_axes<A: TensorInput<bool>>(
 }
 
 /// Logical AND over `axes`. `true` is the identity for an empty reduction.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::all_axes;
+/// let mut a = Tensor::from_vec(vec![true,false,true,true], Kahen::new([2,2])?, Order::C)?;
+/// let result = all_axes(&a,&[-1],true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn all_axes<A: TensorInput<bool>>(
     source: &A,
     axes: &[isize],
@@ -54,6 +96,16 @@ pub fn all_axes<A: TensorInput<bool>>(
 }
 
 /// Number of nonzero logical elements. NaN counts as nonzero for floats.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::count_nonzero_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = count_nonzero_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn count_nonzero_all<T: Zero + PartialEq, A: TensorInput<T>>(
     source: &A,
 ) -> Result<usize, OpsError> {
@@ -69,6 +121,19 @@ pub fn count_nonzero_all<T: Zero + PartialEq, A: TensorInput<T>>(
     Ok(count)
 }
 
+/// Count values unequal to zero along selected axes.
+/// Empty axes means no reduction; keepdims retains reduced axes with size one.
+/// Reject invalid or duplicate axes; allocate usize counts in C order.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::count_nonzero_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = count_nonzero_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn count_nonzero_axes<T: Zero + PartialEq, A: TensorInput<T>>(
     source: &A,
     axes: &[isize],
@@ -123,11 +188,31 @@ fn arg_extreme_all<T: PartialOrd, A: TensorInput<T>>(
 }
 
 /// Flat C-order index of the first minimum; None for an empty tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::argmin_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = argmin_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn argmin_all<T: PartialOrd, A: TensorInput<T>>(source: &A) -> Result<Option<usize>, OpsError> {
     arg_extreme_all(source, true)
 }
 
 /// Flat C-order index of the first maximum; None for an empty tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::argmax_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = argmax_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn argmax_all<T: PartialOrd, A: TensorInput<T>>(source: &A) -> Result<Option<usize>, OpsError> {
     arg_extreme_all(source, false)
 }
@@ -177,6 +262,16 @@ fn arg_extreme_axis<T: PartialOrd, A: TensorInput<T>>(
 }
 
 /// Argmin along one axis. NaNs and ties use first logical index semantics.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::argmin_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = argmin_axis(&a, -1, false)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn argmin_axis<T: PartialOrd, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -185,6 +280,19 @@ pub fn argmin_axis<T: PartialOrd, A: TensorInput<T>>(
     arg_extreme_axis(source, axis, keepdims, true)
 }
 
+/// Return indices of maxima along a signed axis.
+/// First ties win and the first NaN wins. An empty reduced axis with a nonempty
+/// output returns EmptyReduction; keepdims retains a singleton reduced axis.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::argmax_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = argmax_axis(&a, -1, false)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn argmax_axis<T: PartialOrd, A: TensorInput<T>>(
     source: &A,
     axis: isize,

@@ -24,6 +24,16 @@ fn axis_of(rank: usize, axis: isize) -> Result<usize, OpsError> {
 /// Concatenates one or more input tensors along `axis`, allocating fresh
 /// C-contiguous storage. Other dimensions must match exactly. Inputs may
 /// come from different Tensor/TensorView types via `TensorInput` trait objects.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::concat;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = concat(&[&a,&a],0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn concat<T: Clone>(
     inputs: &[&dyn TensorInput<T>],
     axis: isize,
@@ -77,6 +87,16 @@ pub fn concat<T: Clone>(
 
 /// Stacks tensors of identical shape along a *new* axis. Negative axes are
 /// relative to the output rank: `-1` inserts the last axis.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::stack;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = stack(&[&a,&a],0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn stack<T: Clone>(inputs: &[&dyn TensorInput<T>], axis: isize) -> Result<Tensor<T>, OpsError> {
     let Some(first) = inputs.first() else {
         return Err(OpsError::EmptyInputSequence { operation: "stack" });
@@ -119,6 +139,16 @@ pub fn stack<T: Clone>(inputs: &[&dyn TensorInput<T>], axis: isize) -> Result<Te
 /// Reads elements at the supplied indices on one axis, in the supplied order.
 /// Duplicate indices are allowed. Bounds are checked even if the resulting
 /// tensor has no elements due to a zero-sized *other* axis.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::gather_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = gather_axis(&a,-1,&[1,0])?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn gather_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -146,6 +176,16 @@ pub fn gather_axis<T: Clone, A: TensorInput<T>>(
 
 /// Repeats each element `times` along an existing axis (akin to
 /// NumPy's `repeat`, not `tile`). A repeat count of zero makes that axis empty.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::repeat_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = repeat_axis(&a,0,2)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn repeat_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -170,6 +210,16 @@ pub fn repeat_axis<T: Clone, A: TensorInput<T>>(
 
 /// Constant padding on each axis: `[(before, after), ...]` with one entry per
 /// axis. Rank-zero (scalar) padding accepts only an empty `padding` list.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::pad_constant;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = pad_constant(&a,&[(1,1),(0,0)],0.0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn pad_constant<T: Clone, A: TensorInput<T>>(
     source: &A,
     padding: &[(usize, usize)],

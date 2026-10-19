@@ -30,6 +30,7 @@ impl<T, B: HostBuffer<T>> Storage<T, B> {
         Ok(StorageView { elements, layout })
     }
 
+    /// Create a checked exclusive host view without copying stored elements.
     pub fn view_mut<'a, S: LayoutShape>(
         &'a mut self,
         layout: &'a Layout<S>,
@@ -41,10 +42,13 @@ impl<T, B: HostBuffer<T>> Storage<T, B> {
 }
 
 impl<'a, T, S: LayoutShape> StorageView<'a, T, S> {
+    /// Borrow the validated affine layout. Strides are measured in elements. O(1).
     pub fn layout(&self) -> &'a Layout<S> {
         self.layout
     }
 
+    /// Borrow one element at checked logical coordinates. Rank or bounds mismatches
+    /// return an error. Signed/zero strides are respected. O(rank).
     pub fn get(&self, indices: &[usize]) -> Result<&T, LayoutError> {
         let offset = self.layout.offset_of(indices)?;
         // `view()` has already checked the entire reachable storage span.
@@ -53,10 +57,13 @@ impl<'a, T, S: LayoutShape> StorageView<'a, T, S> {
 }
 
 impl<'a, T, S: LayoutShape> StorageViewMut<'a, T, S> {
+    /// Borrow the validated affine layout. Strides are measured in elements. O(1).
     pub fn layout(&self) -> &'a Layout<S> {
         self.layout
     }
 
+    /// Borrow one element at checked logical coordinates. Rank or bounds mismatches
+    /// return an error. Signed/zero strides are respected. O(rank).
     pub fn get(&self, indices: &[usize]) -> Result<&T, LayoutError> {
         let offset = self.layout.offset_of(indices)?;
         Ok(&self.elements[offset])
@@ -69,6 +76,7 @@ impl<'a, T, S: LayoutShape> StorageViewMut<'a, T, S> {
         Ok(&mut self.elements[offset])
     }
 
+    /// Consume an exclusive view and retain its remaining lifetime as a read-only view.
     pub fn into_read_only(self) -> StorageView<'a, T, S> {
         StorageView {
             elements: self.elements,

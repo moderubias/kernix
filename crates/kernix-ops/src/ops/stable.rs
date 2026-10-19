@@ -25,6 +25,16 @@ fn check_finite<T: FloatMath>(
 
 /// Log of the sum of exponentials of every element, computed with a max
 /// shift. Rejects nonfinite inputs and empty logical tensors.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logsumexp_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = logsumexp_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logsumexp_all<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<T, OpsError> {
     let shape = Kahen::new(source.dims())?;
     if shape.numel() == 0 {
@@ -52,6 +62,16 @@ pub fn logsumexp_all<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<T, O
 /// Stable log-sum-exp along one axis. `keepdims` preserves a unit axis.
 /// A zero-sized output remains valid; a nonempty output with empty reduced
 /// axis returns `EmptyReduction`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::logsumexp_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = logsumexp_axis(&a, -1, false)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn logsumexp_axis<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -106,6 +126,16 @@ pub fn logsumexp_axis<T: FloatMath, A: TensorInput<T>>(
 /// Stable Euclidean norm. This scaled sum-of-squares algorithm avoids the
 /// overflow/underflow of `sqrt(sum(x*x))` for large/small finite values.
 /// Empty tensor has norm zero. Nonfinite inputs produce an indexed error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::l2_norm_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = l2_norm_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn l2_norm_all<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<T, OpsError> {
     let shape = Kahen::new(source.dims())?;
     let mut coords = vec![0; shape.rank()];
@@ -129,6 +159,16 @@ pub fn l2_norm_all<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<T, Ops
 }
 
 /// Stable Euclidean norm along one axis. `keepdims` is analogous to reductions.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::l2_norm_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = l2_norm_axis(&a, -1, false)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn l2_norm_axis<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -182,12 +222,32 @@ pub fn l2_norm_axis<T: FloatMath, A: TensorInput<T>>(
 
 /// Infallible element conversion using `From`. The explicit type arguments
 /// avoid implicit dtype promotion; callers decide the target dtype.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::cast;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = cast::<_, f64, _>(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn cast<T: Clone, U: From<T>, A: TensorInput<T>>(source: &A) -> Result<Tensor<U>, OpsError> {
     super::elementwise::map(source, |value| U::from(value.clone()))
 }
 
 /// Checked element conversion using `TryFrom`. Failing coordinates are
 /// preserved in `OpsError::Cast` rather than silently truncated.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::try_cast;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = try_cast::<_, f64, _>(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn try_cast<T: Clone, U: TryFrom<T>, A: TensorInput<T>>(
     source: &A,
 ) -> Result<Tensor<U>, OpsError> {

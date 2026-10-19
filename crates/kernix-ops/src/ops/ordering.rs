@@ -11,6 +11,7 @@ use super::{
 /// Total ordering for tensor elements. Floats sort using `total_cmp`, not
 /// partial ordering, including the ordering of NaNs and signed zeros.
 pub trait TotalOrder {
+    /// Compare values in a total order; f32/f64 use IEEE total_cmp, including NaNs and signed zeros.
     fn total_order(&self, other: &Self) -> Ordering;
 }
 macro_rules! total_ord_impl {
@@ -38,11 +39,23 @@ impl TotalOrder for f64 {
 /// precede later ones. This includes equivalent floating-point bit patterns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SortDirection {
+    /// Sort from least to greatest under TotalOrder, with stable equal-value ties.
     Ascending,
+    /// Sort from greatest to least under TotalOrder, with stable equal-value ties.
     Descending,
 }
 
 /// Return a new tensor with values sorted independently along `axis`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::sort_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = sort_axis(&a,-1,kernix_ops::SortDirection::Ascending)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn sort_axis<T: TotalOrder + Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -90,6 +103,16 @@ pub fn sort_axis<T: TotalOrder + Clone, A: TensorInput<T>>(
 
 /// The original logical indices that would sort each fiber. Equal values
 /// retain increasing index order. Returns a fresh C-contiguous tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::argsort_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = argsort_axis(&a,-1,kernix_ops::SortDirection::Ascending)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn argsort_axis<T: TotalOrder, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -135,6 +158,16 @@ pub fn argsort_axis<T: TotalOrder, A: TensorInput<T>>(
 /// For equal values, the earliest logical index wins. k=0 is valid.
 /// This reference implementation sorts the entire axis; accelerated kernels
 /// can replace it with partial selection without changing output semantics.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::topk_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = topk_axis(&a,-1,1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn topk_axis<T: TotalOrder + Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,

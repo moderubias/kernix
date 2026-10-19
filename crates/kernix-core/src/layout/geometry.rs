@@ -6,15 +6,19 @@ use super::{LayoutError, Order};
 /// An empty tensor has no span (`None`), not a zero-width range.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StorageSpan {
+    #[doc = "First included physical element index or source slice index."]
     pub start: usize,
+    #[doc = "Exclusive upper physical element bound."]
     pub end: usize,
 }
 
 impl StorageSpan {
+    /// Return the number of stored elements (or addressed span elements for a span).
     pub fn len(self) -> usize {
         self.end - self.start
     }
 
+    /// Return whether there are no logical elements. A scalar is not empty.
     pub fn is_empty(self) -> bool {
         self.start == self.end
     }
@@ -24,8 +28,11 @@ impl StorageSpan {
 /// creating independent mutable references.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Overlap {
+    /// Distinct logical indices are proven to address distinct elements.
     NonOverlapping,
+    /// At least two distinct logical indices are proven to address the same element.
     Overlapping,
+    /// Available metadata does not prove either overlap or disjointness.
     Unknown,
 }
 

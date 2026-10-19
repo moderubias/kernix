@@ -57,6 +57,16 @@ where
 }
 
 /// Inclusive cumulative sum on one axis, in forward logical index order.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::cumsum_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = cumsum_axis(&a, -1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn cumsum_axis<T, A>(source: &A, axis: isize) -> Result<Tensor<T>, OpsError>
 where
     T: Zero + Clone + AddAssign<T>,
@@ -66,6 +76,16 @@ where
 }
 
 /// Inclusive cumulative product on one axis, in forward logical index order.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::cumprod_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = cumprod_axis(&a, -1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn cumprod_axis<T, A>(source: &A, axis: isize) -> Result<Tensor<T>, OpsError>
 where
     T: One + Clone + MulAssign<T>,

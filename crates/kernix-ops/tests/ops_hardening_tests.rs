@@ -1,3 +1,4 @@
+//! Integration regressions for ops hardening tests.
 use kernix_core::{layout::Order, shape::Kahen, tensor::Tensor};
 use kernix_ops::{
     OpsError, checked_add, checked_div, checked_mul, checked_neg, checked_rem, checked_sub,

@@ -4,3 +4,14 @@
 !.env.example
 *.pem
 *.key
+
+# Local planning and scratch notes; retain user-facing documentation.
+*.md
+!README.md
+!LICENSE.md
+!NOTICE.md
+!CHANGELOG.md
+!docs/**/*.md
+!benchmarks/results/**/README.md
+PROGRESS.md
+__pycache__/

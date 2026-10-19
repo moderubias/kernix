@@ -1,3 +1,4 @@
+//! Integration regressions for ops completeness 03.
 use kernix_core::{
     layout::Order,
     shape::{Kahen, Kotei},

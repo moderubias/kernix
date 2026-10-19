@@ -6,24 +6,50 @@ use thiserror::Error;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum StorageError {
+    /// Zero-sized element types require an unsupported dedicated storage policy.
     #[error("zero-sized element types are unsupported by Kernix storage")]
     ZeroSizedElementType,
 
+    /// The requested alignment is not a sufficient power of two.
     #[error("invalid alignment {requested}: expected a power of two >= {minimum}")]
-    InvalidAlignment { requested: usize, minimum: usize },
+    InvalidAlignment {
+        #[doc = "Requested alignment in bytes."]
+        requested: usize,
+        #[doc = "Minimum permitted alignment in bytes."]
+        minimum: usize,
+    },
 
+    /// Element count times element size exceeds the CPU addressable extent.
     #[error("storage of {len} elements of size {element_size} exceeds the CPU addressable extent")]
-    CapacityOverflow { len: usize, element_size: usize },
+    CapacityOverflow {
+        #[doc = "Requested number of elements."]
+        len: usize,
+        #[doc = "Size of one element in bytes."]
+        element_size: usize,
+    },
 
+    /// The allocator could not satisfy the requested extent and alignment.
     #[error("allocation of {bytes} bytes at alignment {alignment} failed")]
-    AllocationFailed { bytes: usize, alignment: usize },
+    AllocationFailed {
+        #[doc = "Requested allocation size in bytes."]
+        bytes: usize,
+        #[doc = "Requested allocation alignment in bytes."]
+        alignment: usize,
+    },
 }
 
 /// Storage-allocation failure or an error produced by a fallible initializer.
 #[derive(Debug)]
 pub enum StorageBuildError<E> {
+    /// Storage allocation or validation failed; contains the underlying error.
     Storage(StorageError),
-    Initialize { index: usize, error: E },
+    /// A fallible initializer failed; the initialized prefix has been cleaned up.
+    Initialize {
+        #[doc = "Failing logical or physical element index as specified by the variant."]
+        index: usize,
+        #[doc = "Original initializer error, preserved without conversion."]
+        error: E,
+    },
 }
 
 impl<E> From<StorageError> for StorageBuildError<E> {

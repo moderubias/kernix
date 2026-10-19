@@ -51,6 +51,16 @@ impl<T: FloatMath> State<T> {
 /// Variance of all logical values using Welford's recurrence.
 /// `correction=0` means population variance; `correction=1` is Bessel's
 /// correction. If `count <= correction`, returns a structured error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::variance_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = variance_all(&a,0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn variance_all<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     correction: usize,
@@ -65,6 +75,18 @@ pub fn variance_all<T: FloatMath, A: TensorInput<T>>(
     state.variance(correction)
 }
 
+/// Return the square root of Welford variance over all elements.
+/// Divisor is count-correction; reject nonpositive degrees of freedom.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::std_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = std_all(&a,0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn std_all<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     correction: usize,
@@ -75,6 +97,16 @@ pub fn std_all<T: FloatMath, A: TensorInput<T>>(
 /// Variance over zero or more axes. Empty axes preserves the input shape and
 /// produces zeros for `correction=0`. Invalid degrees of freedom are rejected
 /// only if the output contains logical elements (empty outputs stay empty).
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::variance_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = variance_axes(&a,&[-1],false,0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn variance_axes<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axes: &[isize],
@@ -101,6 +133,19 @@ pub fn variance_axes<T: FloatMath, A: TensorInput<T>>(
     super::elementwise::try_map(&states, |state| state.variance(correction))
 }
 
+/// Allocate square roots of Welford variances over selected axes.
+/// Divisor is count-correction. Invalid axes, duplicate axes or nonpositive degrees
+/// of freedom return an error; keepdims retains singleton reduced axes.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::std_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = std_axes(&a,&[-1],false,0)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn std_axes<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axes: &[isize],

@@ -37,38 +37,50 @@ impl<T, S: LayoutShape, B: StorageBuffer<T>> Tensor<T, S, B> {
         })
     }
 
+    /// Wrap backend storage; tensor construction additionally validates the reachable layout span.
     pub fn from_buffer(buffer: B, layout: Layout<S>) -> Result<Self, TensorError> {
         Self::from_storage(Storage::from_buffer(buffer), layout)
     }
 
+    /// Consume the tensor and return its storage and layout without copying.
     pub fn into_parts(self) -> (Storage<T, B>, Layout<S>) {
         (self.storage, self.layout)
     }
 
+    /// Borrow the storage owner. Layout-sensitive mutation is available through tensor views.
     pub fn storage(&self) -> &Storage<T, B> {
         &self.storage
     }
+    /// Borrow the validated affine layout. Strides are measured in elements. O(1).
     pub fn layout(&self) -> &Layout<S> {
         &self.layout
     }
+    /// Borrow the validated shape without copying dimensions. O(1).
     pub fn shape(&self) -> &S {
         self.layout.shape()
     }
+    /// Borrow signed element strides in axis order. Zero denotes broadcasting. O(1).
     pub fn strides(&self) -> &[isize] {
         self.layout.strides()
     }
+    /// Return the physical element offset of logical index [0, ...]. O(1).
     pub fn origin(&self) -> usize {
         self.layout.origin()
     }
+    /// Return the number of axes. Scalars have rank zero. O(1).
     pub fn rank(&self) -> usize {
         self.layout.rank()
     }
+    /// Return the logical element count. Scalars contain one element; any zero
+    /// dimension makes the count zero. Shape validation prevents product overflow.
     pub fn numel(&self) -> usize {
         self.layout.numel()
     }
+    /// Return whether there are no logical elements. A scalar is not empty.
     pub fn is_empty(&self) -> bool {
         self.layout.is_empty()
     }
+    /// Return physical backing length, which can exceed the logical element count.
     pub fn storage_len(&self) -> usize {
         self.storage.len()
     }
@@ -86,21 +98,27 @@ impl<T, S: LayoutShape, B: StorageBuffer<T>> Tensor<T, S, B> {
         self.set_layout(layout)
     }
 
+    /// Swap axis metadata in place, moving no elements. Invalid axes return an error.
     pub fn swap_axes_in_place(&mut self, left: usize, right: usize) -> Result<(), TensorError> {
         let layout = self.layout.swap_axes(left, right)?;
         self.set_layout(layout)
     }
 
+    /// Reverse axis order in place, moving no elements.
     pub fn transpose_in_place(&mut self) -> Result<(), TensorError> {
         let layout = self.layout.transpose()?;
         self.set_layout(layout)
     }
 
+    /// Reverse one axis in place using signed stride metadata; invalid axes
+    /// or unrepresentable addresses return an error.
     pub fn reverse_axis_in_place(&mut self, axis: usize) -> Result<(), TensorError> {
         let layout = self.layout.reverse_axis(axis)?;
         self.set_layout(layout)
     }
 
+    /// Replace an axis with start/length/signed-step slice metadata.
+    /// Reject a zero step, out-of-range source indices or overflowing address arithmetic.
     pub fn slice_axis_in_place(
         &mut self,
         axis: usize,
@@ -135,6 +153,8 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         TensorViewMut::from_slice(self.storage.as_mut_slice(), layout)
     }
 
+    /// Borrow one element at checked logical coordinates. Rank or bounds mismatches
+    /// return an error. Signed/zero strides are respected. O(rank).
     pub fn get(&self, indices: &[usize]) -> Result<&T, TensorError> {
         let offset = self.layout.offset_of(indices)?;
         self.storage.as_slice().get(offset).ok_or_else(|| {
@@ -146,6 +166,8 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         })
     }
 
+    /// Exclusively borrow one element at checked logical coordinates. The borrow
+    /// is tied to self, preserving safety even for overlapping layouts. O(rank).
     pub fn get_mut(&mut self, indices: &[usize]) -> Result<&mut T, TensorError> {
         let offset = self.layout.offset_of(indices)?;
         let available = self.storage.as_slice().len();
@@ -162,6 +184,7 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
     pub fn storage_slice(&self) -> &[T] {
         self.storage.as_slice()
     }
+    /// Exclusively borrow the entire physical host backing. Does not change shape or layout.
     pub fn storage_slice_mut(&mut self) -> &mut [T] {
         self.storage.as_mut_slice()
     }
@@ -178,6 +201,8 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         })
     }
 
+    /// Exclusively borrow logical elements as a contiguous C/F-ordered slice.
+    /// Returns an error for noncontiguous layouts. No allocation.
     pub fn as_contiguous_mut_slice(&mut self, order: Order) -> Result<&mut [T], TensorError> {
         let range = contiguous_range(&self.layout, order)?;
         let available = self.storage.as_slice().len();
@@ -191,6 +216,8 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         })
     }
 
+    /// Iterate logical elements in C/F order, respecting gaps, negative and zero
+    /// strides. The iterator borrows data and owns a copy of layout metadata.
     pub fn iter(&self, order: Order) -> Result<TensorIter<'_, T, S>, TensorError> {
         TensorIter::new(self.storage.as_slice(), self.layout.clone(), order)
     }
@@ -200,6 +227,7 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         self.view()?.permute(axes)
     }
 
+    /// Swap two existing axes without moving any stored elements; invalid axes return an error.
     pub fn swap_axes(
         &self,
         left: usize,
@@ -208,14 +236,19 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         self.view()?.swap_axes(left, right)
     }
 
+    /// Reverse axis order using metadata without moving elements.
     pub fn transpose(&self) -> Result<TensorView<'_, T, S>, TensorError> {
         self.view()?.transpose()
     }
 
+    /// Reverse logical traversal along an axis using a negative stride.
+    /// Returns an error for an invalid axis or unrepresentable address arithmetic.
     pub fn reverse_axis(&self, axis: usize) -> Result<TensorView<'_, T, S>, TensorError> {
         self.view()?.reverse_axis(axis)
     }
 
+    /// Create a view using explicit source start, output length and nonzero
+    /// signed step. Invalid axes, bounds or arithmetic return an error; no element copies.
     pub fn slice_axis(
         &self,
         axis: usize,
@@ -226,14 +259,20 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         self.view()?.slice_axis(axis, start, len, step)
     }
 
+    /// Insert a singleton axis at a position in 0..=rank.
+    /// Returns an axis error outside that range. Element count is unchanged. O(rank).
     pub fn insert_axis(&self, axis: usize) -> Result<TensorView<'_, T, Kahen>, TensorError> {
         self.view()?.insert_axis(axis)
     }
 
+    /// Remove a singleton axis, returning an error for an invalid axis or a
+    /// non-singleton dimension. Element count is unchanged. O(rank).
     pub fn squeeze_axis(&self, axis: usize) -> Result<TensorView<'_, T, Kahen>, TensorError> {
         self.view()?.squeeze_axis(axis)
     }
 
+    /// Create a view with missing/singleton axes expanded through zero strides.
+    /// Invalid directional broadcasting returns an error; no element copies.
     pub fn broadcast_to(
         &self,
         dims: impl AsRef<[usize]>,
@@ -241,6 +280,8 @@ impl<T, S: LayoutShape, B: HostBuffer<T>> Tensor<T, S, B> {
         self.view()?.broadcast_to(dims)
     }
 
+    /// Reinterpret logical traversal using a new shape and C/F order without
+    /// copying. Element count must match and stride chunks must permit a view, otherwise error.
     pub fn reshape_view(
         &self,
         dims: impl AsRef<[usize]>,
@@ -274,10 +315,15 @@ impl<T, S: LayoutShape> Tensor<T, S, CpuBuffer<T>> {
         Self::from_host_storage(storage, layout)
     }
 
+    /// Adopt a boxed slice with matching element count and canonical strides.
+    /// Reject invalid layout, zero-sized element types and address extent overflow.
     pub fn from_box(values: Box<[T]>, shape: S, order: Order) -> Result<Self, TensorError> {
         Self::from_vec(values.into_vec(), shape, order)
     }
 
+    /// Construct from physical values in the requested order and alignment.
+    /// Length must equal numel; alignment must be a power of two at least `align_of::<T>()`.
+    /// Reallocation may be required; invalid extent, layout or allocation returns an error.
     pub fn from_vec_aligned(
         values: Vec<T>,
         shape: S,
@@ -316,6 +362,8 @@ impl<T, S: LayoutShape> Tensor<T, S, CpuBuffer<T>> {
         Self::from_host_storage(storage, layout)
     }
 
+    /// Allocate and initialize elements using a fallible callback. On the first error,
+    /// return its physical index and clean up the initialized prefix. No partial tensor escapes.
     pub fn try_from_fn<E, F>(
         shape: S,
         order: Order,
@@ -338,6 +386,8 @@ impl<T, S: LayoutShape> Tensor<T, S, CpuBuffer<T>> {
         Self::from_host_storage(storage, layout).map_err(TensorBuildError::from)
     }
 
+    /// Allocate a canonical tensor initialized by cloning one value.
+    /// Returns layout, alignment, extent or allocation errors; takes O(numel).
     pub fn filled(shape: S, order: Order, alignment: usize, value: T) -> Result<Self, TensorError>
     where
         T: Clone,
@@ -347,6 +397,8 @@ impl<T, S: LayoutShape> Tensor<T, S, CpuBuffer<T>> {
         Self::from_host_storage(storage, layout)
     }
 
+    /// Allocate a canonical tensor initialized with T::default().
+    /// Returns layout, alignment, extent or allocation errors; takes O(numel).
     pub fn defaulted(shape: S, order: Order, alignment: usize) -> Result<Self, TensorError>
     where
         T: Default,

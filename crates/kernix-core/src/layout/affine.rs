@@ -57,21 +57,28 @@ impl<S: LayoutShape> Layout<S> {
         Self::from_parts(shape, owned, origin)
     }
 
+    /// Borrow the validated shape without copying dimensions. O(1).
     pub fn shape(&self) -> &S {
         &self.shape
     }
+    /// Borrow signed element strides in axis order. Zero denotes broadcasting. O(1).
     pub fn strides(&self) -> &[isize] {
         self.strides.as_ref()
     }
+    /// Return the physical element offset of logical index [0, ...]. O(1).
     pub fn origin(&self) -> usize {
         self.origin
     }
+    /// Return the number of axes. Scalars have rank zero. O(1).
     pub fn rank(&self) -> usize {
         self.shape.rank()
     }
+    /// Return the logical element count. Scalars contain one element; any zero
+    /// dimension makes the count zero. Shape validation prevents product overflow.
     pub fn numel(&self) -> usize {
         self.shape.numel()
     }
+    /// Return whether there are no logical elements. A scalar is not empty.
     pub fn is_empty(&self) -> bool {
         self.shape.is_zero_sized()
     }
@@ -79,9 +86,11 @@ impl<S: LayoutShape> Layout<S> {
     pub fn span(&self) -> Option<StorageSpan> {
         self.span
     }
+    /// Return the lowest reachable storage index, or None for an empty layout.
     pub fn min_offset(&self) -> Option<usize> {
         self.span.map(|s| s.start)
     }
+    /// Return the highest reachable storage index, or None for an empty layout.
     pub fn max_offset(&self) -> Option<usize> {
         self.span.map(|s| s.end - 1)
     }
@@ -90,12 +99,15 @@ impl<S: LayoutShape> Layout<S> {
         self.span.map_or(0, |span| span.end)
     }
 
+    /// Test whether any stride is negative, including strides on singleton axes.
     pub fn has_negative_strides(&self) -> bool {
         self.strides().iter().any(|&s| s < 0)
     }
+    /// Test whether any stride is zero, including strides on singleton axes.
     pub fn has_zero_strides(&self) -> bool {
         self.strides().contains(&0)
     }
+    /// Test whether an axis of length greater than one has stride +1 or -1.
     pub fn has_unit_stride(&self) -> bool {
         self.shape
             .dims()
@@ -103,15 +115,20 @@ impl<S: LayoutShape> Layout<S> {
             .zip(self.strides())
             .any(|(&dim, &s)| dim > 1 && s.unsigned_abs() == 1)
     }
+    /// Test row-major contiguity, ignoring singleton strides; empty layouts are contiguous.
     pub fn is_c_contiguous(&self) -> bool {
         geometry::is_contiguous(self.shape.dims(), self.strides(), Order::C)
     }
+    /// Test column-major contiguity, ignoring singleton strides; empty layouts are contiguous.
     pub fn is_f_contiguous(&self) -> bool {
         geometry::is_contiguous(self.shape.dims(), self.strides(), Order::F)
     }
+    /// Test contiguity in either C or F order.
     pub fn is_contiguous(&self) -> bool {
         self.is_c_contiguous() || self.is_f_contiguous()
     }
+    /// Conservatively classify whether different logical indices may share storage.
+    /// Unknown does not authorize independently mutable references.
     pub fn overlap(&self) -> Overlap {
         geometry::overlap(self.shape.dims(), self.strides(), self.span, self.numel())
     }
@@ -226,6 +243,7 @@ impl<S: LayoutShape> Layout<S> {
         self.same_rank_layout(&dims, &strides, self.origin)
     }
 
+    /// Swap two existing axes without moving any stored elements; invalid axes return an error.
     pub fn swap_axes(&self, left: usize, right: usize) -> Result<Self, LayoutError> {
         self.axis(left)?;
         self.axis(right)?;
@@ -247,6 +265,8 @@ impl<S: LayoutShape> Layout<S> {
         self.swap_axes(0, 1)
     }
 
+    /// Reverse logical traversal along an axis using a negative stride.
+    /// Returns an error for an invalid axis or unrepresentable address arithmetic.
     pub fn reverse_axis(&self, axis: usize) -> Result<Self, LayoutError> {
         self.axis(axis)?;
         let dim = self.shape.dims()[axis];

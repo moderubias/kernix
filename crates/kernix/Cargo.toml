@@ -17,14 +17,18 @@ include = [
     "README.md",
     "LICENSE",
     "LICENSES/**",
+    "KIYOSHIMA.json",
 ]
 
 [features]
 default = ["std"]
-std = ["kernix-core/std"]
+std = ["kernix-core/std", "kernix-ops/std"]
+serde = ["kernix-core/serde", "kernix-ops/serde"]
+parallel = ["std", "kernix-ops/parallel"]
 
 [dependencies]
 kernix-core.workspace = true
+kernix-ops.workspace = true
 
 [lints]
 workspace = true

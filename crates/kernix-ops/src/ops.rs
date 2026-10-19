@@ -1,3 +1,4 @@
+// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
 mod broadcast;
 mod checked;
 mod compare;
@@ -10,6 +11,7 @@ mod linalg;
 mod linalg_extra;
 mod manipulate;
 mod math;
+mod math_extra;
 mod numeric;
 mod ordering;
 mod reduce;
@@ -56,6 +58,14 @@ pub use math::{
 };
 
 pub use stats::{std_all, std_axes, variance_all, variance_axes};
+
+pub use math_extra::{
+    FloatTrig, atan2, cos, expm1, hypot, log_softmax_online, log_softmax_temperature, log1mexp,
+    log1p, logaddexp, logdiffexp, logsigmoid, logsumexp_online_all, logsumexp_online_axis,
+    masked_log_softmax, masked_log_softmax_temperature, masked_softmax, masked_softmax_temperature,
+    mish, rsqrt, sin, softmax_online, softmax_online_temperature, softmax_temperature,
+    softplus_beta,
+};
 
 // Extended logical-index operations.
 pub use indexed::{masked_select, nonzero, scatter_axis, take_axis};

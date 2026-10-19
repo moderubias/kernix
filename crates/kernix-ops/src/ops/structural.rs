@@ -10,6 +10,16 @@ use super::{
 
 /// Partition an axis into exact `lengths`. Zero-length partitions are valid;
 /// `sum(lengths)` must equal the source axis length.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::split_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = split_axis(&a,0,&[1,1])?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn split_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -51,6 +61,16 @@ pub fn split_axis<T: Clone, A: TensorInput<T>>(
 
 /// Split into consecutive parts of at most `chunk_size` on one axis.
 /// An empty axis produces no parts; `chunk_size=0` is rejected.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::chunk_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = chunk_axis(&a,0,1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn chunk_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -76,6 +96,16 @@ pub fn chunk_axis<T: Clone, A: TensorInput<T>>(
 /// Tile the source across dimensions. Repeats are right-aligned; missing
 /// leading repeats are 1, while excess repeat axes prepend singleton dims.
 /// Unlike `repeat_axis`, an entire block is repeated.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::tile;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = tile(&a,&[2,1])?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn tile<T: Clone, A: TensorInput<T>>(
     source: &A,
     repeats: &[usize],
@@ -114,6 +144,16 @@ pub fn tile<T: Clone, A: TensorInput<T>>(
 
 /// Circular shift of one axis. Positive shifts move values toward increasing
 /// logical indices. Works even for `isize::MIN` and dimensions > isize::MAX.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::roll_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = roll_axis(&a,-1,1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn roll_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -151,6 +191,16 @@ pub fn roll_axis<T: Clone, A: TensorInput<T>>(
 /// immediately after it. `window`, `step`, `dilation` must be positive.
 /// Output dimension on the chosen axis is `1 + (dim - span) / step` when
 /// `dim >= span`, otherwise 0; `span = 1 + (window-1)*dilation`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::unfold_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = unfold_axis(&a,-1,2,1,1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn unfold_axis<T: Clone, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -205,6 +255,16 @@ pub fn unfold_axis<T: Clone, A: TensorInput<T>>(
 /// has size `window`. Output extent is supplied explicitly. Any positions not
 /// covered by windows are filled with `T::zero()`. Duplicate contributions
 /// are summed in logical C-order (native arithmetic semantics).
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::fold_axis;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = fold_axis(&a,0,3,1,1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn fold_axis<T, A>(
     windows: &A,
     axis: isize,

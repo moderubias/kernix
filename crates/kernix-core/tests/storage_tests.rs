@@ -1,3 +1,4 @@
+//! Integration regressions for storage tests.
 use core::mem::align_of;
 use std::{
     cell::Cell,

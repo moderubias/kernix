@@ -1,3 +1,4 @@
+// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
 //! Portable floating-point kernels with explicitly documented IEEE semantics.
 //! `libm` permits use on `no_std` targets. Outputs use C-contiguous CPU storage.
 use alloc::vec;
@@ -22,13 +23,29 @@ pub trait FloatMath:
     + Mul<Output = Self>
     + Neg<Output = Self>
 {
+    /// Accurate log(1+x), including x close to zero.
+    fn ln_1p(self) -> Self {
+        Self::ln(Self::one() + self)
+    }
+    /// Accurate exp(x)-1, including x close to zero.
+    fn exp_m1(self) -> Self {
+        Self::exp(self) - Self::one()
+    }
+    /// Compute the natural exponential, following IEEE nonfinite/domain behavior.
     fn exp(self) -> Self;
+    /// Compute the natural logarithm; zero gives negative infinity, negatives give NaN.
     fn ln(self) -> Self;
+    /// Compute the principal square root; negative finite values give NaN.
     fn sqrt(self) -> Self;
+    /// Compute hyperbolic tangent, with limits -1 and +1 at infinities.
     fn tanh(self) -> Self;
+    /// Compute the Gaussian error function using the portable scalar implementation.
     fn erf(self) -> Self;
+    /// Return absolute magnitude, preserving NaN propagation and making negative zero positive.
     fn abs(self) -> Self;
+    /// Test for IEEE NaN; tensor overload allocates a Boolean mask in C order.
     fn is_nan(self) -> bool;
+    /// Test that a value is neither infinity nor NaN; tensor overload returns a Boolean mask.
     fn is_finite(self) -> bool;
 }
 
@@ -38,6 +55,12 @@ impl FloatMath for f32 {
     }
     fn ln(self) -> Self {
         libm::logf(self)
+    }
+    fn ln_1p(self) -> Self {
+        libm::log1pf(self)
+    }
+    fn exp_m1(self) -> Self {
+        libm::expm1f(self)
     }
     fn sqrt(self) -> Self {
         libm::sqrtf(self)
@@ -65,6 +88,12 @@ impl FloatMath for f64 {
     fn ln(self) -> Self {
         libm::log(self)
     }
+    fn ln_1p(self) -> Self {
+        libm::log1p(self)
+    }
+    fn exp_m1(self) -> Self {
+        libm::expm1(self)
+    }
     fn sqrt(self) -> Self {
         libm::sqrt(self)
     }
@@ -87,6 +116,8 @@ impl FloatMath for f64 {
 
 macro_rules! float_unary {
     ($name:ident, $method:ident) => {
+        /// Allocate an elementwise portable floating-point mathematical function.
+        /// Inputs are read in logical order; IEEE domain and nonfinite behavior applies.
         pub fn $name<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
             map(source, |value| FloatMath::$method(*value))
         }
@@ -98,14 +129,46 @@ float_unary!(sqrt, sqrt);
 float_unary!(tanh, tanh);
 float_unary!(abs, abs);
 
+/// Test for IEEE NaN; tensor overload allocates a Boolean mask in C order.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::is_nan;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = is_nan(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn is_nan<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<bool>, OpsError> {
     map(source, |value| FloatMath::is_nan(*value))
 }
+/// Test that a value is neither infinity nor NaN; tensor overload returns a Boolean mask.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::is_finite;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = is_finite(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn is_finite<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<bool>, OpsError> {
     map(source, |value| FloatMath::is_finite(*value))
 }
 
 /// ReLU: NaNs propagate; finite negative values become positive zero.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::relu;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = relu(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn relu<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
     map(source, |value| {
         if FloatMath::is_nan(*value) || *value > T::zero() {
@@ -126,17 +189,55 @@ fn scalar_sigmoid<T: FloatMath>(x: T) -> T {
     }
 }
 
+/// Allocate stable sigmoid values: 1/(1+exp(-x)).
+/// Separate sign branches avoid exponential overflow. Infinities map to zero/one; NaNs propagate.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::sigmoid;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = sigmoid(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn sigmoid<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
     map(source, |value| scalar_sigmoid(*value))
 }
 
 /// SiLU / Swish activation: `x * sigmoid(x)`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::silu;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = silu(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn silu<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
-    map(source, |value| *value * scalar_sigmoid(*value))
+    map(source, |value| {
+        if *value < T::zero() && !FloatMath::is_finite(*value) {
+            T::zero()
+        } else {
+            *value * scalar_sigmoid(*value)
+        }
+    })
 }
 
 /// GELU using the exact Gaussian CDF formulation (`erf`), rather than a tanh
 /// approximation. Accuracy depends on the portable libm implementation.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::gelu;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = gelu(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn gelu<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
     let half = T::one() / T::from_count(2);
     let root_two = FloatMath::sqrt(T::from_count(2));
@@ -145,6 +246,18 @@ pub fn gelu<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, Op
     })
 }
 
+/// Allocate x for nonnegative x and negative_slope*x otherwise.
+/// NaNs propagate. Slope uses the element dtype with no implicit promotion.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::leaky_relu;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = leaky_relu(&a, 0.1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn leaky_relu<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     negative_slope: T,
@@ -159,14 +272,28 @@ pub fn leaky_relu<T: FloatMath, A: TensorInput<T>>(
 }
 
 /// Numerically stable softplus, avoiding `exp(x)` overflow for large x.
+pub(crate) fn scalar_softplus<T: FloatMath>(value: T) -> T {
+    if value > T::zero() {
+        value + FloatMath::ln_1p(FloatMath::exp(-value))
+    } else {
+        FloatMath::ln_1p(FloatMath::exp(value))
+    }
+}
+
+/// Allocate stable ln(1+exp(x)), using log1p and a sign-dependent branch.
+/// Avoids exponential overflow for finite inputs and preserves small positive values.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::softplus;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = softplus(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn softplus<T: FloatMath, A: TensorInput<T>>(source: &A) -> Result<Tensor<T>, OpsError> {
-    map(source, |value| {
-        if *value > T::zero() {
-            *value + FloatMath::ln(T::one() + FloatMath::exp(-*value))
-        } else {
-            FloatMath::ln(T::one() + FloatMath::exp(*value))
-        }
-    })
+    map(source, |value| scalar_softplus(*value))
 }
 
 fn normalize_axis(rank: usize, axis: isize) -> Result<usize, OpsError> {
@@ -248,6 +375,19 @@ fn normalized_exp<T: FloatMath, A: TensorInput<T>>(
     Ok(output)
 }
 
+/// Normalize finite logits along a signed axis using max-shifted exponentials.
+/// Reject invalid axes or nonfinite inputs with their logical coordinates. Empty
+/// tensors produce empty outputs. Allocates C-order output; takes O(numel*rank).
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::softmax;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = softmax(&a, -1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn softmax<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axis: isize,
@@ -255,6 +395,19 @@ pub fn softmax<T: FloatMath, A: TensorInput<T>>(
     normalized_exp(source, axis, false)
 }
 
+/// Compute log probabilities directly from max-shifted finite logits.
+/// Avoids taking log of rounded-zero probabilities. Invalid axes or nonfinite
+/// inputs return errors; empty tensors return empty C-order outputs.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::log_softmax;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = log_softmax(&a, -1)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn log_softmax<T: FloatMath, A: TensorInput<T>>(
     source: &A,
     axis: isize,

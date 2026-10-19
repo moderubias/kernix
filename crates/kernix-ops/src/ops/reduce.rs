@@ -1,3 +1,4 @@
+// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
 use alloc::{vec, vec::Vec};
 use core::{
     mem::align_of,
@@ -5,7 +6,7 @@ use core::{
 };
 use kernix_core::{layout::Order, shape::Kahen, tensor::Tensor};
 
-use super::{FloatElement, One, OpsError, TensorInput, Zero, broadcast::next_c, elementwise::map};
+use super::{FloatElement, One, OpsError, TensorInput, Zero, broadcast::next_c};
 
 pub(super) fn axes_mask(rank: usize, axes: &[isize]) -> Result<Vec<bool>, OpsError> {
     let mut mask = vec![false; rank];
@@ -89,6 +90,16 @@ where
 
 /// Sum along selected axes. Empty reductions return additive identity (zero).
 /// Empty `axes` means no reduction, and rank-0 source is preserved.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::sum_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = sum_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn sum_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: Zero + Clone + AddAssign<T>,
@@ -98,6 +109,16 @@ where
 }
 
 /// Product along selected axes. Empty reductions return multiplicative identity.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::prod_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = prod_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn prod_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: One + Clone + MulAssign<T>,
@@ -107,12 +128,31 @@ where
 }
 
 /// Sum of all elements, including zero for an empty tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::sum_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = sum_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn sum_all<T, A>(source: &A) -> Result<T, OpsError>
 where
     T: Zero + AddAssign<T> + Clone,
     A: TensorInput<T>,
 {
     let shape = Kahen::new(source.dims())?;
+    if let Some(values) = source.as_c_contiguous_slice() {
+        if values.len() == shape.numel() {
+            let mut acc = T::zero();
+            for value in values {
+                acc += value.clone();
+            }
+            return Ok(acc);
+        }
+    }
     let mut coords = vec![0; source.dims().len()];
     let mut acc = T::zero();
     for _ in 0..shape.numel() {
@@ -123,12 +163,31 @@ where
 }
 
 /// Product of all elements, including one for an empty tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::prod_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = prod_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn prod_all<T, A>(source: &A) -> Result<T, OpsError>
 where
     T: One + MulAssign<T> + Clone,
     A: TensorInput<T>,
 {
     let shape = Kahen::new(source.dims())?;
+    if let Some(values) = source.as_c_contiguous_slice() {
+        if values.len() == shape.numel() {
+            let mut acc = T::one();
+            for value in values {
+                acc *= value.clone();
+            }
+            return Ok(acc);
+        }
+    }
     let mut coords = vec![0; source.dims().len()];
     let mut acc = T::one();
     for _ in 0..shape.numel() {
@@ -140,6 +199,16 @@ where
 
 /// Minimum of all elements. `None` means empty input. For floats, any NaN
 /// propagates to the output, independent of its position in the tensor.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::min_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = min_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn min_all<T, A>(source: &A) -> Result<Option<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -149,6 +218,16 @@ where
 }
 
 /// Maximum of all elements. See `min_all` for NaN propagation.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::max_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = max_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn max_all<T, A>(source: &A) -> Result<Option<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -197,6 +276,16 @@ where
 }
 
 /// Floating mean of every element. Empty source is an explicit error.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::mean_all;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = mean_all(&a)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn mean_all<T, A>(source: &A) -> Result<T, OpsError>
 where
     T: FloatElement + Clone + AddAssign<T>,
@@ -206,11 +295,40 @@ where
     if shape.numel() == 0 {
         return Err(OpsError::EmptyReduction);
     }
-    Ok(sum_all(source)? / T::from_count(shape.numel()))
+    // Divide before accumulation. This avoids overflow of a large finite
+    // intermediate sum when the final mean is representable. This is not a
+    // compensated summation guarantee for all possible input sequences.
+    let divisor = T::from_count(shape.numel());
+    if let Some(values) = source.as_c_contiguous_slice() {
+        if values.len() == shape.numel() {
+            let mut mean = T::zero();
+            for value in values {
+                mean += *value / divisor;
+            }
+            return Ok(mean);
+        }
+    }
+    let mut coords = vec![0; source.dims().len()];
+    let mut mean = T::zero();
+    for _ in 0..shape.numel() {
+        mean += *source.get(&coords)? / divisor;
+        next_c(&mut coords, source.dims());
+    }
+    Ok(mean)
 }
 
 /// Floating mean along axes. Empty reduced extents produce an error if the
 /// output would contain elements; a zero-sized result is valid and empty.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::mean_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = mean_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn mean_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: FloatElement + Clone + AddAssign<T>,
@@ -237,15 +355,28 @@ where
     if count == 0 && output_shape.numel() != 0 {
         return Err(OpsError::EmptyReduction);
     }
-    let sum = sum_axes(source, axes, keepdims)?;
     if count == 0 {
-        return Ok(sum);
-    } // empty output, no division performed
-    map(&sum, |value| *value / T::from_count(count))
+        // Only possible for an empty output (nonempty outputs error above).
+        return sum_axes(source, axes, keepdims);
+    }
+    let divisor = T::from_count(count);
+    reduce_axes(source, axes, keepdims, T::zero(), |acc, value| {
+        *acc += value / divisor;
+    })
 }
 
 /// Minimum along selected axes, or `EmptyReduction` where no reduced elements
 /// exist for a nonempty output. NaNs propagate within each reduced group.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::min_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = min_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn min_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: PartialOrd + Clone,
@@ -255,6 +386,16 @@ where
 }
 
 /// Maximum along selected axes, with the same empty/NaN policy as `min_axes`.
+///
+/// # Examples
+///
+/// ```
+/// use kernix_core::{Order, shape::Kahen, tensor::Tensor};
+/// use kernix_ops::max_axes;
+/// let mut a = Tensor::from_vec(vec![1.0,2.0,3.0,4.0], Kahen::new([2,2])?, Order::C)?;
+/// let result = max_axes(&a, &[-1], true)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn max_axes<T, A>(source: &A, axes: &[isize], keepdims: bool) -> Result<Tensor<T>, OpsError>
 where
     T: PartialOrd + Clone,

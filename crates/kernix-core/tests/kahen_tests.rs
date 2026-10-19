@@ -1,3 +1,4 @@
+//! Integration regressions for kahen tests.
 use kernix_core::shape::{Kahen, ShapeError};
 
 #[test]

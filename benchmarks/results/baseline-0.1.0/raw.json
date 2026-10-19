@@ -1,0 +1,334 @@
+{
+  "metadata": {
+    "version": "baseline-0.1.0",
+    "timestamp": "2026-10-19T14:20:36Z",
+    "platform": "Linux-7.2.9-arch1-1-x86_64-with-glibc2.44",
+    "cpu": "12th Gen Intel(R) Core(TM) i3-1215U",
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "revision": "b208e4231d00635eb4abb5c1647222f5779c43a9",
+    "dirty": true,
+    "numpy": "2.5.4",
+    "threads": 1,
+    "dtype": "f64",
+    "timing": "allocation-inclusive; 15 warmed 25ms batches; p95=max batch mean",
+    "dependency_tree": "kernix-ops v0.1.0 (/home/kiyoshima/All_Work_Folders/moderubias/projects/Rust/kernix/crates/kernix-ops)\n\u251c\u2500\u2500 kernix-core v0.1.0 (/home/kiyoshima/All_Work_Folders/moderubias/projects/Rust/kernix/crates/kernix-core)\n\u2502   \u251c\u2500\u2500 smallvec v1.16.2\n\u2502   \u2514\u2500\u2500 thiserror v2.0.21\n\u2502       \u2514\u2500\u2500 thiserror-impl v2.0.21 (proc-macro)\n\u2502           \u251c\u2500\u2500 proc-macro2 v1.0.107\n\u2502           \u2502   \u2514\u2500\u2500 unicode-ident v1.0.26\n\u2502           \u251c\u2500\u2500 quote v1.0.47\n\u2502           \u2502   \u2514\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502           \u2514\u2500\u2500 syn v3.0.6\n\u2502               \u251c\u2500\u2500 proc-macro2 v1.0.107 (*)\n\u2502               \u251c\u2500\u2500 quote v1.0.47 (*)\n\u2502               \u2514\u2500\u2500 unicode-ident v1.0.26\n\u251c\u2500\u2500 kernix-traits v0.1.0 (/home/kiyoshima/All_Work_Folders/moderubias/projects/Rust/kernix/crates/kernix-traits)\n\u2502   \u2514\u2500\u2500 num-traits v0.2.19\n\u2502       [build-dependencies]\n\u2502       \u2514\u2500\u2500 autocfg v1.5.1\n\u2514\u2500\u2500 libm v0.2.16\n[dev-dependencies]\n\u251c\u2500\u2500 ndarray v0.17.2\n\u2502   \u251c\u2500\u2500 matrixmultiply v0.3.11\n\u2502   \u2502   \u2514\u2500\u2500 rawpointer v0.2.1\n\u2502   \u2502   [build-dependencies]\n\u2502   \u2502   \u2514\u2500\u2500 autocfg v1.5.1\n\u2502   \u251c\u2500\u2500 num-complex v0.4.6\n\u2502   \u2502   \u2514\u2500\u2500 num-traits v0.2.19 (*)\n\u2502   \u251c\u2500\u2500 num-integer v0.1.47\n\u2502   \u2502   \u2514\u2500\u2500 num-traits v0.2.19 (*)\n\u2502   \u251c\u2500\u2500 num-traits v0.2.19 (*)\n\u2502   \u2514\u2500\u2500 rawpointer v0.2.1\n\u251c\u2500\u2500 proptest v1.11.0\n\u2502   \u251c\u2500\u2500 bit-set v0.8.0\n\u2502   \u2502   \u2514\u2500\u2500 bit-vec v0.8.0\n\u2502   \u251c\u2500\u2500 bit-vec v0.8.0\n\u2502   \u251c\u2500\u2500 bitflags v2.13.2\n\u2502   \u251c\u2500\u2500 num-traits v0.2.19 (*)\n\u2502   \u251c\u2500\u2500 rand v0.9.5\n\u2502   \u2502   \u2514\u2500\u2500 rand_core v0.9.5\n\u2502   \u2502       \u2514\u2500\u2500 getrandom v0.3.4\n\u2502   \u2502           \u251c\u2500\u2500 cfg-if v1.0.5\n\u2502   \u2502           \u2514\u2500\u2500 libc v0.2.190\n\u2502   \u251c\u2500\u2500 rand_chacha v0.9.0\n\u2502   \u2502   \u251c\u2500\u2500 ppv-lite86 v0.2.21\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 zerocopy v0.8.59\n\u2502   \u2502   \u2514\u2500\u2500 rand_core v0.9.5 (*)\n\u2502   \u251c\u2500\u2500 rand_xorshift v0.4.0\n\u2502   \u2502   \u2514\u2500\u2500 rand_core v0.9.5 (*)\n\u2502   \u251c\u2500\u2500 regex-syntax v0.8.11\n\u2502   \u251c\u2500\u2500 rusty-fork v0.3.1\n\u2502   \u2502   \u251c\u2500\u2500 fnv v1.0.7\n\u2502   \u2502   \u251c\u2500\u2500 quick-error v1.2.3\n\u2502   \u2502   \u251c\u2500\u2500 tempfile v3.27.0\n\u2502   \u2502   \u2502   \u251c\u2500\u2500 fastrand v2.5.0\n\u2502   \u2502   \u2502   \u251c\u2500\u2500 getrandom v0.4.3\n\u2502   \u2502   \u2502   \u2502   \u251c\u2500\u2500 cfg-if v1.0.5\n\u2502   \u2502   \u2502   \u2502   \u2514\u2500\u2500 libc v0.2.190\n\u2502   \u2502   \u2502   \u251c\u2500\u2500 once_cell v1.21.4\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 rustix v1.1.5\n\u2502   \u2502   \u2502       \u251c\u2500\u2500 bitflags v2.13.2\n\u2502   \u2502   \u2502       \u2514\u2500\u2500 linux-raw-sys v0.12.1\n\u2502   \u2502   \u2514\u2500\u2500 wait-timeout v0.2.1\n\u2502   \u2502       \u2514\u2500\u2500 libc v0.2.190\n\u2502   \u251c\u2500\u2500 tempfile v3.27.0 (*)\n\u2502   \u2514\u2500\u2500 unarray v0.1.4\n\u2514\u2500\u2500 serde_json v1.0.151\n    \u251c\u2500\u2500 itoa v1.0.18\n    \u251c\u2500\u2500 memchr v2.8.3\n    \u251c\u2500\u2500 serde_core v1.0.229\n    \u2514\u2500\u2500 zmij v1.0.23",
+    "numpy_configuration": "{'Compilers': {'c': {'name': 'gcc', 'linker': 'ld.bfd', 'version': '16.2.1', 'commands': 'cc', 'args': '-march=x86-64, -mtune=generic, -O2, -pipe, -fno-plt, -fexceptions, -Wp,-D_FORTIFY_SOURCE=3, -Wformat, -Werror=format-security, -fstack-clash-protection, -fcf-protection, -fno-omit-frame-pointer, -mno-omit-leaf-frame-pointer, -g, -ffile-prefix-map=/build/python-numpy/src=/usr/src/debug/python-numpy, -flto=auto, -ffat-lto-objects', 'linker args': '-Wl,-O1, -Wl,--sort-common, -Wl,--as-needed, -Wl,-z,relro, -Wl,-z,now, -Wl,-z,pack-relative-relocs, -flto=auto, -march=x86-64, -mtune=generic, -O2, -pipe, -fno-plt, -fexceptions, -Wp,-D_FORTIFY_SOURCE=3, -Wformat, -Werror=format-security, -fstack-clash-protection, -fcf-protection, -fno-omit-frame-pointer, -mno-omit-leaf-frame-pointer, -g, -ffile-prefix-map=/build/python-numpy/src=/usr/src/debug/python-numpy, -flto=auto, -ffat-lto-objects'}, 'cython': {'name': 'cython', 'linker': 'cython', 'version': '3.3.0', 'commands': 'cython'}, 'c++': {'name': 'gcc', 'linker': 'ld.bfd', 'version': '16.2.1', 'commands': 'c++', 'args': '-march=x86-64, -mtune=generic, -O2, -pipe, -fno-plt, -fexceptions, -Wp,-D_FORTIFY_SOURCE=3, -Wformat, -Werror=format-security, -fstack-clash-protection, -fcf-protection, -fno-omit-frame-pointer, -mno-omit-leaf-frame-pointer, -Wp,-D_GLIBCXX_ASSERTIONS, -g, -ffile-prefix-map=/build/python-numpy/src=/usr/src/debug/python-numpy, -flto=auto, -ffat-lto-objects', 'linker args': '-Wl,-O1, -Wl,--sort-common, -Wl,--as-needed, -Wl,-z,relro, -Wl,-z,now, -Wl,-z,pack-relative-relocs, -flto=auto, -march=x86-64, -mtune=generic, -O2, -pipe, -fno-plt, -fexceptions, -Wp,-D_FORTIFY_SOURCE=3, -Wformat, -Werror=format-security, -fstack-clash-protection, -fcf-protection, -fno-omit-frame-pointer, -mno-omit-leaf-frame-pointer, -Wp,-D_GLIBCXX_ASSERTIONS, -g, -ffile-prefix-map=/build/python-numpy/src=/usr/src/debug/python-numpy, -flto=auto, -ffat-lto-objects'}}, 'Machine Information': {'host': {'cpu': 'x86_64', 'family': 'x86_64', 'endian': 'little', 'system': 'linux'}, 'build': {'cpu': 'x86_64', 'family': 'x86_64', 'endian': 'little', 'system': 'linux'}}, 'Build Dependencies': {'blas': {'name': 'cblas', 'found': True, 'version': '3.12.0', 'detection method': 'pkgconfig', 'include directory': '/usr/include', 'lib directory': '/usr/lib', 'openblas configuration': 'unknown', 'pc file directory': '/usr/lib/pkgconfig'}, 'lapack': {'name': 'lapack', 'found': True, 'version': '3.12.0', 'detection method': 'pkgconfig', 'include directory': '/usr/include', 'lib directory': '/usr/lib', 'openblas configuration': 'unknown', 'pc file directory': '/usr/lib/pkgconfig'}}, 'Python Information': {'path': '/usr/bin/python', 'version': '3.14'}, 'SIMD Extensions': {'found': ['X86_V2', 'X86_V3'], 'not found': ['X86_V4', 'AVX512_ICL', 'AVX512_SPR']}}"
+  },
+  "results": {
+    "add_65536_f64/kernix": {
+      "p50_ns": 23401.578110383536,
+      "p95_ns": 31311.63329161452,
+      "samples_ns": [
+        22325.386607142857,
+        22329.04910714286,
+        22615.263110307413,
+        22634.98733031674,
+        22698.33212341198,
+        22986.057904411766,
+        23372.15046728972,
+        23401.578110383536,
+        23735.417457305502,
+        23803.341579448144,
+        24043.758653846155,
+        24491.34084231146,
+        25543.05924412666,
+        26656.19722814499,
+        31311.63329161452
+      ]
+    },
+    "add_65536_f64/ndarray": {
+      "p50_ns": 21198.666101694915,
+      "p95_ns": 21410.179794520547,
+      "samples_ns": [
+        20214.144704931285,
+        20330.60894308943,
+        20472.028641571196,
+        20632.288778877886,
+        20905.388471177946,
+        20911.365384615383,
+        20970.872590108967,
+        21198.666101694915,
+        21202.26186440678,
+        21232.286926994908,
+        21241.53950722175,
+        21321.492753623188,
+        21344.444539249147,
+        21361.685738684886,
+        21410.179794520547
+      ]
+    },
+    "matmul_128_f64/kernix": {
+      "p50_ns": 3029011.111111111,
+      "p95_ns": 4304708.0,
+      "samples_ns": [
+        2976462.5555555555,
+        2997647.222222222,
+        3005889.888888889,
+        3008295.777777778,
+        3010405.888888889,
+        3011234.3333333335,
+        3025883.6666666665,
+        3029011.111111111,
+        3029494.0,
+        3032398.222222222,
+        3039812.4444444445,
+        3041493.4444444445,
+        3109978.111111111,
+        3150712.25,
+        4304708.0
+      ]
+    },
+    "matmul_128_f64/ndarray": {
+      "p50_ns": 83316.96677740864,
+      "p95_ns": 88887.91843971632,
+      "samples_ns": [
+        82296.32565789473,
+        82740.52145214521,
+        82955.54304635762,
+        83077.85049833887,
+        83179.93355481728,
+        83180.94684385382,
+        83244.88704318937,
+        83316.96677740864,
+        83369.84333333334,
+        83435.04666666666,
+        83531.57666666666,
+        83620.78260869565,
+        85036.8537414966,
+        85815.5890410959,
+        88887.91843971632
+      ]
+    },
+    "matmul_32_f64/kernix": {
+      "p50_ns": 32012.596670934698,
+      "p95_ns": 36372.229651162794,
+      "samples_ns": [
+        31397.278544542034,
+        31582.878787878788,
+        31649.31392405063,
+        31753.753807106597,
+        31788.171537484115,
+        31804.083862770014,
+        31911.913265306124,
+        32012.596670934698,
+        32030.297055057617,
+        32107.064184852374,
+        33891.027100271,
+        33928.952510176394,
+        34323.677640603564,
+        34785.055632823365,
+        36372.229651162794
+      ]
+    },
+    "matmul_32_f64/ndarray": {
+      "p50_ns": 1502.201405996515,
+      "p95_ns": 1595.143239966822,
+      "samples_ns": [
+        1481.6922894565282,
+        1484.6480403800474,
+        1488.9154308855934,
+        1489.1016141521234,
+        1491.0202767175572,
+        1494.7701183785723,
+        1500.2089283571343,
+        1502.201405996515,
+        1504.3343763162645,
+        1510.0122606752432,
+        1514.885111797855,
+        1519.1842377103967,
+        1519.9001276518145,
+        1548.6677403369672,
+        1595.143239966822
+      ]
+    },
+    "softmax_256x64_f64/kernix": {
+      "p50_ns": 397787.5396825397,
+      "p95_ns": 424373.593220339,
+      "samples_ns": [
+        393399.625,
+        393682.546875,
+        395056.3125,
+        396553.46875,
+        396763.734375,
+        397076.07936507935,
+        397111.34920634923,
+        397787.5396825397,
+        398948.0634920635,
+        400078.1111111111,
+        401993.6349206349,
+        402023.22222222225,
+        402937.71428571426,
+        421853.2,
+        424373.593220339
+      ]
+    },
+    "softmax_256x64_f64/ndarray": {
+      "p50_ns": 67230.14516129032,
+      "p95_ns": 69091.1187845304,
+      "samples_ns": [
+        66492.10582010582,
+        66523.98670212766,
+        66805.09866666667,
+        66920.7486631016,
+        67031.97050938338,
+        67115.59517426274,
+        67190.76943699732,
+        67230.14516129032,
+        67432.21563342318,
+        67493.12398921832,
+        67547.7385444744,
+        67635.50270270271,
+        67720.85675675675,
+        67932.18157181572,
+        69091.1187845304
+      ]
+    },
+    "sum_65536_f64/kernix": {
+      "p50_ns": 31027.383374689827,
+      "p95_ns": 51025.87959183673,
+      "samples_ns": [
+        30432.18613138686,
+        30663.708333333332,
+        30739.76044226044,
+        30785.531365313655,
+        30786.734317343173,
+        30915.25587144623,
+        31001.346964064436,
+        31027.383374689827,
+        31156.266500622663,
+        31273.33125,
+        31451.720754716982,
+        32012.35595390525,
+        32441.068741893643,
+        33650.56586021505,
+        51025.87959183673
+      ]
+    },
+    "sum_65536_f64/ndarray": {
+      "p50_ns": 5697.730856882406,
+      "p95_ns": 6086.810370009737,
+      "samples_ns": [
+        5488.182177348552,
+        5549.832852386237,
+        5550.3147613762485,
+        5569.638004009802,
+        5591.955043614404,
+        5592.150301945873,
+        5650.022598870057,
+        5697.730856882406,
+        5802.804595033651,
+        5808.236004645761,
+        5826.612910743416,
+        5830.6245335820895,
+        5850.549836218998,
+        5978.194404591105,
+        6086.810370009737
+      ]
+    },
+    "add_65536_f64/numpy": {
+      "p50_ns": 23480.653521126762,
+      "p95_ns": 24788.05550049554,
+      "samples_ns": [
+        23439.843486410497,
+        23404.4911131899,
+        23345.070961718022,
+        22996.017463235294,
+        23499.681390977443,
+        23992.870441458734,
+        23814.146666666667,
+        24788.05550049554,
+        24043.63112391931,
+        23480.653521126762,
+        22992.482536764706,
+        24779.606541129833,
+        23404.472404115997,
+        23247.844795539033,
+        23746.306742640078
+      ]
+    },
+    "sum_65536_f64/numpy": {
+      "p50_ns": 10183.508957654723,
+      "p95_ns": 10513.805298570227,
+      "samples_ns": [
+        10309.616082474227,
+        10083.917338709678,
+        10387.731200664728,
+        10386.95886996261,
+        10302.532344458179,
+        10513.805298570227,
+        10498.802267002518,
+        10080.46553808948,
+        10384.345514950166,
+        10149.427353896104,
+        10044.14297188755,
+        10025.71050521251,
+        10130.941247974068,
+        10183.508957654723,
+        10180.377850162866
+      ]
+    },
+    "matmul_32_f64/numpy": {
+      "p50_ns": 11043.529801324503,
+      "p95_ns": 13884.151027207106,
+      "samples_ns": [
+        11568.050416281221,
+        11097.217487794052,
+        11515.263812154697,
+        11251.309041835357,
+        13884.151027207106,
+        11681.078000934143,
+        11043.529801324503,
+        10970.616059675296,
+        10466.840100460444,
+        10446.966583124478,
+        11019.465403261349,
+        10371.443799253422,
+        10516.097981497056,
+        10404.573449854348,
+        11074.279007971656
+      ]
+    },
+    "matmul_128_f64/numpy": {
+      "p50_ns": 705774.3333333334,
+      "p95_ns": 910168.3928571428,
+      "samples_ns": [
+        727092.0571428571,
+        733022.1428571428,
+        697998.1666666666,
+        716218.4166666666,
+        701090.3055555555,
+        695218.1666666666,
+        699743.6111111111,
+        701542.8611111111,
+        742889.5882352941,
+        910168.3928571428,
+        705774.3333333334,
+        695890.8333333334,
+        705963.75,
+        699288.1944444445,
+        716824.0285714286
+      ]
+    },
+    "softmax_256x64_f64/numpy": {
+      "p50_ns": 94601.70943396227,
+      "p95_ns": 108891.96086956521,
+      "samples_ns": [
+        108891.96086956521,
+        99559.51984126984,
+        94601.70943396227,
+        92989.29739776952,
+        94588.8679245283,
+        92153.58088235294,
+        96064.55172413793,
+        96588.78764478765,
+        97925.86328125,
+        93905.88764044944,
+        93014.30855018587,
+        95193.61977186312,
+        94800.48106060606,
+        93668.40074906367,
+        93167.20074349442
+      ]
+    }
+  }
+}
