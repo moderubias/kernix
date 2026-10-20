@@ -21,14 +21,14 @@ class EvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
             def git(*args):subprocess.run(['git',*args],cwd=root,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-            git('init');(root/'.gitignore').write_text('/scratch/\n');git('add','.gitignore')
+            git('init');(root/'.gitignore').write_text('/scratch/\n', encoding='utf-8');git('add','.gitignore')
             git('-c','user.name=Harness Test','-c','user.email=test@example.invalid','commit','-m','baseline')
             revision=evidence.clean_revision(root)
-            (root/'scratch').mkdir();(root/'scratch/note').write_text('private')
+            (root/'scratch').mkdir();(root/'scratch/note').write_text('private', encoding='utf-8')
             self.assertEqual(evidence.clean_revision(root),revision)
-            (root/'untracked').write_text('changed')
+            (root/'untracked').write_text('changed', encoding='utf-8')
             with self.assertRaises(ValueError):evidence.clean_revision(root)
-            (root/'untracked').unlink();(root/'.gitignore').write_text('changed')
+            (root/'untracked').unlink();(root/'.gitignore').write_text('changed', encoding='utf-8')
             with self.assertRaises(ValueError):evidence.clean_revision(root)
 
 

@@ -2,7 +2,9 @@
 
 Use the standalone development harness; it does not add dependencies to Kernix or
 its published crates. Its lockfile pins ndarray, nalgebra, faer and Candle. The
-harness uses stable Rust separately from the library's MSRV/no_std checks.
+harness uses stable Rust separately from the library's MSRV/no_std checks. The
+Candle 0.11 framework baseline may compile native development dependencies and
+need a host C/C++ toolchain. None becomes a Kernix runtime requirement.
 
 ```sh
 python benchmarks/evidence.py unique-run --require-openblas

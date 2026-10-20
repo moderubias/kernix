@@ -46,7 +46,7 @@ def distribution(samples):
 
 def peak_rss():
     try:
-        for line in Path('/proc/self/status').read_text().splitlines():
+        for line in Path('/proc/self/status').read_text(encoding='utf-8').splitlines():
             if line.startswith('VmHWM:'):
                 return int(line.split()[1])*1024
     except OSError:
@@ -133,7 +133,7 @@ def snapshot(revision,dest):
 
 def environment(cpu):
     def read(path):
-        try:return Path(path).read_text().strip()
+        try:return Path(path).read_text(encoding='utf-8').strip()
         except OSError:return None
     cpu_info=read('/proc/cpuinfo') or ''
     model=next((line.split(':',1)[1].strip() for line in cpu_info.splitlines() if line.startswith('model name')),platform.processor())
@@ -170,7 +170,7 @@ def render_report(dest,data):
         '- The published cases are allocation-inclusive CPU APIs and graph workloads. Pure internal kernel-only and end-to-end application/model latency are not measured. No workload result implies a complete application frame rate.',
         '- faer is explicitly serial; Rayon and BLAS thread counts are one. No GPU comparison. Python/NumPy timings include Python dispatch. Backend and dependency versions/configuration, governor and RAM are recorded.',
         '- A shared laptop has uncontrolled load/frequency/cache effects. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.', '']
-    (dest/'README.md').write_text('\n'.join(lines))
+    (dest/'README.md').write_text('\n'.join(lines), encoding='utf-8')
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -211,9 +211,9 @@ def main():
         import re
         if not re.fullmatch(r'\d+\.\d+\.\d+',args.registry_baseline):raise ValueError('invalid baseline version')
         driver=ROOT/'web/drivers'/args.run_id;shutil.copytree(ROOT/'benchmarks/harness/src',driver/'src')
-        text=manifest.read_text();text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std"] }}',text)
+        text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std"] }}',text)
         text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
-        manifest=driver/'Cargo.toml';manifest.write_text(text)
+        manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
         command('cargo','generate-lockfile','--manifest-path',str(manifest))
     builds={}
     binaries=ROOT/'web/binaries'/args.run_id
@@ -229,7 +229,7 @@ def main():
     if cpu is not None:os.sched_setaffinity(0,{cpu})
     fingerprints=[]
     for file in (ROOT/'benchmarks/harness/target/release/.fingerprint').glob('kernix-benchmark-harness-*/bin-kernix-benchmark-harness.json'):
-        flags=json.loads(file.read_text()).get('rustflags',[])
+        flags=json.loads(file.read_text(encoding='utf-8')).get('rustflags',[])
         if flags not in fingerprints:fingerprints.append(flags)
     packages=json.loads(command('cargo','metadata','--format-version','1','--locked','--manifest-path',str(manifest)))['packages']
     library_packages=[]
@@ -237,7 +237,7 @@ def main():
         if package['name'] in {'kernix','kernix-core','kernix-ops'}:
             vcs_file=Path(package['manifest_path']).with_name('.cargo_vcs_info.json')
             library_packages.append(dict(name=package['name'],version=package['version'],source=package['source'],
-                vcs=json.loads(vcs_file.read_text()) if vcs_file.exists() else None))
+                vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
     metadata=dict(schema_version=2,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
@@ -256,14 +256,14 @@ def main():
                 timing=worker('time');resources=worker('resources')
                 first=[worker('first')['first_call_return_ns'] for _ in range(3)]
                 results[workload+'/'+library]=dict(timing=timing,resources=resources,fresh_process_first_calls=distribution(first))
-                (dest/'partial.json').write_text(json.dumps(dict(metadata=metadata,results=results),indent=2)+'\n')
+                (dest/'partial.json').write_text(json.dumps(dict(metadata=metadata,results=results),indent=2)+'\n', encoding='utf-8')
     finally:
         if original_affinity is not None:os.sched_setaffinity(0,original_affinity)
     if clean_revision()!=revision:raise ValueError('source revision changed during measurement')
     metadata['source_sha256']=snapshot(revision,dest/'source.tar.gz')
     shutil.copyfile(manifest,dest/'driver.Cargo.toml');shutil.copyfile(manifest.with_name('Cargo.lock'),dest/'driver.Cargo.lock')
     data=dict(metadata=metadata,results=results)
-    (dest/'raw.json').write_text(json.dumps(data,indent=2)+'\n');(dest/'partial.json').unlink()
+    (dest/'raw.json').write_text(json.dumps(data,indent=2)+'\n', encoding='utf-8');(dest/'partial.json').unlink()
     render_report(dest,data)
     print(dest/'README.md')
 

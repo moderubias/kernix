@@ -37,14 +37,14 @@ def methods(source, typename):
 
 def discover(root=ROOT):
     ops = root / 'crates/kernix-ops/src'
-    exports = code_only((ops / 'ops.rs').read_text())
+    exports = code_only((ops / 'ops.rs').read_text(encoding='utf-8'))
     if re.search(r'pub use[^;]*::\*', exports):
         raise ValueError('numerical inventory requires explicit exports, not wildcard reexports')
     names = set(re.findall(r'^pub fn\s+(\w+)', exports, re.M))
-    names.update(re.findall(r'^pub fn\s+(\w+)', code_only((ops / 'lib.rs').read_text()), re.M))
+    names.update(re.findall(r'^pub fn\s+(\w+)', code_only((ops / 'lib.rs').read_text(encoding='utf-8')), re.M))
     for match in re.finditer(r'pub use (\w+)::\{([^}]+)\};', exports):
         module, values = match.groups()
-        body = code_only((ops / 'ops' / (module + '.rs')).read_text())
+        body = code_only((ops / 'ops' / (module + '.rs')).read_text(encoding='utf-8'))
         declarations = set(re.findall(r'\bpub\s+fn\s+(\w+)', body))
         declarations.update(re.findall(
             r'^(?:binary_op|comparison|assign_op|checked_binary|float_unary)!\(\s*(\w+)',
@@ -54,18 +54,18 @@ def discover(root=ROOT):
                 raise ValueError(f'unrecognized function export: {module}::{name}')
             names.add(name)
     for module in ['neural', 'linalg']:
-        body = (ops / (module + '.rs')).read_text()
+        body = (ops / (module + '.rs')).read_text(encoding='utf-8')
         names.update(module + '::' + n for n in re.findall(r'^pub fn\s+(\w+)', code_only(body), re.M))
     for typename in ['Lu', 'Cholesky', 'Qr']:
-        names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(), typename))
-    names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(), 'RgbFrame'))
+        names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(encoding='utf-8'), typename))
+    names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(encoding='utf-8'), 'RgbFrame'))
     names.update(['Tensor::reshape_view', 'Tensor::permute'])
-    tape = methods((root / 'crates/kernix/src/autograd.rs').read_text(), 'Tape') - CONTROL
+    tape = methods((root / 'crates/kernix/src/autograd.rs').read_text(encoding='utf-8'), 'Tape') - CONTROL
     return names, tape
 
 
 def render(data):
-    lines = ['# Forward and reverse-mode coverage (0.5 series)', '',
+    lines = [f"# Forward and reverse-mode coverage ({data['series']} series)", '',
              'Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.', '',
              'Scope: exported CPU numerical free functions, dense factor methods, RGB frame',
              'methods and the Tensor reshape/permutation counterparts of Tape operations.',
@@ -89,6 +89,13 @@ def render(data):
 
 
 def validate(data, names, tape, root=ROOT):
+    manifest = (root / 'Cargo.toml').read_text(encoding='utf-8')
+    version = re.search(r'^version\s*=\s*"([^"]+)"', manifest, re.M).group(1)
+    if data['series'] != '.'.join(version.split('.')[:2]):
+        raise ValueError('coverage series does not match the workspace version')
+    for path in ['README.md', 'crates/kernix/README.md']:
+        if f'kernix = "{version}"' not in (root / path).read_text(encoding='utf-8'):
+            raise ValueError('installation version drift in ' + path)
     rows = data['operations']
     keys = [r['operation'] for r in rows]
     if len(keys) != len(set(keys)):
@@ -106,7 +113,7 @@ def validate(data, names, tape, root=ROOT):
             raise ValueError('missing VJP test evidence')
         for evidence in row['tests']:
             path, name = evidence.split('::')
-            if not re.search(r'\bfn\s+' + re.escape(name) + r'\b', (root / path).read_text()):
+            if not re.search(r'\bfn\s+' + re.escape(name) + r'\b', (root / path).read_text(encoding='utf-8')):
                 raise ValueError('missing test: ' + evidence)
     if recorded != tape:
         raise ValueError(f'Tape drift: missing={sorted(tape-recorded)}, stale={sorted(recorded-tape)}')
@@ -116,13 +123,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write', action='store_true', help='regenerate the Markdown table after reviewed JSON edits')
     args = parser.parse_args()
-    data = json.loads(DATA.read_text())
+    data = json.loads(DATA.read_text(encoding='utf-8'))
     names, tape = discover()
     validate(data, names, tape)
     output = render(data)
     if args.write:
-        REPORT.write_text(output)
-    elif REPORT.read_text() != output:
+        REPORT.write_text(output, encoding='utf-8')
+    elif REPORT.read_text(encoding='utf-8') != output:
         raise ValueError('coverage Markdown is stale; run with --write')
     print(f'{len(names)} numerical entries; {len(tape)} recording methods classified')
 

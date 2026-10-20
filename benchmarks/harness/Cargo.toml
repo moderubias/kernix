@@ -15,7 +15,7 @@ kernix = { path = "../../crates/kernix", default-features = false, features = ["
 ndarray = "0.17.2"
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
 faer = { version = "=0.24.4", default-features = false, features = ["std", "linalg"] }
-candle-core = { version = "0.9", default-features = false }
+candle-core = { version = "=0.11.0", default-features = false }
 serde_json = "1"
 
 [profile.release]

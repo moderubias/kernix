@@ -7,7 +7,7 @@ import check_operation_support as support
 
 class CoverageTests(unittest.TestCase):
     def setUp(self):
-        self.data = json.loads(support.DATA.read_text())
+        self.data = json.loads(support.DATA.read_text(encoding='utf-8'))
         self.names, self.tape = support.discover()
 
     def test_current_exports_and_tape_are_fully_classified(self):
@@ -37,6 +37,12 @@ class CoverageTests(unittest.TestCase):
         data = copy.deepcopy(self.data)
         data['operations'].append(data['operations'][0])
         with self.assertRaisesRegex(ValueError, 'duplicate'):
+            support.validate(data, self.names, self.tape)
+
+    def test_stale_release_series_fails(self):
+        data = copy.deepcopy(self.data)
+        data['series'] = '0.4'
+        with self.assertRaisesRegex(ValueError, 'series'):
             support.validate(data, self.names, self.tape)
 
 

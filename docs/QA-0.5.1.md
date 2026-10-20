@@ -17,7 +17,7 @@ baseline rather than relying solely on a prior audit's source inspection.
 
 The 0.5.1 candidate passed 479 default, 481 all-feature and 472 no-default tests,
 strict formatting/Clippy/rustdoc, MSRV 1.86, wasm/i686/aarch64 compilation and nine
-downstream README/guide examples. Seven Python tool tests passed, as did the two
+downstream README/guide examples. Eight Python tool tests passed, as did the two
 Rust tests in the instrumented harness (one quantile test and one allocator probe). The public examples and new source
 coverage checker also run in CI. The inventory has 172 numerical entries and 24
 Tape recording methods; it explicitly records partial rank-two matmul/linear and
@@ -45,4 +45,7 @@ OpenBLAS build. The autodiff comparison uses real graphs on both sides, not manu
 derivatives. No API optimization, new derivative, pure-kernel measurement, GPU
 support or full application latency improvement is claimed by this release.
 
-Publication and final clean-source measurements are recorded after completion.
+## Retained clean measurements
+
+Final clean-source/registry measurements and publication verification follow the
+updated Candle 0.11 comparator check. Exploratory earlier data is not a release ranking.
