@@ -25,7 +25,7 @@ Floating precision is finite, and no implicit dtype promotion occurs.
 The API includes arithmetic/maps, reductions/statistics, batched matmul,
 contractions, structural transforms, indexing, sorting and stable activations.
 See https://docs.rs/kernix-ops for contracts and runnable function examples.
-Dense f32/f64 GEMM uses checked Rust matrixmultiply kernels; ordered reference
+Dense f32/f64 GEMM uses checked native Rust kernels; ordered reference
 matmul and compensated sums remain explicit choices. `linalg` provides pivoted LU,
 Cholesky, Householder QR, solves, inverse/determinants and least squares. `neural`
 provides convolution/pooling/losses; `vision` provides borrowed RGB preprocessing.

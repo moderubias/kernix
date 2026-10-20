@@ -11,8 +11,7 @@ python benchmarks/evidence.py unique-run --require-openblas
 python benchmarks/evidence.py unique-baseline --registry-baseline 0.5.0 --require-openblas
 ```
 
-The selected Python needs NumPy and Matplotlib. The optional PDF renderer needs
-Pandoc and XeLaTeX. `--require-openblas` rejects a different NumPy BLAS build rather
+The selected Python needs NumPy and Matplotlib. PNG/PDF charts and the standalone HTML report are rendered locally. `--require-openblas` rejects a different NumPy BLAS build rather
 than silently substituting it. Use an environment with an optimized NumPy wheel
 or a documented vendor build. MKL/Accelerate and GPU baselines are not provided by
 this harness. Candle CPU supplies the equivalent automatic-differentiation case;
@@ -112,3 +111,30 @@ and Kernix validation/normalization rounding differ. Registry baselines before0.
 omit these unsupported Tape stages and record why, rather than replace them with
 manual derivatives. The new broadcast-batched GEMM case is available in0.6 too,
 so it remains a direct baseline. CPU affinity/thread/dtype controls are unchanged.
+
+
+## Reading and comparing reports
+
+Each run includes a compact Markdown table, a standalone `report.html` with workload
+filtering and expandable distributions/resources, and colored per-workload PNG/PDF
+panels. Times are per-call medians in microseconds; relative chart values are library
+latency divided by Kernix latency. Below one means that comparator was faster. Every
+workload has its own scale. Missing measurements are shown as unavailable, never zero.
+
+Pair a retained current run with its separately measured exact registry baseline:
+
+```sh
+python benchmarks/report.py web/benchmarks/current --baseline web/benchmarks/baseline
+```
+
+This rewrites presentation files only. It does not modify raw observations or claim
+that rendering remeasures code. Historical official artifacts are retained unchanged.
+The comparison names both runs, displays signed latency changes (negative is faster)
+and flags CPU/toolchain/governor/thread/backend mismatches. Sequential, unrandomized
+runs on a shared laptop do not establish statistical significance. Full p95/batch/RSS/
+first-use/accuracy/source/lock evidence remains in `DETAILS.md` and `raw.json`.
+
+Dense f64 GEMM in 0.7.2 may cache thread-local packing memory. Warmed Rust allocation
+probes therefore exclude its initial slab allocation and retention; they do not
+establish allocation-free first use or scratch-free execution. Engine selection is
+specified in NUMERICS.md. NumPy uses its recorded optimized BLAS, not a reference build.

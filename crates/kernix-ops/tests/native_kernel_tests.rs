@@ -69,6 +69,74 @@ fn ordered_mode_is_explicit_and_compensated_sum_recovers_cancellation() {
 }
 
 #[test]
+fn dense_f64_backend_boundaries_rectangles_and_reused_output() {
+    for (m, k, n) in [
+        (63, 64, 64),
+        (64, 63, 64),
+        (64, 64, 63),
+        (64, 64, 64),
+        (65, 67, 69),
+        (96, 65, 80),
+        (128, 128, 128),
+        (129, 127, 131),
+    ] {
+        let a = tensor(m, k);
+        let b = tensor(k, n);
+        let expected = matmul_reference(&a, &b).unwrap();
+        let actual = matmul(&a, &b).unwrap();
+        let mut reused = Tensor::full([m, n], f64::NAN).unwrap();
+        let pointer = reused.storage_slice().as_ptr();
+        for _ in 0..2 {
+            kernix_ops::execution::CpuExecutor::default()
+                .matmul_into(&a, &b, &mut reused)
+                .unwrap();
+            assert_eq!(pointer, reused.storage_slice().as_ptr());
+            for ((&x, &y), &z) in actual
+                .storage_slice()
+                .iter()
+                .zip(expected.storage_slice())
+                .zip(reused.storage_slice())
+            {
+                assert!(
+                    (x - y).abs() < 1e-12 * (1.0 + y.abs()),
+                    "{m}/{k}/{n}: {x} vs {y}"
+                );
+                assert_eq!(x, z);
+            }
+        }
+    }
+}
+
+#[test]
+fn dense_f64_native_dispatch_keeps_batched_and_ordered_contracts() {
+    let a = Tensor::from_values(
+        [2, 64, 65],
+        (0..2 * 64 * 65).map(|i| (i % 7) as f64 - 3.0).collect(),
+    )
+    .unwrap();
+    let b = Tensor::from_values(
+        [1, 65, 67],
+        (0..65 * 67).map(|i| (i % 11) as f64 - 5.0).collect(),
+    )
+    .unwrap();
+    assert_eq!(
+        matmul(&a, &b).unwrap().storage_slice(),
+        matmul_reference(&a, &b).unwrap().storage_slice()
+    );
+    let a = tensor(65, 67);
+    let b = tensor(67, 69);
+    let expected = matmul_reference(&a, &b).unwrap();
+    let ordered = kernix_ops::execution::CpuExecutor::default().with_ordered_matmul(true);
+    assert_eq!(
+        ordered.matmul(&a, &b).unwrap().storage_slice(),
+        expected.storage_slice()
+    );
+    let mut out = Tensor::zeros([65, 69]).unwrap();
+    ordered.matmul_into(&a, &b, &mut out).unwrap();
+    assert_eq!(out.storage_slice(), expected.storage_slice());
+}
+
+#[test]
 fn tiled_convolution_matches_ordered_reference_across_tiles_and_geometry() {
     use kernix_ops::neural::{Conv2dOptions, conv2d, conv2d_reference};
     for options in [

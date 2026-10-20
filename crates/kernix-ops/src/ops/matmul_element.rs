@@ -4,7 +4,7 @@ use core::ops::{AddAssign, Mul};
 
 /// Scalar capability for matrix multiplication. Custom scalar types can use an
 /// empty implementation to retain the portable ordered fallback. f32/f64 supply
-/// a checked matrixmultiply kernel; integer implementations retain native arithmetic.
+/// checked native CPU kernels; integer implementations retain native arithmetic.
 ///
 /// ```
 /// fn accepts_matrix_scalar<T:kernix_ops::MatmulElement>() {}
@@ -44,7 +44,7 @@ integer!(
     u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
 );
 macro_rules! floating {
-    ($ty:ty,$kernel:ident) => {
+    ($ty:ty,$kernel:ident,$dense:path) => {
         impl MatmulElement for $ty {
             const HAS_NATIVE_MATMUL: bool = true;
             fn try_strided_matmul(
@@ -115,6 +115,9 @@ macro_rules! floating {
                 let (Ok(ks), Ok(ns)) = (isize::try_from(k), isize::try_from(n)) else {
                     return false;
                 };
+                if $dense(a, b, out, m, k, n) {
+                    return true;
+                }
                 // SAFETY: safe slices own/borrow initialized valid extents; checked exact
                 // products bound every accessed element. C strides are (k,1)/(n,1),
                 // representable as isize. The exclusive output slice cannot alias either
@@ -144,8 +147,64 @@ macro_rules! floating {
         }
     };
 }
-floating!(f32, sgemm);
-floating!(f64, dgemm);
+floating!(f32, sgemm, dense_f32);
+floating!(f64, dgemm, dense_f64);
+
+// Keep small/skinny, portable and non-f64 kernels on the established engine.
+fn dense_f32(_: &[f32], _: &[f32], _: &mut [f32], _: usize, _: usize, _: usize) -> bool {
+    false
+}
+
+fn dense_f64(a: &[f64], b: &[f64], out: &mut [f64], m: usize, k: usize, n: usize) -> bool {
+    #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+    if m >= 64 && k >= 64 && n >= 64 && gemm_common::simd::V3::try_new().is_some() {
+        // Check the engine's complete SIMD feature set, including feature-unified
+        // builds, rather than assuming that FMA implies all required instructions.
+        // Recheck at the unsafe boundary rather than relying on the caller's checks.
+        if m.checked_mul(k) != Some(a.len())
+            || k.checked_mul(n) != Some(b.len())
+            || m.checked_mul(n) != Some(out.len())
+        {
+            return false;
+        }
+        let (Ok(ks), Ok(ns)) = (isize::try_from(k), isize::try_from(n)) else {
+            return false;
+        };
+        // SAFETY: exact slice extents above bound every access; all dimensions are
+        // positive and the disjoint output has m*n elements. Compute C^T = B^T*A^T
+        // in column-major orientation, writing the same C-order output allocation.
+        // gemm's strides are (column,row); no data is transposed or copied here.
+        // read_dst=false overwrites output; alpha=0, beta=1 are gemm's coefficients.
+        // Runtime dispatch selects supported instructions. Parallelism::None prevents
+        // nested pools even when called inside an explicit CpuExecutor row worker.
+        unsafe {
+            gemm_f64::gemm::f64::get_gemm_fn()(
+                n,
+                m,
+                k,
+                out.as_mut_ptr(),
+                ns,
+                1,
+                false,
+                b.as_ptr(),
+                ns,
+                1,
+                a.as_ptr(),
+                ks,
+                1,
+                0.0,
+                1.0,
+                false,
+                false,
+                false,
+                gemm_common::Parallelism::None,
+            );
+        }
+        return true;
+    }
+    let _ = (a, b, out, m, k, n);
+    false
+}
 
 /// Validated borrowed rank-two host matrix, including signed/broadcast strides.
 /// Storage and metadata remain independent of devices. This capability allows

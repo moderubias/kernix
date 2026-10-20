@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.7.1"
+kernix = "0.7.2"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.7.1", default-features = false }
+kernix = { version = "0.7.2", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -252,7 +252,7 @@ backends implement their own capabilities without requiring `HostBuffer`.
 
 `CpuExecutor::matmul_into` writes contiguous rank-two results into an existing
 allocation. The allocating API retains the general strided/batched fallback.
-f32/f64 GEMM, including contiguous vector/batched products, dispatches to checked matrixmultiply kernels, including signed
+f32/f64 GEMM, including contiguous vector/batched products, uses checked native Rust kernels, including signed
 strides. This Rust dependency requires no external BLAS. Native SIMD/FMA and packed
 summation can change last bits. `matmul_reference` or
 `CpuExecutor::default().with_ordered_matmul(true)` selects increasing-k scalar order.
@@ -365,13 +365,16 @@ examples. Property tests check shape invariants; regression tests cover layouts,
 aliasing, integer errors, nonfinite math and extreme softmax inputs. Unsafe aligned
 storage has a Miri CI workflow; a configured workflow does not certify an unrun test.
 
-Comparative benchmarks require Python 3 + NumPy + Matplotlib, Pandoc and XeLaTeX only for report
-generation; none is a runtime dependency. On Arch: install `python-numpy python-matplotlib pandoc-cli
-texlive-xetex texlive-latexextra`; on other systems install equivalent tools.
+Comparative benchmarks require Python 3 + NumPy + Matplotlib for measurement and report
+generation; none is a runtime dependency. On Arch: install `python-numpy python-matplotlib`; on other systems install equivalent tools.
 
 ```sh
 python benchmarks/evidence.py my-unique-run --require-openblas
 ```
+
+Reports include a compact comparison table, colored PNG/PDF charts and a standalone
+HTML view with filtering and expandable details. Pair versions with
+`python benchmarks/report.py <current-run> --baseline <baseline-run>`.
 
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2
+
+- Faster native dense f64 GEMM on x86-64/std: serial gemm-f64 for dimensions
+  at least 64, existing engine for small/skinny/strided/portable work. No dtype or
+  output-layout change. Packing may retain thread-local scratch until thread exit.
+- Readable CPU evidence: side-by-side library table, colored workload panels,
+  searchable standalone HTML, expandable distributions/resources and optional
+  previous-version latency deltas. Raw samples and source provenance are retained.
+- Added 64/256 GEMM comparisons and boundary/rectangular/batched/reused-output tests.
+
+
 ## 0.7.1
 
 - Fuse nonempty C-order layer normalization and its VJP into per-group loops,

@@ -64,7 +64,7 @@ values and required decomposition results must be finite. f32 and f64 are suppor
 ## Execution and resource policy
 
 Default functions operate on CPU data and do not read files or global settings.
-f32/f64 contiguous vector/batched and rank-two matrix products use the Rust matrixmultiply engine with checked
+f32/f64 contiguous vector/batched and rank-two matrix products use checked native Rust engines with checked
 slice/stride boundaries. Integer/custom scalar products, vector/batched products
 and unsupported fast paths use portable scalar implementations. A downstream scalar
 can implement `MatmulElement` without implementing a native kernel. `TensorInput`

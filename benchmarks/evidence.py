@@ -24,7 +24,9 @@ CASES = {
     'create_zeros_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
     'create_ones_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
     'matmul_32_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'matmul_64_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_128_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'matmul_256_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'qr_96x32_f64': ['kernix','nalgebra','faer','numpy'],
     'qr_256x64_f64': ['kernix','nalgebra','faer','numpy'],
     'cholesky_factor_64_f64': ['kernix','nalgebra','faer','numpy'],
@@ -168,7 +170,7 @@ def environment(cpu):
                 thread_environment={key:os.environ[key] for key in ('RAYON_NUM_THREADS','OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS')})
 
 
-def render_report(dest,data):
+def render_details(dest,data):
     meta=data['metadata'];lines=['# Clean CPU evidence: '+meta['run_id'],'',
         f"Measured source `{meta['revision']}`, tree `{meta['tree']}`; dirty before/after: false.",
         f"Library source: {meta['library_source']}. One pinned CPU; f64 operations and explicitly named f32 constructors; row-major inputs.",
@@ -190,27 +192,13 @@ def render_report(dest,data):
         '- Kernix checks finite values/symmetry. Some competitors validate a narrower contract. No finite-data precondition check was removed to improve timing. Accuracy results and budgets are retained per worker.',
         '- The backward case uses an actual reverse-mode graph in Kernix and Candle for sum(A @ W), with A constant and W trainable. Both copy input/weight data and returned gradients; no manual derivative is used as a framework ranking.',
         '- Allocations are measured in a separately compiled instrumented binary after warmup, outside all timing loops. Counts cover Rust global-allocator requests, not native allocator internals, stack memory or all NumPy allocations. NumPy allocation counts are unavailable, not zero.',
+        '- Native engines may retain thread-local packing buffers. Warmed allocation probes exclude first-use allocations and retained scratch; first-use timing and process RSS are separate observations. See the measured library numerical contract for that version.',
         '- Requested-byte peak is additional live Rust allocation during one call, including output; it is not scratch-only memory or peak RSS. RSS is the process high-water mark including fixtures, validation and runtime, read from Linux VmHWM. Other platforms may report unavailable.',
         '- The published cases are allocation-inclusive CPU APIs and graph workloads. Pure internal kernel-only and end-to-end application/model latency are not measured. No workload result implies a complete application frame rate.',
         '- faer is explicitly serial; Rayon and BLAS thread counts are one. No GPU comparison. Python/NumPy timings include Python dispatch. Backend and dependency versions/configuration, governor and RAM are recorded.',
         '- Training stages use batched matmul + bias + layer_norm + tanh + step-two feature slice + MSE (Candle index_select). Forward excludes graph recording; record includes parameter/input/target snapshots and eager forward/loss; backward reuses a prepared graph and returns fresh derivatives. Allocation probes measure the corresponding stage, including graph values/scratch, not graph-container-only bytes. SGD uses fixed precomputed real gradients and includes transactional validation/parameter updates; it is not an end-to-end converging training loop. Candle normalization is an explicit population-statistics composition; its checks/rounding differ. Historical registry baselines without these Tape operations omit the stages, recorded in metadata, rather than substitute manual derivatives.',
         '- A shared laptop has uncontrolled load/frequency/cache effects. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.', '']
-    (dest/'README.md').write_text('\n'.join(lines), encoding='utf-8')
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    rows=sorted(data['results']);fig,axis=plt.subplots(figsize=(12,max(6,len(rows)*.26)),layout='constrained')
-    for i,key in enumerate(rows):
-        call=data['results'][key]['timing']['per_call']
-        axis.plot([call['p50_ns']/1000,call['p95_ns']/1000],[i,i],color='#b6c2d0')
-        axis.scatter(call['p50_ns']/1000,i,color='#2166ac',s=16)
-    axis.set_xscale('log');axis.set_yticks(range(len(rows)),rows,fontsize=8);axis.invert_yaxis()
-    axis.set_xlabel('Microseconds per call: median (dot), p95 (line endpoint)')
-    axis.set_title('CPU API and reverse-mode evidence | one CPU | dtype in workload name',loc='left')
-    axis.grid(axis='x',alpha=.2);fig.savefig(dest/'latency.png',dpi=150);fig.savefig(dest/'latency.pdf');plt.close(fig)
-    if shutil.which('pandoc') and shutil.which('xelatex'):
-        subprocess.run(['pandoc',str(dest/'README.md'),'-o',str(dest/'report.pdf'),'--pdf-engine=xelatex',
-                        '-V','geometry:margin=12mm,landscape','-V','fontsize=10pt'],check=True,cwd=ROOT)
+    (dest/'DETAILS.md').write_text('\n'.join(lines), encoding='utf-8')
 
 
 def main():
@@ -297,6 +285,8 @@ def main():
     shutil.copyfile(manifest,dest/'driver.Cargo.toml');shutil.copyfile(manifest.with_name('Cargo.lock'),dest/'driver.Cargo.lock')
     data=dict(metadata=metadata,results=results)
     (dest/'raw.json').write_text(json.dumps(data,indent=2)+'\n', encoding='utf-8');(dest/'partial.json').unlink()
+    render_details(dest,data)
+    from report import render_report
     render_report(dest,data)
     print(dest/'README.md')
 
