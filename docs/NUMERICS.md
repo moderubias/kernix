@@ -40,8 +40,10 @@ can differ in final bits from increasing-k scalar reference arithmetic. Choose
 `matmul_reference` or executor `ordered_matmul=true` when that order is required.
 This controls accumulation order rather than guaranteeing architecture-independent
 IEEE behavior. Optimized contiguous convolution packs bounded output tiles and uses
-native GEMM; `neural::conv2d_reference` retains ordered scalar accumulation. Noncontiguous batches use the reference path. Temporary packing is bounded by kernel dimensions,
-channels per group and at most 128 spatial positions, rather than the full image.
+native GEMM; `neural::conv2d_reference` retains ordered scalar accumulation.
+Noncontiguous batches use the reference path. Convolution input-tile packing uses
+at most 128 spatial positions rather than the full image. Native GEMM workspace
+is separate; the dense f64 engine can retain a thread-local slab as described below.
 
 With std, elementary float functions use the platform implementation by default.
 `portable-math` selects Rust libm even with std; no_std uses libm. All-features tests
@@ -92,8 +94,9 @@ runs pin one allowed CPU. Clean evidence reports use nearest-rank p95 over 256
 individual warmed calls, separately from 15 batch means and three first-use samples.
 Older batch-only reports used the maximum of 15 means as their reported p95; those
 figures are not individual-call latency percentiles. Historical unpinned reports show indicative
-trends and must not be treated as controlled causal comparisons. Kernix and ndarray
-share matrixmultiply for native GEMM. The manual derivative baseline omits the graph
+trends and must not be treated as controlled causal comparisons. Kernix through
+0.7.1 and ndarray share matrixmultiply for native GEMM; 0.7.2 selects gemm-f64 for
+eligible dense products as described below. The manual derivative baseline omits the graph
 and safety semantics of autodiff; its speed difference is disclosed. No claim of
 universal leadership or a complete model's frame rate follows from these tables.
 
@@ -101,7 +104,8 @@ universal leadership or a complete model's frame rate follows from these tables.
 ## Dense f64 CPU engine selection (0.7.2)
 
 C-contiguous f64 products with m, k and n at least 64 use the serial `gemm-f64`
-engine on x86-64 with std and the engine's complete runtime-detected SIMD feature set. C^T = B^T A^T is passed in column-major
+engine on x86-64 with std and the engine's complete runtime-detected SIMD feature
+set. C^T = B^T A^T is passed in column-major
 orientation, writing the same C-order output; this does not materialize a transpose.
 Small/skinny products, f32, signed-stride rank-two inputs, no_std and other targets
 retain matrixmultiply. Noncontiguous batches retain the checked reference path.

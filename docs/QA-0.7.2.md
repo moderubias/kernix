@@ -69,5 +69,27 @@ Actual Firefox rendering was visually inspected. Historical reports are unchange
 
 ## Publication
 
-Registry payloads, release-source CI and downstream validation are recorded after
-the publication gates finish.
+All three crates are published from clean source
+`62f32c11fca67275b522e8273e81e0513d299630`, tagged `v0.7.2`. Crates tree
+`b174e3e958e17a4c258200c4591163ac628d0ec0` matches the measured source. Downloaded
+registry payloads have matching VCS metadata and source/test/example/README bytes;
+local research, planning and benchmark files are excluded. Extracted license checks
+pass for all three actual registry archives.
+
+| Package | Files | Archive SHA-256 |
+|---|---:|---|
+
+| kernix-core | 48 | `0100b6544ce659c751654a894e8d1577ae844852b2b4490ac32a818ec47aafd7` |
+| kernix-ops | 53 | `c6b72a31602824c8ccb334749a8d7f2c289cc8fb6e4e502ed48d9bae4f45104c` |
+| kernix | 27 | `86cb9183329dda5f5818850d287dae138af675369a66c95851ded00fb1f555aa` |
+
+A renamed registry-only no_std consumer executes on Rust 1.86 and compiles for wasm;
+a separate std consumer executes the native coordinate oracle on Rust 1.86.
+Metadata confirms exact registry 0.7.2 for all three crates in both consumers,
+without path substitutions. The no_std dependency graph excludes gemm packages;
+the std graph includes the selected native engine.
+
+[Release-source CI](https://github.com/moderubias/kernix/actions/runs/39513049545)
+passes all eight jobs: Linux/Windows/macOS, MSRV, three portable targets and
+independent evidence tooling. Main and the release tag are pushed. A subsequent
+verification/documentation commit changes no published crate bytes.

@@ -64,12 +64,17 @@ values and required decomposition results must be finite. f32 and f64 are suppor
 ## Execution and resource policy
 
 Default functions operate on CPU data and do not read files or global settings.
-f32/f64 contiguous vector/batched and rank-two matrix products use checked native Rust engines with checked
-slice/stride boundaries. Integer/custom scalar products, vector/batched products
-and unsupported fast paths use portable scalar implementations. A downstream scalar
+Floating contiguous vector/batched and rank-two matrix products use native Rust
+engines behind checked slice/stride boundaries. Scalar types without native
+capabilities and unsupported layouts use portable scalar implementations. A downstream scalar
 can implement `MatmulElement` without implementing a native kernel. `TensorInput`
 adapters may expose validated `MatrixInput` for signed-stride acceleration; the
 view must represent the same logical data as indexed access.
+
+Large dense f64 products on x86-64/std can use a serial engine with runtime SIMD
+checks. It can allocate packing scratch and retain an L2-sized thread-local slab
+until thread exit; warmed allocation counts exclude this first-use memory. See
+[engine selection and costs](NUMERICS.md#dense-f64-cpu-engine-selection-072).
 
 `CpuExecutor::matmul_into` accepts reusable C-order rank-two output storage.
 `with_ordered_matmul(true)` chooses the increasing-k reference arithmetic.
