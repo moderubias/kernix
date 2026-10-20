@@ -1,4 +1,24 @@
-# Retained CPU benchmark history
+# CPU benchmark reports
+
+Start with the [0.7.2 comparison](0.7.2-clean-5067333/README.md): one workload per
+row, library columns, colored per-workload charts and an optional standalone
+[HTML report](0.7.2-clean-5067333/report.html) with filtering and expandable details.
+The HTML is self-contained apart from its adjacent chart; download the run directory
+to open it locally. Raw samples, complete methods, source hashes and actual locks
+remain adjacent. Missing measurements mean unmeasured, not unsupported.
+
+The paired [registry 0.7.1 baseline](0.7.1-registry-5067333/README.md) uses the same
+62 cases and comparator versions. For dense f64 GEMM128 the per-call median is
+68.456 us in 0.7.2 versus 120.337 us in 0.7.1; current NumPy/OpenBLAS is 75.573 us.
+These are allocation-inclusive one-CPU observations on a shared laptop, not a
+universal performance ranking. See [release QA](../../docs/QA-0.7.2.md) for limits.
+
+## Previous clean evidence
+
+- [0.7.1](0.7.1-clean-4f60380/README.md) and [registry 0.7.0](0.7.0-registry-4f60380/README.md): fused layer normalization, 50 cases each.
+- [0.7.0](0.7.0-clean-aa7347a/README.md) and [registry 0.6.0](0.6.0-registry-aa7347a/README.md): batched/vector autodiff and normalized training stages.
+
+## Earlier batch-only history
 
 All values below are median batch time in microseconds. See each report for the
 competitors, exact workload, allocation boundaries and numerical API differences.
