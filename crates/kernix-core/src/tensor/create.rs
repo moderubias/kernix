@@ -2,9 +2,66 @@ use alloc::vec::Vec;
 use core::mem::align_of;
 
 use super::{Tensor, TensorError};
-use crate::{LayoutError, Order, shape::Kahen};
+use crate::{
+    Layout, LayoutError, Order,
+    scalar::{One, Zero},
+    shape::Kahen,
+    storage::{CpuBuffer, Storage},
+};
 
 impl<T> Tensor<T> {
+    /// Allocate C-order zeros using the scalar's additive identity.
+    ///
+    /// Shape/layout/storage are validated before generating elements. Calls
+    /// [`Zero::zero`] once per element, requiring neither Clone nor Default.
+    /// Returns shape, extent, unsupported zero-sized type or allocation errors.
+    /// `[]` is scalar; any zero dimension makes the tensor empty. O(numel) time,
+    /// one element allocation for nonempty tensors, plus shape metadata above rank six.
+    /// For other orders/alignment, use [`Self::from_fn`] or [`Self::filled`].
+    ///
+    /// ```
+    /// let a = kernix_core::tensor::Tensor::<f32>::zeros([2, 3])?;
+    /// assert_eq!(a.storage_slice(), &[0.0; 6]);
+    /// # Ok::<(), kernix_core::tensor::TensorError>(())
+    /// ```
+    pub fn zeros(dims: impl AsRef<[usize]>) -> Result<Self, TensorError>
+    where
+        T: Zero,
+    {
+        Self::from_identity(dims, T::zero)
+    }
+
+    /// Allocate C-order ones using the scalar's multiplicative identity.
+    ///
+    /// Calls [`One::one`] once per element, without Clone, Default or arithmetic
+    /// bounds. Validation, complexity, scalar/empty and allocation contracts match
+    /// [`Self::zeros`]. No dtype conversion or device transfer occurs.
+    ///
+    /// ```
+    /// let a = kernix_core::tensor::Tensor::<i16>::ones([3])?;
+    /// assert_eq!(a.storage_slice(), &[1, 1, 1]);
+    /// # Ok::<(), kernix_core::tensor::TensorError>(())
+    /// ```
+    pub fn ones(dims: impl AsRef<[usize]>) -> Result<Self, TensorError>
+    where
+        T: One,
+    {
+        Self::from_identity(dims, T::one)
+    }
+
+    fn from_identity(
+        dims: impl AsRef<[usize]>,
+        mut identity: impl FnMut() -> T,
+    ) -> Result<Self, TensorError> {
+        let shape = Kahen::new(dims).map_err(LayoutError::from)?;
+        let layout = Layout::contiguous(shape, Order::C)?;
+        let storage =
+            Storage::<T, CpuBuffer<T>>::try_from_fn(layout.numel(), align_of::<T>(), |_| {
+                identity()
+            })?;
+        Self::from_host_storage(storage, layout)
+    }
+
     /// Adopt C-order values with inferred dynamic shape metadata, without copying elements.
     ///
     /// Returns an error for invalid dimensions, a length mismatch, zero-sized element
@@ -62,6 +119,9 @@ impl<T> Tensor<T> {
 /// `vec!`. The `shape = ...; values = ...` form adopts a Vec without element copies.
 /// All forms return `Result<Tensor<T>, TensorError>` and work with no_std + alloc.
 /// Allocation by `vec!` follows Rust's normal allocation failure behavior.
+/// Array-valued elements stay elements: `tensor![[1,2],[3,4]]` has shape `[2]`
+/// and element type `[i32;2]`. Use `matrix![1,2;3,4]` or `Tensor::from_rows`
+/// for two scalar axes. Repetition evaluates the count before the fill value.
 ///
 /// ```
 /// use kernix_core::tensor;
@@ -116,6 +176,9 @@ macro_rules! matrix {
 /// Value and dimension expressions are evaluated once. Shape/layout/storage errors
 /// are returned without allocating the element buffer. Use `full!(0.0f32; 2, 3)`
 /// for zeros and `full!(1.0f64; 2, 3)` for ones. With no dimensions, creates a scalar.
+/// Dimension expressions are evaluated before the fill value, preserving the
+/// existing macro's evaluation order. Associated `Tensor::zeros`/`ones` also
+/// support custom identity types without Clone.
 ///
 /// ```
 /// let a = kernix_core::full!(0.0f32; 2, 3)?;

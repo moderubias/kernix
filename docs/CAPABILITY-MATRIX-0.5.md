@@ -1,7 +1,6 @@
 # Kernix capability matrix — 0.5 series
 
-This is a source-audited snapshot of 0.5.0. Version 0.5.1 adds evidence tooling and
-documentation; it adds no numerical operations or derivatives. `Implemented` means
+This is a source-audited snapshot of 0.5.0. Later additions are described in the [0.6 matrix](CAPABILITY-MATRIX-0.6.md). `Implemented` means
 an available documented API; `partial` identifies its boundary. Compilation alone
 is not hardware runtime validation. The archived 0.4 table is historical.
 
@@ -22,7 +21,7 @@ is not hardware runtime validation. The archived 0.4 table is historical.
 | Dtypes | Partial | Generic scalar traits where documented; most numerical/training APIs focus on f32/f64 | No complete complex, low-precision, quantized, mixed-accumulator/promotion architecture |
 | Configuration | Implemented | Optional explicitly loaded strict TOML, local defaults/pools, no ambient math I/O | No implicit global runtime selection |
 | Portability | Partial verification | no_std + alloc foundation; Linux/Windows/macOS source CI; MSRV 1.86; wasm/i686/aarch64 compile checks | Other-target compilation is not runtime execution; no accelerator claim |
-| Performance evidence | Improved in 0.5.1 | Clean-commit/registry provenance; separate call/batch distributions; faer and Candle comparisons; allocator probe and process RSS | Shared-machine noise; no pure-kernel or end-to-end model guarantee; runtime/correctness checks differ by library |
+| Performance evidence | Limited in 0.5.0 | Retained batch-only reports, source snapshots and documented comparison boundaries | Dirty-source reports are not clean release measurements; later evidence tooling is documented in the 0.6 matrix |
 
 The [operation-by-operation VJP inventory](AUTOGRAD-COVERAGE.md) classifies the
 numerical surface and every Tape recording method. Its JSON and generated table

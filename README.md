@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.5.1"
+kernix = "0.6.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.5.1", default-features = false }
+kernix = { version = "0.6.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -104,7 +104,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vector = tensor![1, 2, 3]?;
     let repeated = tensor![7; 4]?;
     let matrix = matrix![1, 2; 3, 4]?;
-    let zeros = full!(0.0f32; 2, 3)?;
+    let zeros = Tensor::<f32>::zeros([2, 3])?;
+    let ones = Tensor::<f32>::ones([3])?;
     let scalar = full!(42;)?;
     let shape = shape![2, 3]?;
     let volume = tensor!(shape = [1, 2, 2]; values = vec![1, 2, 3, 4])?;
@@ -123,9 +124,21 @@ for adapters and programmatic dimensions. For column-major data, explicit alignm
 fixed rank or device storage, use the existing constructors and capability traits.
 The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
 
-See the [0.5 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.5.md)
+See the [0.6 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.6.md)
 and [forward/VJP coverage](https://github.com/moderubias/kernix/blob/main/docs/AUTOGRAD-COVERAGE.md)
 for available APIs and their exact limits.
+
+`Tensor::zeros` and `Tensor::ones` generate numeric identities without Clone or
+Default bounds. Existing `kernix::Zero`/`One` implementations work; core-only
+adapters can implement `kernix_core::scalar::{Zero, One}`. Validation precedes element
+generation. These constructors allocate C-order CPU storage; explicit order/alignment
+remain available through `from_vec`, `filled` and `from_fn`.
+
+Nested arrays remain scalar elements: `tensor![[1, 2], [3, 4]]?` has shape `[2]`
+and element type `[i32; 2]`. For a scalar matrix, use `matrix![1, 2; 3, 4]?` or
+`Tensor::from_rows([[1, 2], [3, 4]])?`. Higher-rank construction uses explicit
+`Tensor::from_values(dims, values)`. No existing literal silently flattens array elements.
+See the [executable ergonomics suite and design audit](https://github.com/moderubias/kernix/blob/main/docs/API-ERGONOMICS.md).
 
 ## Shapes
 

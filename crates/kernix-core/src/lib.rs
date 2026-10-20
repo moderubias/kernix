@@ -21,3 +21,5 @@ pub use layout::{Layout, LayoutError, LayoutShape, Order};
 pub mod tensor;
 
 pub mod device;
+
+pub mod scalar;

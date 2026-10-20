@@ -1,26 +1,7 @@
 use core::ops::Div;
 
-/// Additive identity. Semantics of integer overflow follow Rust's native operators.
-pub trait Zero {
-    /// Return the additive identity for this scalar type.
-    fn zero() -> Self;
-}
-
-/// Multiplicative identity.
-pub trait One {
-    /// Return the multiplicative identity for this scalar type.
-    fn one() -> Self;
-}
-
-macro_rules! identities {
-    ($($t:ty),+ $(,)?) => {$(
-        impl Zero for $t { fn zero() -> Self { 0 as $t } }
-        impl One for $t { fn one() -> Self { 1 as $t } }
-    )+};
-}
-identities!(
-    u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64
-);
+// Preserve all existing public operation-crate trait paths and implementations.
+pub use kernix_core::scalar::{One, Zero};
 
 /// Floating scalar that can divide by a reduction count. Conversion of very
 /// large `usize` counts follows normal float rounding rules.

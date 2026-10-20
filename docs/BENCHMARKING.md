@@ -34,7 +34,10 @@ measures the numerical code in the named clean source commit.
 
 ## Timing boundaries
 
-Inputs are f64 and C-order in every comparator. Outputs retain their library's
+Operation inputs are f64 and C-order in every comparator; constructor cases
+explicitly use f32 and allocate 64x64 owned values. Pre-0.6 registry baselines use
+full(value), recorded as the legacy constructor implementation, since zeros/ones
+did not exist. Outputs retain their library's
 native layout. GEMM times allocating APIs. QR materializes owned thin Q and R in
 all implementations; Cholesky times reusable factors (NumPy returns L). Kernix's
 finite/symmetry checks remain enabled; the other libraries' contracts may differ.

@@ -1,7 +1,11 @@
 # Changelog
 
-## 0.5.1
+## 0.6.0
 
+- Add `Tensor::zeros`/`ones` without Clone, Default or arithmetic bounds, sharing
+  core scalar identities through the existing Zero/One reexports. No runtime dependency added.
+- Preserve array-valued tensor/matrix literals and add ten executable workflow scenarios,
+  including external no_std + alloc consumers; document API design trade-offs.
 - Add a versioned capability matrix and source-checked numerical/VJP inventory,
   explicitly documenting rank-two recording and unsupported normalization gradients.
 - Add a standalone benchmark harness with clean revision/registry provenance,
@@ -9,7 +13,8 @@
   allocation probes outside timing and process peak RSS.
 - Compare equivalent CPU work with faer and Candle as well as ndarray/nalgebra/NumPy;
   preserve explicit accuracy budgets and optimized-BLAS configuration metadata.
-- Numerical behavior and the runtime dependency surface are unchanged from 0.5.0.
+- Existing arithmetic, literal semantics and runtime dependencies are preserved;
+  no new VJP, hidden layout conversion or accelerator backend is claimed.
 
 ## 0.5.0
 

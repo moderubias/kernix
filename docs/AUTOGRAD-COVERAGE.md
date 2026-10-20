@@ -1,4 +1,4 @@
-# Forward and reverse-mode coverage (0.5 series)
+# Forward and reverse-mode coverage (0.6 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 

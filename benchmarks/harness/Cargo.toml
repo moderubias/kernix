@@ -9,6 +9,7 @@ resolver = "3"
 
 [features]
 allocation-counting = []
+legacy-constructors = []
 
 [dependencies]
 kernix = { path = "../../crates/kernix", default-features = false, features = ["std"] }

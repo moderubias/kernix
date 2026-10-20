@@ -391,6 +391,84 @@ fn backward(mode: &str, library: &str) -> Value {
         _ => panic!("backward comparison requires an autodiff framework"),
     }
 }
+fn identity_constructor(mode: &str, library: &str, one: bool) -> Value {
+    let value = if one { 1.0f32 } else { 0.0 };
+    let check = |get: &dyn Fn(usize, usize) -> f32| {
+        for i in 0..64 {
+            for j in 0..64 {
+                assert_eq!(get(i, j), value);
+            }
+        }
+        json!({"max_absolute_error":0.0,"budget":0.0})
+    };
+    match library {
+        "kernix" => measure(
+            mode,
+            || {
+                #[cfg(feature = "legacy-constructors")]
+                {
+                    Tensor::full([64, 64], value).unwrap()
+                }
+                #[cfg(not(feature = "legacy-constructors"))]
+                {
+                    if one {
+                        Tensor::<f32>::ones([64, 64]).unwrap()
+                    } else {
+                        Tensor::<f32>::zeros([64, 64]).unwrap()
+                    }
+                }
+            },
+            |out| check(&|i, j| *out.get(&[i, j]).unwrap()),
+        ),
+        "ndarray" => measure(
+            mode,
+            || {
+                if one {
+                    ndarray::Array2::<f32>::ones((64, 64))
+                } else {
+                    ndarray::Array2::<f32>::zeros((64, 64))
+                }
+            },
+            |out| check(&|i, j| out[(i, j)]),
+        ),
+        "faer" => measure(
+            mode,
+            || {
+                if one {
+                    faer::Mat::<f32>::ones(64, 64)
+                } else {
+                    faer::Mat::<f32>::zeros(64, 64)
+                }
+            },
+            |out| check(&|i, j| out[(i, j)]),
+        ),
+        "candle" => measure(
+            mode,
+            || {
+                if one {
+                    candle_core::Tensor::ones(
+                        (64, 64),
+                        candle_core::DType::F32,
+                        &candle_core::Device::Cpu,
+                    )
+                    .unwrap()
+                } else {
+                    candle_core::Tensor::zeros(
+                        (64, 64),
+                        candle_core::DType::F32,
+                        &candle_core::Device::Cpu,
+                    )
+                    .unwrap()
+                }
+            },
+            |out| {
+                let values = out.to_vec2::<f32>().unwrap();
+                check(&|i, j| values[i][j])
+            },
+        ),
+        _ => panic!("unknown constructor library"),
+    }
+}
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     assert_eq!(
@@ -402,6 +480,8 @@ fn main() {
     assert!(["time", "resources", "first"].contains(&mode));
     faer::set_global_parallelism(faer::Par::Seq);
     let result = match workload {
+        "create_zeros_64x64_f32" => identity_constructor(mode, library, false),
+        "create_ones_64x64_f32" => identity_constructor(mode, library, true),
         "matmul_32_f64" => gemm(mode, library, 32),
         "matmul_128_f64" => gemm(mode, library, 128),
         "qr_96x32_f64" => qr(mode, library, 96, 32),

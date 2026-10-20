@@ -16,6 +16,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'create_zeros_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
+    'create_ones_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
     'matmul_32_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_128_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'qr_96x32_f64': ['kernix','nalgebra','faer','numpy'],
@@ -56,7 +58,13 @@ def peak_rss():
 
 def numpy_case(workload,mode):
     import numpy as np
-    if workload.startswith('matmul_'):
+    if workload.startswith('create_'):
+        one=workload.startswith('create_ones_');value=1.0 if one else 0.0
+        operation=(lambda:np.ones((64,64),dtype=np.float32)) if one else (lambda:np.zeros((64,64),dtype=np.float32))
+        def check(out):
+            assert out.shape==(64,64) and out.dtype==np.float32 and np.all(out==value)
+            return dict(max_absolute_error=0.0,budget=0.0)
+    elif workload.startswith('matmul_'):
         n=int(workload.split('_')[1]);a=((np.arange(n*n)%13).astype(np.float64)/13).reshape(n,n)
         operation=lambda:a@a
         def check(out):
@@ -150,7 +158,7 @@ def environment(cpu):
 def render_report(dest,data):
     meta=data['metadata'];lines=['# Clean CPU evidence: '+meta['run_id'],'',
         f"Measured source `{meta['revision']}`, tree `{meta['tree']}`; dirty before/after: false.",
-        f"Library source: {meta['library_source']}. One pinned CPU, f64, row-major inputs.",
+        f"Library source: {meta['library_source']}. One pinned CPU; f64 operations and explicitly named f32 constructors; row-major inputs.",
         '', '| Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |',
         '|---|---:|---:|---:|---:|---:|']
     for key,value in sorted(data['results'].items()):
@@ -162,6 +170,7 @@ def render_report(dest,data):
         '- Eight warmup calls follow validation. Timing includes allocation, dispatch, computation and output destruction. The first call field excludes output destruction. Inputs and library/runtime imports are prepared outside timing.',
         '- Three extra processes record their first operation calls. These are first-use observations, not cache-flushed or device-startup latency. Timer-pair overhead is reported without subtraction; tiny calls are clock-sensitive.',
         '- ndarray and Candle softmax are explicit stable compositions, not claims about a native softmax API.',
+        '- Constructor cases allocate owned 64x64 f32 tensors. Pre-0.6 registry baselines use full(value), explicitly marked in metadata; current workspace runs use zeros/ones. No nested literal reinterpretation is involved.',
         '- All GEMM inputs are C-order and match elementwise. Native output layout differs by library. QR materializes thin Q and R in every implementation. Cholesky returns reusable factors (or NumPy L); no extra factor materialization is timed.',
         '- Kernix checks finite values/symmetry. Some competitors validate a narrower contract. No finite-data precondition check was removed to improve timing. Accuracy results and budgets are retained per worker.',
         '- The backward case uses an actual reverse-mode graph in Kernix and Candle for sum(A @ W), with A constant and W trainable. Both copy input/weight data and returned gradients; no manual derivative is used as a framework ranking.',
@@ -181,7 +190,7 @@ def render_report(dest,data):
         axis.scatter(call['p50_ns']/1000,i,color='#2166ac',s=16)
     axis.set_xscale('log');axis.set_yticks(range(len(rows)),rows,fontsize=8);axis.invert_yaxis()
     axis.set_xlabel('Microseconds per call: median (dot), p95 (line endpoint)')
-    axis.set_title('CPU API and reverse-mode evidence | one CPU | f64',loc='left')
+    axis.set_title('CPU API and reverse-mode evidence | one CPU | dtype in workload name',loc='left')
     axis.grid(axis='x',alpha=.2);fig.savefig(dest/'latency.png',dpi=150);fig.savefig(dest/'latency.pdf');plt.close(fig)
     if shutil.which('pandoc') and shutil.which('xelatex'):
         subprocess.run(['pandoc',str(dest/'README.md'),'-o',str(dest/'report.pdf'),'--pdf-engine=xelatex',
@@ -218,7 +227,10 @@ def main():
     builds={}
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
+    legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
+        if legacy:
+            features=['--features',('allocation-counting,' if mode=='resources' else '')+'legacy-constructors']
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
         built=target/'release'/('kernix-benchmark-harness'+('.exe' if os.name=='nt' else ''))
@@ -240,6 +252,7 @@ def main():
                 vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
     metadata=dict(schema_version=2,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
+        kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
         library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
         environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,
