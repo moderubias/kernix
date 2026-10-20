@@ -71,8 +71,27 @@ Current Candle measured1.909us. Rank-two graph/backward measured2.403us versus
 Kernix fixed-gradient SGD measured0.483us. These allocation-inclusive shared-machine
 observations do not establish a universal ranking; all comparator wins/losses remain.
 
-Publication/source IDs, remote CI and registry-only verification follow their
-respective release gates. Stages separate inference,
+## Publication and downstream gate
+
+All three packages0.7.0 are published and available. Downloaded registry archives
+have clean VCS `b98ee37e8ffbbdf19f8404d944571229bf4cba95`, tagged `v0.7.0`.
+The release report commit preserves the measured crates tree exactly.
+
+| Package | Files | Archive SHA-256 |
+|---|---:|---|
+| kernix-core | 48 | `dd2f61674bf6299de0671ea0f819cc916ecf26573df1868afbb644d9a744a276` |
+| kernix-ops | 52 | `a210497ef26a021fd928cb5086a1982c60233be89b0b52be26f9f90ab3ce1976` |
+| kernix | 27 | `509dd3e7368cea4739f6f759a965a6a3db08da086ff9141f859d81007aa31352` |
+
+Source/test/example/README bytes match the checkout. Private web/planning and
+benchmark files are absent from packages; all extracted license/passport checks pass.
+A renamed registry-only no_std consumer executes on Rust1.86 and compiles on wasm,
+including the new batched/normalization/axis-mean/slice VJPs and explicit norm helper.
+Cargo metadata confirms registry0.7.0 for all three packages, with no path substitution.
+
+[Release-source CI](https://github.com/moderubias/kernix/actions/runs/39465173807)
+passed all Linux/Windows/macOS, MSRV, portable and independent evidence-tooling jobs.
+A later verification-text commit does not alter the published crate bytes. Stages separate inference,
 eager recording/forward, backward and fixed-gradient transactional SGD. Graph
 allocation counts include owned values/scratch, not container-only attribution;
 no subtraction of medians is used to claim a graph-only time. Legacy0.6 Tape lacks
