@@ -163,6 +163,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "gemm-f32"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02e0b8c9da1fbec6e3e3ab2ce6bc259ef18eb5f6f0d3e4edf54b75f9fd41a81c"
+dependencies = [
+ "dyn-stack",
+ "gemm-common",
+ "num-complex",
+ "num-traits",
+ "paste",
+ "raw-cpuid",
+ "seq-macro",
+]
+
+[[package]]
 name = "gemm-f64"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,7 +269,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "kernix"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "kernix-core",
  "kernix-ops",
@@ -267,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "kernix-core"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "proptest",
  "serde",
@@ -278,9 +293,10 @@ dependencies = [
 
 [[package]]
 name = "kernix-ops"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "gemm-common",
+ "gemm-f32",
  "gemm-f64",
  "kernix-core",
  "libm",

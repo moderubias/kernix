@@ -27,6 +27,9 @@ CASES = {
     'matmul_64_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_128_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_256_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'matmul_64_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'matmul_128_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'matmul_256_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'qr_96x32_f64': ['kernix','nalgebra','faer','numpy'],
     'qr_256x64_f64': ['kernix','nalgebra','faer','numpy'],
     'cholesky_factor_64_f64': ['kernix','nalgebra','faer','numpy'],
@@ -80,14 +83,17 @@ def numpy_case(workload,mode):
             error=np.abs(out-expected);assert np.all(error<=1e-11*(1+np.abs(expected)))
             return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=1e-11)
     elif workload.startswith('matmul_'):
-        n=int(workload.split('_')[1]);a=((np.arange(n*n)%13).astype(np.float64)/13).reshape(n,n)
+        n=int(workload.split('_')[1]);dtype=np.float32 if workload.endswith('_f32') else np.float64
+        a=((np.arange(n*n)%13).astype(dtype)/13).reshape(n,n)
         operation=lambda:a@a
         def check(out):
             # Ordered scalar oracle; no BLAS call before the first measured call.
             expected=np.array([[sum(float(a[i,k])*float(a[k,j]) for k in range(n)) for j in range(n)] for i in range(n)])
             error=np.abs(out-expected)
-            assert np.all(error<=1e-11*(1+np.abs(expected)))
-            return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=1e-11)
+            budget=1e-5 if dtype==np.float32 else 1e-11
+            assert np.all(error<=budget*(1+np.abs(expected)))
+            assert out.dtype==dtype
+            return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=budget)
     elif workload.startswith('qr_'):
         m,n=map(int,workload.split('_')[1].split('x'));i=np.arange(m*n).reshape(m,n)
         a=((i*13%47).astype(np.float64)-23)/47+(i//n==i%n)*3
@@ -173,7 +179,7 @@ def environment(cpu):
 def render_details(dest,data):
     meta=data['metadata'];lines=['# Clean CPU evidence: '+meta['run_id'],'',
         f"Measured source `{meta['revision']}`, tree `{meta['tree']}`; dirty before/after: false.",
-        f"Library source: {meta['library_source']}. One pinned CPU; f64 operations and explicitly named f32 constructors; row-major inputs.",
+        f"Library source: {meta['library_source']}. One pinned CPU; dtype explicitly named per workload; row-major inputs.",
         '', '| Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |',
         '|---|---:|---:|---:|---:|---:|']
     if meta.get('unavailable_workloads'):

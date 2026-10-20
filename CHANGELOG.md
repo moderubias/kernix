@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.3
+
+- Extend the measured large-dense x86-64/std native engine to f32 using serial
+  gemm-f32, preserving small/skinny/strided/portable and ordered paths. No dtype
+  promotion or output-layout change; packing can retain thread-local scratch.
+- Add f32 GEMM comparisons at 64/128/256 with a wider scalar oracle and boundary,
+  rectangular, batched and reusable-output regression checks.
+
 ## 0.7.2
 
 - Faster native dense f64 GEMM on x86-64/std: serial gemm-f64 for dimensions

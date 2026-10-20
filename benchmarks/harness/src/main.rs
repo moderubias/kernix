@@ -152,6 +152,71 @@ fn gemm(mode: &str, library: &str, n: usize) -> Value {
         _ => panic!("unknown library"),
     }
 }
+fn gemm_f32_error(n: usize, values: &[f32], get: impl Fn(usize, usize) -> f32) -> Value {
+    let mut error = 0.0f64;
+    for row in 0..n {
+        for col in 0..n {
+            let expected: f64 = (0..n)
+                .map(|k| f64::from(values[row * n + k]) * f64::from(values[k * n + col]))
+                .sum();
+            let delta = (f64::from(get(row, col)) - expected).abs();
+            assert!(delta <= 1e-5 * (1.0 + expected.abs()));
+            error = error.max(delta);
+        }
+    }
+    json!({"max_absolute_error":error,"relative_plus_absolute_budget":1e-5})
+}
+fn gemm_f32(mode: &str, library: &str, n: usize) -> Value {
+    let values: Vec<f32> = (0..n * n).map(|i| (i % 13) as f32 / 13.0).collect();
+    match library {
+        "kernix" => {
+            let a = Tensor::from_values([n, n], values.clone()).unwrap();
+            measure(
+                mode,
+                || kernix::matmul(&a, &a).unwrap(),
+                |out| gemm_f32_error(n, &values, |i, j| *out.get(&[i, j]).unwrap()),
+            )
+        }
+        "ndarray" => {
+            let a = ndarray::Array2::from_shape_vec((n, n), values.clone()).unwrap();
+            measure(
+                mode,
+                || a.dot(&a),
+                |out| gemm_f32_error(n, &values, |i, j| out[(i, j)]),
+            )
+        }
+        "nalgebra" => {
+            let a = nalgebra::DMatrixView::from_slice_with_strides(&values, n, n, n, 1);
+            measure(
+                mode,
+                || a * a,
+                |out| gemm_f32_error(n, &values, |i, j| out[(i, j)]),
+            )
+        }
+        "faer" => {
+            let a = faer::MatRef::from_row_major_slice(&values, n, n);
+            measure(
+                mode,
+                || a * a,
+                |out| gemm_f32_error(n, &values, |i, j| out[(i, j)]),
+            )
+        }
+        "candle" => {
+            let a =
+                candle_core::Tensor::from_vec(values.clone(), (n, n), &candle_core::Device::Cpu)
+                    .unwrap();
+            measure(
+                mode,
+                || a.matmul(&a).unwrap(),
+                |out| {
+                    let v = out.to_vec2::<f32>().unwrap();
+                    gemm_f32_error(n, &values, |i, j| v[i][j])
+                },
+            )
+        }
+        _ => panic!("unknown library"),
+    }
+}
 fn batched_gemm(mode: &str, library: &str) -> Value {
     let a: Vec<f64> = (0..4 * 16 * 32).map(|i| (i % 13) as f64 / 13.0).collect();
     let b: Vec<f64> = (0..32 * 16).map(|i| (i % 17) as f64 / 17.0).collect();
@@ -550,6 +615,9 @@ fn main() {
         "matmul_64_f64" => gemm(mode, library, 64),
         "matmul_128_f64" => gemm(mode, library, 128),
         "matmul_256_f64" => gemm(mode, library, 256),
+        "matmul_64_f32" => gemm_f32(mode, library, 64),
+        "matmul_128_f32" => gemm_f32(mode, library, 128),
+        "matmul_256_f32" => gemm_f32(mode, library, 256),
         "qr_96x32_f64" => qr(mode, library, 96, 32),
         "qr_256x64_f64" => qr(mode, library, 256, 64),
         "cholesky_factor_64_f64" => cholesky(mode, library, 64),
@@ -561,6 +629,20 @@ fn main() {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    #[cfg(not(feature = "allocation-counting"))]
+    fn all_f32_gemm_workers_validate_against_the_wider_scalar_oracle() {
+        faer::set_global_parallelism(faer::Par::Seq);
+        for library in ["kernix", "ndarray", "nalgebra", "faer", "candle"] {
+            let result = super::gemm_f32("first", library, 65);
+            assert!(
+                result["accuracy"]["max_absolute_error"]
+                    .as_f64()
+                    .unwrap()
+                    .is_finite()
+            );
+        }
+    }
     #[test]
     fn nearest_rank_quantiles_distinguish_tail_from_maximum() {
         let v: Vec<f64> = (1..=100).map(f64::from).collect();

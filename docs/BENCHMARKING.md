@@ -33,7 +33,7 @@ measures the numerical code in the named clean source commit.
 
 ## Timing boundaries
 
-Operation inputs are f64 and C-order in every comparator; constructor cases
+Operation inputs are C-order with explicitly named f32/f64 dtype in every comparator; constructor cases
 explicitly use f32 and allocate 64x64 owned values. Pre-0.6 registry baselines use
 full(value), recorded as the legacy constructor implementation, since zeros/ones
 did not exist. Outputs retain their library's
@@ -138,3 +138,11 @@ Dense f64 GEMM in 0.7.2 may cache thread-local packing memory. Warmed Rust alloc
 probes therefore exclude its initial slab allocation and retention; they do not
 establish allocation-free first use or scratch-free execution. Engine selection is
 specified in NUMERICS.md. NumPy uses its recorded optimized BLAS, not a reference build.
+
+
+The 0.7.3 suite adds dense f32 GEMM at 64/128/256. Rust and NumPy fixtures use the
+same f32 values, with no timed conversion. Validation accumulates the actual f32
+inputs in f64 outside timing and uses relative-plus-absolute budget 1e-5 for all
+comparators. The existing f64 budget remains 1e-11. First-use, timing and resource
+boundaries are unchanged; both exact previous-version and candidate runs include
+all 80 workload/library pairs.

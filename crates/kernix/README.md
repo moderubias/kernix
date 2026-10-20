@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.7.2"
+kernix = "0.7.3"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.7.2", default-features = false }
+kernix = { version = "0.7.3", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -253,7 +253,9 @@ backends implement their own capabilities without requiring `HostBuffer`.
 `CpuExecutor::matmul_into` writes contiguous rank-two results into an existing
 allocation. The allocating API retains the general strided/batched fallback.
 f32/f64 GEMM, including contiguous vector/batched products, uses checked native Rust kernels, including signed
-strides. This Rust dependency requires no external BLAS. Native SIMD/FMA and packed
+strides. These Rust engines require no external BLAS. Native packing can allocate;
+large dense x86-64/std products may retain thread-local scratch until thread exit.
+Output-buffer reuse does not make native execution scratch-free. Native SIMD/FMA and packed
 summation can change last bits. `matmul_reference` or
 `CpuExecutor::default().with_ordered_matmul(true)` selects increasing-k scalar order.
 `sum_all` uses pairwise contiguous reduction; `sum_sequential_all` fixes logical order;

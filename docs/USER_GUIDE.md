@@ -71,7 +71,7 @@ can implement `MatmulElement` without implementing a native kernel. `TensorInput
 adapters may expose validated `MatrixInput` for signed-stride acceleration; the
 view must represent the same logical data as indexed access.
 
-Large dense f64 products on x86-64/std can use a serial engine with runtime SIMD
+Large dense f32/f64 products on x86-64/std can use a serial engine with runtime SIMD
 checks. It can allocate packing scratch and retain an L2-sized thread-local slab
 until thread exit; warmed allocation counts exclude this first-use memory. See
 [engine selection and costs](NUMERICS.md#dense-f64-cpu-engine-selection-072).

@@ -101,22 +101,27 @@ and safety semantics of autodiff; its speed difference is disclosed. No claim of
 universal leadership or a complete model's frame rate follows from these tables.
 
 
-## Dense f64 CPU engine selection (0.7.2)
+## Dense floating CPU engine selection
 
-C-contiguous f64 products with m, k and n at least 64 use the serial `gemm-f64`
-engine on x86-64 with std and the engine's complete runtime-detected SIMD feature
-set. C^T = B^T A^T is passed in column-major
+<a id="dense-f64-cpu-engine-selection-072"></a>
+
+C-contiguous products with m, k and n at least 64 use serial `gemm-f64` (since
+0.7.2) or `gemm-f32` (since 0.7.3) on x86-64 with std and the engine's complete
+runtime-detected SIMD feature set. C^T = B^T A^T is passed in column-major
 orientation, writing the same C-order output; this does not materialize a transpose.
-Small/skinny products, f32, signed-stride rank-two inputs, no_std and other targets
+Small/skinny products, signed-stride rank-two inputs, no_std and other targets
 retain matrixmultiply. Noncontiguous batches retain the checked reference path.
 Custom scalar implementations and all shape/storage checks remain unchanged.
 Native engines may use FMA and reassociation; ordered mode remains available via
 `matmul_reference` and `CpuExecutor::with_ordered_matmul(true)`.
 
-The new engine is pure Rust and explicitly serial; it adds no external BLAS or
-implicit thread pool. It can allocate packed scratch and cache an L2-sized slab in
-thread-local storage until thread exit. Warmed allocation probes exclude that first-use
-allocation and retention; first-use timings and process RSS are recorded separately.
-This is an internal heuristic measured on one CPU, not an optimal threshold or
-performance guarantee for every x86-64 processor. Miri uses the existing portable
-native path; native instructions require execution tests on actual hardware.
+These engines are pure Rust and explicitly serial; they add no external BLAS or
+implicit thread pool. They can allocate packed scratch and cache an L2-sized slab
+in thread-local storage until thread exit. Warmed allocation probes exclude that
+first-use allocation and retention; first-use timings and process RSS are recorded
+separately. This is an internal heuristic measured on one CPU, not an optimal
+threshold or performance guarantee for every x86-64 processor. Miri uses the existing
+portable native path; native instructions require execution tests on actual hardware.
+
+No internal dtype promotion is introduced. f32 accuracy checks use a wider f64
+scalar oracle constructed from the actual f32 inputs, independently of timing loops.

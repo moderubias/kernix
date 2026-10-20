@@ -137,6 +137,68 @@ fn dense_f64_native_dispatch_keeps_batched_and_ordered_contracts() {
 }
 
 #[test]
+fn dense_f32_native_boundaries_rectangles_and_reuse_match_f64_oracle() {
+    for (m, k, n) in [
+        (63, 64, 65),
+        (64, 63, 65),
+        (65, 64, 63),
+        (64, 64, 64),
+        (65, 67, 69),
+        (128, 128, 128),
+        (129, 127, 131),
+    ] {
+        let av: Vec<f32> = (0..m * k)
+            .map(|i| ((i * 7 % 37) as f32 - 18.0) / 17.0)
+            .collect();
+        let bv: Vec<f32> = (0..k * n)
+            .map(|i| ((i * 11 % 29) as f32 - 14.0) / 13.0)
+            .collect();
+        let a = Tensor::from_values([m, k], av.clone()).unwrap();
+        let b = Tensor::from_values([k, n], bv.clone()).unwrap();
+        let actual = matmul(&a, &b).unwrap();
+        let mut reused = Tensor::full([m, n], f32::NAN).unwrap();
+        let ptr = reused.storage_slice().as_ptr();
+        for _ in 0..2 {
+            kernix_ops::execution::CpuExecutor::default()
+                .matmul_into(&a, &b, &mut reused)
+                .unwrap();
+            assert_eq!(ptr, reused.storage_slice().as_ptr());
+            assert_eq!(actual.storage_slice(), reused.storage_slice());
+        }
+        for i in 0..m {
+            for j in 0..n {
+                let expected: f64 = (0..k)
+                    .map(|p| f64::from(av[i * k + p]) * f64::from(bv[p * n + j]))
+                    .sum();
+                assert!(
+                    (f64::from(actual.storage_slice()[i * n + j]) - expected).abs()
+                        < 1e-5 * (1.0 + expected.abs()),
+                    "{m}/{k}/{n}, {i}/{j}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn dense_f32_native_broadcast_batches_keep_exact_integer_products() {
+    let a = Tensor::from_values(
+        [2, 64, 65],
+        (0..2 * 64 * 65).map(|i| (i % 7) as f32 - 3.0).collect(),
+    )
+    .unwrap();
+    let b = Tensor::from_values(
+        [1, 65, 67],
+        (0..65 * 67).map(|i| (i % 11) as f32 - 5.0).collect(),
+    )
+    .unwrap();
+    assert_eq!(
+        matmul(&a, &b).unwrap().storage_slice(),
+        matmul_reference(&a, &b).unwrap().storage_slice()
+    );
+}
+
+#[test]
 fn tiled_convolution_matches_ordered_reference_across_tiles_and_geometry() {
     use kernix_ops::neural::{Conv2dOptions, conv2d, conv2d_reference};
     for options in [

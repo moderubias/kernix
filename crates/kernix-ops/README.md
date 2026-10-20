@@ -31,6 +31,10 @@ Cholesky, Householder QR, solves, inverse/determinants and least squares. `neura
 provides convolution/pooling/losses; `vision` provides borrowed RGB preprocessing.
 The facade adds explicit autodiff, trainable layers, optimizers and checkpoints.
 There is no GPU backend. Native kernels can change floating accumulation order.
+Large dense f32/f64 products on x86-64/std may use serial gemm engines with runtime
+SIMD checks. Packing can allocate and retain thread-local scratch until thread exit;
+ordered matmul avoids native packing. See the [numerical contracts](https://github.com/moderubias/kernix/blob/main/docs/NUMERICS.md)
+for selection, rounding and memory costs.
 Developed with OpenAI Codex (GPT-6 agent), under human direction.
 
 Kiyoshima Open profile: MIT OR Apache-2.0. See LICENSE, LICENSES and KIYOSHIMA.json.

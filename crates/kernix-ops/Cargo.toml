@@ -18,6 +18,7 @@ std = [
     "thiserror/std",
     "matrixmultiply/std",
     "dep:gemm-f64",
+    "dep:gemm-f32",
     "dep:gemm-common",
 ]
 
@@ -45,6 +46,7 @@ serde_json.workspace = true
 proptest.workspace = true
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
+gemm-f32 = { version = "0.19.0", default-features = false, features = ["std"], optional = true }
 gemm-f64 = { version = "0.19.0", default-features = false, features = ["std"], optional = true }
 gemm-common = { version = "0.19.0", default-features = false, features = ["std"], optional = true }
 

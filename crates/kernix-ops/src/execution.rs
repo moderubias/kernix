@@ -126,8 +126,10 @@ impl CpuExecutor {
     }
     /// Write rank-two C-contiguous matmul into an existing output allocation.
     ///
-    /// Output tensor storage is reused. Native kernels may allocate packed workspace;
-    /// with_ordered_matmul(true) avoids element-buffer allocations. All shape/contiguity
+    /// Output tensor storage is reused. Native kernels may allocate packed workspace
+    /// and retain thread-local packing memory until thread exit. Reusing output does
+    /// not imply scratch-free execution. with_ordered_matmul(true) avoids
+    /// element-buffer allocations. All shape/contiguity
     /// checks happen before writes. Output shape must be `[m,n]`; per-element
     /// accumulation follows the selected native/ordered policy. Scalar operator panics retain Rust
     /// semantics and can leave a partially updated output. Parallel contexts
