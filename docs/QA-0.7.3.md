@@ -65,5 +65,27 @@ or complete application latency. Factorization and other gaps remain visible.
 
 ## Publication
 
-Registry payloads, downstream consumers and release-source CI are recorded after
-those gates finish.
+All three crates are published from clean source
+`ff2874f3179c277bbe0aee7e0e40958ddf875dda`, tagged `v0.7.3`. Crates tree
+`0d146109faec09fcb454c2c854bf50b61653e33f` matches the measured source. Actual
+registry archives have matching clean VCS metadata and source/test/example/README
+bytes. Local research/planning/benchmark files are excluded. License checks pass
+on all three extracted registry archives.
+
+| Package | Files | Archive SHA-256 |
+|---|---:|---|
+
+| kernix-core | 48 | `728512fd8ca0d5f5254e97b422cc60d8032514d57b87e6cbc11e9711aa670f64` |
+| kernix-ops | 53 | `c843779108f35e8b0cab613c91b91e17d82f95c44ea2d54d4b7f656e28e7bf42` |
+| kernix | 27 | `59265c9a349166678cd04700ec67e8c176c971ee2edb2a4129bffae6a215fe3c` |
+
+A renamed registry-only no_std consumer executes on Rust 1.86 and compiles for
+wasm using stable Rust; a separate std consumer executes both f32/f64 native
+coordinate audits on Rust 1.86. Metadata confirms exact registry 0.7.3 for all
+three packages without path substitution. The no_std graph excludes gemm packages;
+the std graph includes gemm-f32 and gemm-f64.
+
+[Release-source CI](https://github.com/moderubias/kernix/actions/runs/39514973642)
+passes all eight jobs: Linux/Windows/macOS, MSRV, three portable targets and
+independent evidence tooling. Main and the release tag are pushed. A subsequent
+verification-text commit changes no published crate bytes.
