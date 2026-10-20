@@ -1,19 +1,22 @@
 # CPU benchmark reports
 
-Start with the [0.7.2 comparison](0.7.2-clean-5067333/README.md): one workload per
-row, library columns, colored per-workload charts and an optional standalone
-[HTML report](0.7.2-clean-5067333/report.html) with filtering and expandable details.
-The HTML is self-contained apart from its adjacent chart; download the run directory
-to open it locally. Raw samples, complete methods, source hashes and actual locks
-remain adjacent. Missing measurements mean unmeasured, not unsupported.
+Start with the [0.7.3 comparison](0.7.3-clean-bc459f4/README.md): one workload per
+row, library columns, colored per-workload charts and a standalone
+[HTML report](0.7.3-clean-bc459f4/report.html) with filtering and expandable details.
+Download the run directory to open HTML locally with its adjacent chart. Raw
+samples, complete methods, source hashes and actual locks remain adjacent. Missing
+measurements mean unmeasured, not unsupported.
 
-The paired [registry 0.7.1 baseline](0.7.1-registry-5067333/README.md) uses the same
-62 cases and comparator versions. For dense f64 GEMM128 the per-call median is
-68.456 us in 0.7.2 versus 120.337 us in 0.7.1; current NumPy/OpenBLAS is 75.573 us.
-These are allocation-inclusive one-CPU observations on a shared laptop, not a
-universal performance ranking. See [release QA](../../docs/QA-0.7.2.md) for limits.
+The paired [registry 0.7.2 baseline](0.7.2-registry-bc459f4/README.md) uses the same
+80 cases and comparator versions. f32 GEMM128 measured 34.749 us versus 49.181 us
+in 0.7.2; current NumPy/OpenBLAS is 39.432 us. Current f64 GEMM128 is 73.624 us
+versus NumPy 78.457 us. These allocation-inclusive one-CPU observations on a shared
+laptop are not a universal ranking. The mixed f32 64 result and every other
+win/loss remain visible. See [release QA](../../docs/QA-0.7.3.md).
 
 ## Previous clean evidence
+
+- [0.7.2](0.7.2-clean-5067333/README.md) and [registry 0.7.1](0.7.1-registry-5067333/README.md): dense f64 engine, 62 cases each; GEMM128 120.337→68.456 us in that paired run. See [0.7.2 QA](../../docs/QA-0.7.2.md) for conditions.
 
 - [0.7.1](0.7.1-clean-4f60380/README.md) and [registry 0.7.0](0.7.0-registry-4f60380/README.md): fused layer normalization, 50 cases each.
 - [0.7.0](0.7.0-clean-aa7347a/README.md) and [registry 0.6.0](0.6.0-registry-aa7347a/README.md): batched/vector autodiff and normalized training stages.
