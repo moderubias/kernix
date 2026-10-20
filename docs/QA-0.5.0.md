@@ -45,4 +45,19 @@ explicit reuse cases. Batch p95 is not a per-request latency percentile.
 
 ## Release
 
-Publication and remote verification are recorded after the release gate completes.
+`kernix-core`, `kernix-ops` and `kernix` 0.5.0 were published successfully after
+pushing source commit `def2034` to main. Cargo verified packaged registry
+dependencies in dependency order. A separate registry-only consumer passed on
+Rust 1.86 with a renamed no_std dependency, all literal macros, zero-copy Vec
+adoption, square solve/residual and QR reconstruction. It also compiled for wasm.
+All extracted license passports and downloaded registry archive payloads passed
+inspection; no private development files occur in the published archives.
+
+The source [CI run](https://github.com/moderubias/kernix/actions/runs/39448655946)
+completed successfully on Linux, Windows and macOS, including MSRV and all three
+portable compilation checks. Release tag `v0.5.0` identifies the published source
+commit `def2034`; this verification note is a documentation follow-up.
+
+The NumPy column uses the system BLAS build recorded in raw.json. Optimized
+OpenBLAS builds can be substantially faster; this report does not establish
+performance leadership over NumPy configurations or other libraries.
