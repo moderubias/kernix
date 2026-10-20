@@ -15,5 +15,6 @@
 !CHANGELOG.md
 !docs/**/*.md
 !benchmarks/results/**/README.md
+!benchmarks/results/**/DETAILS.md
 PROGRESS.md
 __pycache__/
