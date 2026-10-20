@@ -49,5 +49,29 @@ workflow executes on Rust 1.86 and compiles for wasm32, i686 and aarch64;
 the workspace also passes no-default compilation for those three targets.
 The harness passes its two feature-enabled unit tests and strict Clippy.
 
-Final clean-source IDs, retained measurements, remote CI and publication checks
-are recorded after their respective release gates finish.
+## Retained clean evidence
+
+Both reports measure harness source `041f2a158c3e51340b5b9e6df6886fa52584f9b5`
+with a clean tree before/after and 40 validated library/workload cases each:
+
+- [Workspace 0.6.0](../benchmarks/results/0.6.0-clean-041f2a1/README.md),
+  measured crates tree `ac83ebc428cbf804f058c55b9948b117e5ea0cb5`.
+- [Published 0.5.0 baseline](../benchmarks/results/0.5.0-registry-041f2a1/README.md),
+  all three packages pinned exactly, registry VCS source `def2034`.
+
+The saved driver lockfiles resolve the same ndarray 0.17.2, nalgebra 0.35.0,
+faer 0.24.4, Candle 0.11.0 and matrixmultiply 0.3.11. Both use verified NumPy
+OpenBLAS, one CPU affinity and one-thread settings. Raw samples, accuracy budgets,
+allocator/RSS results, compiler/environment provenance and source archives are retained.
+The archives contain no private web/planning files.
+
+For the new 64x64 f32 constructors, per-call medians were 0.134 us zeros and
+0.183 us ones, versus 0.184/0.183 us for the previous full implementation.
+Each new constructor requested one 16,384-byte buffer and no reallocations.
+These sub-microsecond shared-machine observations do not establish a general
+speedup. Kernix still loses representative GEMM128, QR and Cholesky cases to
+specialized comparators; every result is retained. No existing numerical kernel
+was changed in this release.
+
+Remote CI and actual publication/registry-consumer checks are recorded after
+their respective release gates finish.
