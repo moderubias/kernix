@@ -203,8 +203,9 @@ assert_eq!(gradients.get(&w)?.unwrap().shape().dims(), &[3, 4]);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Normalization recomputes population statistics for its backward pass; it allocates
-scratch and output. Positive finite epsilon is fixed, not differentiated. Compose
+Normalization recomputes population statistics for its backward pass. Nonempty
+C-order groups use one output buffer and stack statistics; general indexed/empty
+paths retain checked scratch/output composition. Positive finite epsilon is fixed, not differentiated. Compose
 `tape.mul`/`add` with trainable scale/bias for affine normalization. Constant groups
 are centered with the same Welford mean used by variance. Nonfinite data and
 unrepresentable statistics/derivatives return errors. In particular, overflowing

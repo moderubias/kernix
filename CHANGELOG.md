@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+
+- Fuse nonempty C-order layer normalization and its VJP into per-group loops,
+  with one output buffer and stack statistics instead of full-size temporaries.
+- Preserve the Welford recurrence, scaled standard deviation, checked range/error
+  policy and general indexed fallback; no new public API or runtime dependency.
+- Compare dense/indexed paths for exact tested f32/f64 results, tail ranks, constants,
+  extreme ranges, nonfinite data and empty cases; retain independent VJP oracles.
+
 ## 0.7.0
 
 - Record vector/broadcast-batched matmul, signed-axis sum/mean, signed-step axis slicing and layer norm VJPs.

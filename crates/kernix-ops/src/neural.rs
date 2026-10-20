@@ -859,7 +859,9 @@ pub fn binary_cross_entropy_with_logits<T: FloatMath, A: TensorInput<T>, B: Tens
 }
 /// Normalize the last normalized_rank axes independently for each leading group,
 /// using population Welford variance and positive finite epsilon. Allocates C-order;
-/// no learned scale/bias is implicit. Invalid rank/epsilon/reduction, nonfinite data
+/// Contiguous nonempty input uses one output buffer and per-group stack statistics;
+/// strided/empty inputs retain the general checked composition. No learned scale/bias
+/// is implicit. Invalid rank/epsilon/reduction, nonfinite data
 /// or unrepresentable statistics/results return errors. Variance overflow is rejected
 /// rather than silently normalizing finite inputs to zero. A scaled combination of
 /// sqrt(variance) and sqrt(epsilon) avoids overflow in variance + epsilon.
@@ -879,15 +881,24 @@ pub fn layer_norm<T: FloatMath + AddAssign, A: TensorInput<T>>(
     normalized_rank: usize,
     epsilon: T,
 ) -> Result<Tensor<T>, OpsError> {
+    validate_layer_norm(input.dims().len(), normalized_rank, epsilon)?;
+    if let Some(data) = input.as_c_contiguous_slice() {
+        let shape = Kahen::new(input.dims())?;
+        if !data.is_empty() && data.len() == shape.numel() {
+            let width = input.dims()[input.dims().len() - normalized_rank..]
+                .iter()
+                .product();
+            return layer_norm_dense(data, None, shape, width, epsilon);
+        }
+    }
     Ok(layer_norm_parts(input, normalized_rank, epsilon)?.0)
 }
 
-fn layer_norm_parts<T: FloatMath + AddAssign, A: TensorInput<T>>(
-    input: &A,
+fn validate_layer_norm<T: FloatMath>(
+    rank: usize,
     normalized_rank: usize,
     epsilon: T,
-) -> Result<(Tensor<T>, Tensor<T>), OpsError> {
-    let rank = input.dims().len();
+) -> Result<(), OpsError> {
     if normalized_rank == 0
         || normalized_rank > rank
         || !FloatMath::is_finite(epsilon)
@@ -898,34 +909,122 @@ fn layer_norm_parts<T: FloatMath + AddAssign, A: TensorInput<T>>(
             "normalized_rank in 1..=rank and positive finite epsilon required",
         ));
     }
+    Ok(())
+}
+
+fn layer_norm_stddev<T: FloatMath>(variance: T, epsilon_root: T) -> Result<T, OpsError> {
+    if !FloatMath::is_finite(variance) {
+        return Err(invalid(
+            "layer_norm",
+            "finite representable statistics required",
+        ));
+    }
+    let variance_root = FloatMath::sqrt(variance);
+    let (high, low) = if variance_root > epsilon_root {
+        (variance_root, epsilon_root)
+    } else {
+        (epsilon_root, variance_root)
+    };
+    let ratio = low / high;
+    let denominator = high * FloatMath::sqrt(T::one() + ratio * ratio);
+    if !FloatMath::is_finite(denominator) || denominator <= T::zero() {
+        return Err(invalid(
+            "layer_norm",
+            "positive representable standard deviation required",
+        ));
+    }
+    Ok(denominator)
+}
+
+// Nonempty contiguous groups share the reference recurrence and scalar operation
+// order. Only output storage is allocated; statistics live on the stack per group.
+fn layer_norm_dense<T: FloatMath>(
+    data: &[T],
+    gradient: Option<&[T]>,
+    shape: Kahen,
+    width: usize,
+    epsilon: T,
+) -> Result<Tensor<T>, OpsError> {
+    let mut output = Tensor::zeros(shape.dims())?;
+    let epsilon_root = FloatMath::sqrt(epsilon);
+    for (group, (row, out)) in data
+        .chunks_exact(width)
+        .zip(output.storage_slice_mut().chunks_exact_mut(width))
+        .enumerate()
+    {
+        let mut mean = T::zero();
+        let mut m2 = T::zero();
+        for (i, &x) in row.iter().enumerate() {
+            let delta = x - mean;
+            mean = mean + delta / T::from_count(i + 1);
+            let delta2 = x - mean;
+            m2 = m2 + delta * delta2;
+        }
+        let variance = m2 / T::from_count(width);
+        let variance = if variance < T::zero() {
+            T::zero()
+        } else {
+            variance
+        };
+        let stddev = layer_norm_stddev(variance, epsilon_root)?;
+        if let Some(gradient) = gradient {
+            let g = &gradient[group * width..(group + 1) * width];
+            let mut mean_g = T::zero();
+            let mut mean_gy = T::zero();
+            for (i, (&x, &g)) in row.iter().zip(g).enumerate() {
+                let centered = x - mean;
+                let y = centered / stddev;
+                if !FloatMath::is_finite(centered) || !FloatMath::is_finite(y) {
+                    return Err(invalid(
+                        "layer_norm",
+                        "finite representable input and output required",
+                    ));
+                }
+                let gy = g * y;
+                mean_g = mean_g + (g - mean_g) / T::from_count(i + 1);
+                mean_gy = mean_gy + (gy - mean_gy) / T::from_count(i + 1);
+            }
+            for ((&x, &g), out) in row.iter().zip(g).zip(out) {
+                let y = (x - mean) / stddev;
+                let value = ((g - mean_g) - y * mean_gy) / stddev;
+                if !FloatMath::is_finite(value) {
+                    return Err(invalid(
+                        "layer_norm_backward",
+                        "finite representable derivative required",
+                    ));
+                }
+                *out = value;
+            }
+        } else {
+            for (&x, out) in row.iter().zip(out) {
+                let centered = x - mean;
+                let value = centered / stddev;
+                if !FloatMath::is_finite(centered) || !FloatMath::is_finite(value) {
+                    return Err(invalid(
+                        "layer_norm",
+                        "finite representable input and output required",
+                    ));
+                }
+                *out = value;
+            }
+        }
+    }
+    Ok(output)
+}
+
+fn layer_norm_parts<T: FloatMath + AddAssign, A: TensorInput<T>>(
+    input: &A,
+    normalized_rank: usize,
+    epsilon: T,
+) -> Result<(Tensor<T>, Tensor<T>), OpsError> {
+    let rank = input.dims().len();
+    validate_layer_norm(rank, normalized_rank, epsilon)?;
     let axes: Vec<isize> = ((rank - normalized_rank)..rank)
         .map(|x| x as isize)
         .collect();
     let (mean, variance) = crate::ops::mean_variance_axes(input, &axes, true)?;
     let epsilon_root = FloatMath::sqrt(epsilon);
-    let stddev = crate::try_map(&variance, |v| {
-        if !FloatMath::is_finite(*v) {
-            return Err(invalid(
-                "layer_norm",
-                "finite representable statistics required",
-            ));
-        }
-        let variance_root = FloatMath::sqrt(*v);
-        let (high, low) = if variance_root > epsilon_root {
-            (variance_root, epsilon_root)
-        } else {
-            (epsilon_root, variance_root)
-        };
-        let ratio = low / high;
-        let denominator = high * FloatMath::sqrt(T::one() + ratio * ratio);
-        if !FloatMath::is_finite(denominator) || denominator <= T::zero() {
-            return Err(invalid(
-                "layer_norm",
-                "positive representable standard deviation required",
-            ));
-        }
-        Ok(denominator)
-    })?;
+    let stddev = crate::try_map(&variance, |v| layer_norm_stddev(*v, epsilon_root))?;
     let centered = crate::sub(input, &mean)?;
     let normalized = crate::try_zip_map(&centered, &stddev, |x, std| {
         let value = *x / *std;
@@ -941,7 +1040,8 @@ fn layer_norm_parts<T: FloatMath + AddAssign, A: TensorInput<T>>(
 }
 
 /// Input VJP of [`layer_norm`] with an exact-shape finite upstream gradient.
-/// Recomputes the forward population statistics and allocates C-order scratch/output;
+/// Recomputes the forward population statistics. Contiguous nonempty inputs/seeds
+/// allocate one C-order output; other layouts use general scratch/output;
 /// no graph or higher-order derivative is recorded. For each normalized group,
 /// computes `(g - mean(g) - normalized * mean(g * normalized)) / stddev`.
 /// Invalid geometry/epsilon, empty nonempty-output reductions and unrepresentable
@@ -967,6 +1067,19 @@ pub fn layer_norm_backward<T: FloatMath + AddAssign, A: TensorInput<T>, G: Tenso
             "layer_norm_backward",
             "gradient must match input shape exactly",
         ));
+    }
+    validate_layer_norm(input.dims().len(), normalized_rank, epsilon)?;
+    if let (Some(data), Some(gradient)) = (
+        input.as_c_contiguous_slice(),
+        gradient.as_c_contiguous_slice(),
+    ) {
+        let shape = Kahen::new(input.dims())?;
+        if !data.is_empty() && data.len() == shape.numel() && gradient.len() == data.len() {
+            let width = input.dims()[input.dims().len() - normalized_rank..]
+                .iter()
+                .product();
+            return layer_norm_dense(data, Some(gradient), shape, width, epsilon);
+        }
     }
     let (normalized, stddev) = layer_norm_parts(input, normalized_rank, epsilon)?;
     let axes: Vec<isize> = ((input.dims().len() - normalized_rank)..input.dims().len())

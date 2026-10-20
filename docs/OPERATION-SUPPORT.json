@@ -877,7 +877,8 @@
       "contract": "Last normalized_rank axes; fixed positive finite epsilon; representable population statistics and first-order derivatives; affine mul/add compose.",
       "tests": [
         "crates/kernix/tests/autograd_tensor_tests.rs::layer_norm_input_and_affine_vjps_finite_differences",
-        "benchmarks/harness/src/gradient_checks.rs::normalization_affine_vjps_match_independent_candle_graphs"
+        "benchmarks/harness/src/gradient_checks.rs::normalization_affine_vjps_match_independent_candle_graphs",
+        "crates/kernix-ops/tests/layer_norm_dense_tests.rs::dense_and_indexed_paths_match_for_both_dtypes_and_tail_ranks"
       ]
     },
     {

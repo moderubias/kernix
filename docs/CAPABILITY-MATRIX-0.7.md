@@ -32,5 +32,5 @@ are checked against source exports in CI. `supported` is scoped to documented
 finite inputs and first-order gradients; unsupported operations never silently detach.
 
 See [numerical contracts](NUMERICS.md), [user guide](USER_GUIDE.md),
-[0.7.0 release QA](QA-0.7.0.md), and [benchmark methodology](BENCHMARKING.md).
+[0.7.0 release QA](QA-0.7.0.md), [0.7.1 optimization QA](QA-0.7.1.md), and [benchmark methodology](BENCHMARKING.md).
 No unspecified complete model's 120-Hz budget follows from these capabilities.

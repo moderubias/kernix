@@ -59,7 +59,9 @@ Layer norm shares one Welford mean/variance state and combines their standard
 deviation with sqrt(epsilon) using scaling. Nonfinite/unrepresentable statistics
 are errors, including variance overflow that could previously yield finite zeros.
 Its explicit input VJP and Tape recording recompute population statistics; trainable
-affine scale/bias compose through ordinary broadcast operations. Epsilon is fixed. Extreme
+affine scale/bias compose through ordinary broadcast operations. Epsilon is fixed.
+Contiguous nonempty groups fuse normalization/VJP loops while retaining the same
+scalar recurrence and finite checks; the general indexed path remains available. Extreme
 representability limits still produce documented errors or IEEE results.
 
 Pivoted LU solves square systems and defaults to a scale-relative near-singular
