@@ -49,8 +49,30 @@ is selected interpreter coverage, not certification of every native assembly pat
 
 ## Evidence and release gates
 
-Clean measurements, exact source/payload IDs, remote CI and registry-only
-verification are recorded as their release gates finish. Stages separate inference,
+Clean source `aa7347a201ce9294b02990b7598af146470bca65` and crates tree
+`fa1808e9b63894b529e661372b801b02750a5d25` were measured with clean status
+before/after. Retained reports:
+
+- [Workspace0.7](../benchmarks/results/0.7.0-clean-aa7347a/README.md): 50 validated cases.
+- [Registry0.6 baseline](../benchmarks/results/0.6.0-registry-aa7347a/README.md):
+  43 cases; all three packages pinned0.6.0, registry VCS `56e71f0`. Unsupported
+  new Tape stages are listed as unavailable, never replaced by manual derivatives.
+
+Comparator lockfiles match: faer0.24.4, Candle0.11.0, ndarray0.17.2,
+nalgebra0.35.0 and matrixmultiply0.3.11. NumPy uses verified OpenBLAS and
+thread/affinity controls. Both source archives exclude private web/planning files;
+raw observations, accuracy/resource budgets and source/binary hashes are retained.
+
+Broadcast-batched GEMM `[4,16,32] @ [1,32,16]` measured 2.060us per-call median
+versus 280.496us in registry0.6 (about136x for this particular prior reference path).
+Current Candle measured1.909us. Rank-two graph/backward measured2.403us versus
+3.084us in0.6. For the normalized/sliced training case, Kernix/Candle medians were
+3.809/3.282us inference, 4.646/4.756us recording/forward, and8.668/13.309us backward.
+Kernix fixed-gradient SGD measured0.483us. These allocation-inclusive shared-machine
+observations do not establish a universal ranking; all comparator wins/losses remain.
+
+Publication/source IDs, remote CI and registry-only verification follow their
+respective release gates. Stages separate inference,
 eager recording/forward, backward and fixed-gradient transactional SGD. Graph
 allocation counts include owned values/scratch, not container-only attribution;
 no subtraction of medians is used to claim a graph-only time. Legacy0.6 Tape lacks
