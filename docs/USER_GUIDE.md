@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.4 API; the linked rustdoc contains
+foundation. This guide follows the public 0.5 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -12,6 +12,12 @@ tensor metadata without numerical algorithms. Use `kernix-ops` for CPU numerical
 operations without graph recording or application configuration. All three support
 `no_std` with allocation when default features are disabled. Filesystem checkpoints,
 TOML loading and worker pools need their corresponding std features.
+
+`use kernix::prelude::*;` imports common types, literals and algebra functions.
+`matrix![1,2;3,4]?` creates a row-major matrix, `tensor![1,2]?` creates a vector,
+and `full!(0.0f32;2,3)?` fills a tensor. All literals return Results. For runtime
+dimensions and an existing Vec, use `Tensor::from_values(dims, values)`; this
+adopts the allocation without copying elements.
 
 `Kahen::new([2,3])` validates runtime rank/dimensions; `Kotei::<2>::new([2,3])`
 fixes rank at compile time. Empty dimensions describe a scalar with one element.
@@ -27,10 +33,10 @@ storage, including gaps. For logical data use iteration, indexed access or
 ## Solve systems and fit observations
 
 ```rust
-use kernix::{Kahen, Order, Tensor, Lu, Qr, Cholesky, residual_norm};
+use kernix::prelude::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let a=Tensor::from_vec(vec![4.0f64,1.0,1.0,3.0],Kahen::new([2,2])?,Order::C)?;
-    let b=Tensor::from_vec(vec![1.0,2.0],Kahen::new([2])?,Order::C)?;
+    let a=matrix![4.0f64,1.0;1.0,3.0]?;
+    let b=tensor![1.0,2.0]?;
     let lu=Lu::factor(&a)?;
     let x=lu.solve(&b)?;
     assert!(residual_norm(&a,&x,&b)?<1e-14);

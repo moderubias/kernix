@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.4.0"
+kernix = "0.5.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -36,7 +36,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Linux x86_64 is verified locally. Release 0.3.0 CI passed on Windows, macOS and Linux.
+Linux x86_64 is verified locally. Release 0.4.0 CI passed on Windows, macOS and Linux.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.4.0", default-features = false }
+kernix = { version = "0.5.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -54,10 +54,10 @@ many operations allocate. CPU storage rejects zero-sized element types.
 ## Solve a linear system
 
 ```rust
-use kernix::{solve, residual_norm, Kahen, Order, Tensor};
+use kernix::prelude::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let a = Tensor::from_vec(vec![4.0f64,1.0,1.0,3.0], Kahen::new([2,2])?, Order::C)?;
-    let b = Tensor::from_vec(vec![1.0,2.0], Kahen::new([2])?, Order::C)?;
+    let a = matrix![4.0f64, 1.0; 1.0, 3.0]?;
+    let b = tensor![1.0, 2.0]?;
     let x = solve(&a, &b)?;
     assert!(residual_norm(&a, &x, &b)? < 1e-14);
     Ok(())
@@ -75,14 +75,11 @@ complex algebra are planned extensions, rather than available APIs.
 ## First tensor computation
 
 ```rust
-use kernix::{add, softmax, Kahen, Order, Tensor};
+use kernix::{prelude::*, softmax};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let a = Tensor::from_vec(
-        vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0],
-        Kahen::new([2, 3])?, Order::C,
-    )?;
-    let bias = Tensor::from_vec(vec![0.5, 1.0, -0.5], Kahen::new([3])?, Order::C)?;
+    let a = matrix![1.0f32, 2.0, 3.0; 4.0, 5.0, 6.0]?;
+    let bias = tensor![0.5, 1.0, -0.5]?;
     let logits = add(&a, &bias)?;
     let probabilities = softmax(&logits, -1)?;
     assert_eq!(probabilities.shape().dims(), &[2, 3]);
@@ -95,6 +92,36 @@ Use `kernix::ops::add` or the root `kernix::add`; both are the same function.
 The [API reference](https://docs.rs/kernix) describes individual functions and
 contains executable examples. See also [core](https://docs.rs/kernix-core) and
 [operations](https://docs.rs/kernix-ops).
+
+## Tensor literals
+
+Start with `use kernix::prelude::*;`. Literals return `Result`, so use `?` to
+propagate invalid shapes, storage extents and other construction errors.
+
+```rust
+use kernix::prelude::*;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let vector = tensor![1, 2, 3]?;
+    let repeated = tensor![7; 4]?;
+    let matrix = matrix![1, 2; 3, 4]?;
+    let zeros = full!(0.0f32; 2, 3)?;
+    let scalar = full!(42;)?;
+    let shape = shape![2, 3]?;
+    let volume = tensor!(shape = [1, 2, 2]; values = vec![1, 2, 3, 4])?;
+    assert_eq!(matrix.get(&[1, 0])?, &3);
+    assert_eq!(volume.shape().dims(), &[1, 2, 2]);
+    Ok(())
+}
+```
+
+`matrix!` checks equal row lengths at compile time. List literals move elements
+without requiring Clone; `full!` and repetition clone one value. All tensor literals
+create owned C-order CPU storage. The explicit `values` form adopts its Vec without
+copying elements. Functions `Tensor::from_values(dims, values)`,
+`Tensor::from_rows(rows)` and `Tensor::full(dims, value)` provide the same behavior
+for adapters and programmatic dimensions. For column-major data, explicit alignment,
+fixed rank or device storage, use the existing constructors and capability traits.
+The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
 
 ## Shapes
 

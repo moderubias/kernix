@@ -60,7 +60,11 @@ representability limits still produce documented errors or IEEE results.
 
 Pivoted LU solves square systems and defaults to a scale-relative near-singular
 pivot cutoff. Cholesky checks symmetry and positive pivots without adding jitter.
-Householder QR avoids normal equations for least squares. QR rejects deficient or
+Householder QR avoids normal equations for least squares. QR uses four independent
+accumulation lanes for reflector dot products, so last bits can differ from 0.4.
+Overflowing regrouped dots retry ordered accumulation; overflowing reflector
+products use a split update to retain representable extreme results. It skips
+identity columns that cannot change while materializing Q. QR rejects deficient or
 underdetermined solves; no hidden pseudo-inverse is substituted. Determinant products
 may underflow; `slogdet` avoids directly multiplying pivots. Residual norm is an
 absolute residual, not a condition estimate. An ill-conditioned matrix can have a

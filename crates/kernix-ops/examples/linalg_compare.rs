@@ -75,29 +75,30 @@ fn main() {
             black_box(na.clone().cholesky().unwrap().l());
         }),
     );
-    let (m, n) = (96, 32);
-    let values: Vec<f64> = (0..m * n)
-        .map(|i| ((i * 13 % 47) as f64 - 23.0) / 47.0 + if i / n == i % n { 3.0 } else { 0.0 })
-        .collect();
-    let a = Tensor::from_vec(values.clone(), Kahen::new([m, n]).unwrap(), Order::C).unwrap();
-    let na = DMatrix::from_row_slice(m, n, &values);
-    let q = Qr::factor(&a).unwrap();
-    let reconstruction = kernix_ops::matmul(q.q(), q.r()).unwrap();
-    for (&x, &y) in reconstruction.storage_slice().iter().zip(a.storage_slice()) {
-        assert!((x - y).abs() < 1e-12);
+    for (m, n) in [(8, 4), (32, 16), (96, 32), (256, 64)] {
+        let values: Vec<f64> = (0..m * n)
+            .map(|i| ((i * 13 % 47) as f64 - 23.0) / 47.0 + if i / n == i % n { 3.0 } else { 0.0 })
+            .collect();
+        let a = Tensor::from_vec(values.clone(), Kahen::new([m, n]).unwrap(), Order::C).unwrap();
+        let na = DMatrix::from_row_slice(m, n, &values);
+        let q = Qr::factor(&a).unwrap();
+        let reconstruction = kernix_ops::matmul(q.q(), q.r()).unwrap();
+        for (&x, &y) in reconstruction.storage_slice().iter().zip(a.storage_slice()) {
+            assert!((x - y).abs() < 1e-12);
+        }
+        results.insert(
+            format!("qr_{m}x{n}_f64/kernix"),
+            measure(|| {
+                black_box(Qr::factor(&a).unwrap());
+            }),
+        );
+        results.insert(
+            format!("qr_{m}x{n}_f64/nalgebra"),
+            measure(|| {
+                let qr = na.clone().qr();
+                black_box((qr.q(), qr.r()));
+            }),
+        );
     }
-    results.insert(
-        "qr_96x32_f64/kernix".into(),
-        measure(|| {
-            black_box(Qr::factor(&a).unwrap());
-        }),
-    );
-    results.insert(
-        "qr_96x32_f64/nalgebra".into(),
-        measure(|| {
-            let qr = na.clone().qr();
-            black_box((qr.q(), qr.r()));
-        }),
-    );
     println!("{}", serde_json::Value::Object(results));
 }

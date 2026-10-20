@@ -3,6 +3,7 @@
 //! `Tensor` owns Storage and Layout; operations belong in `kernix-ops`.
 //! A backend implementing only `StorageBuffer` need not expose host pointers.
 
+mod create;
 mod error;
 mod index;
 mod iter;

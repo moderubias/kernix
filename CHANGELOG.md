@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+- Add fallible `tensor!`, `matrix!`, `full!` and `shape!` literals and a focused
+  `prelude` for concise numerical code, including no_std + alloc applications.
+- Add C-order `Tensor::from_values`, `Tensor::from_rows` and `Tensor::full`;
+  existing Vec allocations are adopted without copying elements. Matrix literals
+  reject ragged rows at compile time and accept elements without Clone or Copy.
+- Reduce Householder QR work when materializing Q and use independent dot-product
+  lanes plus a single-product reflector update with extreme-range fallbacks.
+  Last-bit rounding may change; reconstruction/orthogonality/least-squares bounds
+  and nonfinite rejection remain checked.
+- Add independent QR oracle/property tests and comparative tensor-construction
+  benchmarks; simplify the getting-started examples without changing backend traits.
+
 ## 0.4.0
 
 - Add general dense algebra: reusable pivoted LU/Cholesky/Householder QR,

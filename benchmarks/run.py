@@ -27,7 +27,8 @@ def main():
     os.environ.update(OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1')
     # Build before pinning to keep compilation out of timing and retain parallel builds.
     examples=[('kernix-ops','compare'),('kernix-ops','vision_compare'),
-              ('kernix-ops','linalg_compare'),('kernix','training_compare')]
+              ('kernix-ops','linalg_compare'),('kernix','training_compare'),
+              ('kernix','construction_compare')]
     examples=[(package,name) for package,name in examples
               if (ROOT/f'crates/{package}/examples/{name}.rs').exists()]
     for package,name in examples:
@@ -77,11 +78,16 @@ def main():
         b=np.arange(n,dtype=np.float64)/n
         results['solve_64_f64/numpy']=measure(lambda:np.linalg.solve(a,b))
         results['cholesky_64_f64/numpy']=measure(lambda:np.linalg.cholesky(a))
-        m,n=96,32; index=np.arange(m*n).reshape(m,n)
-        a=((index*13%47).astype(np.float64)-23)/47+(index//n==index%n)*3
-        results['qr_96x32_f64/numpy']=measure(lambda:np.linalg.qr(a,mode='reduced'))
+        for m,n in ((8,4),(32,16),(96,32),(256,64)):
+            index=np.arange(m*n).reshape(m,n)
+            a=((index*13%47).astype(np.float64)-23)/47+(index//n==index%n)*3
+            results[f'qr_{m}x{n}_f64/numpy']=measure(lambda:np.linalg.qr(a,mode='reduced'))
     if ('kernix','training_compare') in examples:
         results.update(json.loads(command('cargo','run','--release','-q','-p','kernix','--example','training_compare')))
+    if ('kernix','construction_compare') in examples:
+        results.update(json.loads(command('cargo','run','--release','-q','-p','kernix','--example','construction_compare')))
+        results['create_full_64x64_f64/numpy']=measure(lambda:np.full((64,64),1.0,dtype=np.float64))
+        results['create_matrix_3x3_f64/numpy']=measure(lambda:np.array([[1.,2.,3.],[4.,5.,6.],[7.,8.,9.]],dtype=np.float64))
     source=dest/'source.tar.gz'
     with tarfile.open(source,'w:gz') as archive:
         paths=command('git','ls-files','-co','--exclude-standard').splitlines()
@@ -106,7 +112,7 @@ def main():
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     workloads=sorted({key.split('/')[0] for key in results})
-    figure,axis=plt.subplots(figsize=(11,6.6),layout='constrained')
+    figure,axis=plt.subplots(figsize=(11,max(6.6,0.32*len(workloads)+2)),layout='constrained')
     colors={'ndarray':'#2166ac','nalgebra':'#dd751c','numpy':'#319873'}
     for library,color in colors.items():
         rows=[i for i,w in enumerate(workloads) if f'{w}/{library}' in results]
@@ -154,6 +160,9 @@ def main():
         'analytical ndarray derivatives, including weight reset/copy in both. Graph lifetime,',
         'finite validation and parameter safety have costs; these are different API levels.',
         'LU solve includes factorization; QR materializes thin Q and R in all measured libraries.',
+        'Construction cases produce owned dynamically shaped tensors/arrays in every library;',
+        'they include allocation, filling/moving values and metadata validation. No fixed-size',
+        'stack-only matrix is timed against a heap-owned tensor. Python overhead dominates small arrays.',
         'Historical reports were not pinned and lack source archives; their trends are indicative.',
         'source.tar.gz preserves the exact current source; SHA-256 is recorded in raw.json.',
         'raw.json contains all measurements, dependencies and environment metadata.', '']

@@ -107,6 +107,50 @@ fn max_abs<T: LinalgFloat>(data: &[T]) -> T {
         if v > m { v } else { m }
     })
 }
+// Independent lanes remove the long dependency chain in reflector dot products.
+// If regrouping overflows, retry the original ordered arithmetic before rejecting
+// the factorization. Ordinary rounding can differ; decomposition tolerances apply.
+fn reflector_dot<T: LinalgFloat>(head: T, v: &[T], x: &[T]) -> T {
+    let mut sums = [T::zero(); 4];
+    let mut vs = v.chunks_exact(4);
+    let mut xs = x.chunks_exact(4);
+    for (v, x) in vs.by_ref().zip(xs.by_ref()) {
+        for lane in 0..4 {
+            sums[lane] += v[lane] * x[lane];
+        }
+    }
+    let mut dot = head + ((sums[0] + sums[1]) + (sums[2] + sums[3]));
+    for (&v, &x) in vs.remainder().iter().zip(xs.remainder()) {
+        dot += v * x;
+    }
+    if !FloatMath::is_finite(dot) {
+        dot = head;
+        for (&v, &x) in v.iter().zip(x) {
+            dot += v * x;
+        }
+    }
+    dot
+}
+
+fn apply_reflector<T: LinalgFloat>(column: &mut [T], reflector: &[T], tau: T) {
+    let dot = reflector_dot(column[0], reflector, &column[1..]);
+    let d = tau * dot;
+    if FloatMath::is_finite(d) {
+        column[0] = column[0] - d;
+        for (&v, x) in reflector.iter().zip(&mut column[1..]) {
+            *x = *x - v * d;
+        }
+    } else {
+        // tau lies in [1,2]. Splitting its product retains representable results
+        // when tau*dot would overflow, e.g. reflecting a column near f64::MAX.
+        let second = (tau - T::one()) * dot;
+        column[0] = (column[0] - dot) - second;
+        for (&v, x) in reflector.iter().zip(&mut column[1..]) {
+            *x = (*x - v * dot) - v * second;
+        }
+    }
+}
+
 fn rhs<T: LinalgFloat, B: TensorInput<T>>(
     b: &B,
     rows: usize,
@@ -405,6 +449,8 @@ impl<T: LinalgFloat> Cholesky<T> {
 /// Thin Householder QR: Q has shape `[m,min(m,n)]`, R `[min(m,n),n]`.
 /// Orthogonal reflectors are preferable to normal equations for least-squares accuracy.
 /// Input is copied; finite intermediate/output checks reject unrepresentable ranges.
+/// Reflector dot products use independent accumulation lanes. Rounding can differ
+/// from sequential arithmetic; no bitwise agreement with previous releases is promised.
 pub struct Qr<T: LinalgFloat> {
     q: Tensor<T>,
     r: Tensor<T>,
@@ -464,15 +510,7 @@ impl<T: LinalgFloat> Qr<T> {
             let (done, remaining) = packed.split_at_mut((k + 1) * m);
             let reflector = &done[k * m + k + 1..(k + 1) * m];
             for column in remaining.chunks_exact_mut(m) {
-                let mut dot = column[k];
-                for (&v, &x) in reflector.iter().zip(&column[k + 1..]) {
-                    dot += v * x;
-                }
-                let second = (tau[k] - T::one()) * dot;
-                column[k] = (column[k] - dot) - second;
-                for (&v, x) in reflector.iter().zip(&mut column[k + 1..]) {
-                    *x = (*x - v * dot) - v * second;
-                }
+                apply_reflector(&mut column[k..], reflector, tau[k]);
             }
         }
         check_finite(&packed)?;
@@ -482,16 +520,10 @@ impl<T: LinalgFloat> Qr<T> {
         }
         for k in (0..rank).rev() {
             let reflector = &packed[k * m + k + 1..(k + 1) * m];
-            for column in q.chunks_exact_mut(m) {
-                let mut dot = column[k];
-                for (&v, &x) in reflector.iter().zip(&column[k + 1..]) {
-                    dot += v * x;
-                }
-                let d = tau[k] * dot;
-                column[k] = column[k] - d;
-                for (&v, x) in reflector.iter().zip(&mut column[k + 1..]) {
-                    *x = *x - v * d;
-                }
+            // Earlier columns are still identity columns with zero active tails.
+            // Restrict work to columns that this reflector can actually change.
+            for column in q.chunks_exact_mut(m).skip(k) {
+                apply_reflector(&mut column[k..], reflector, tau[k]);
             }
         }
         let mut r = vec![T::zero(); Kahen::new([rank, n])?.numel()];
@@ -578,4 +610,22 @@ pub fn residual_norm<T: LinalgFloat, A: TensorInput<T>, X: TensorInput<T>, B: Te
         return Err(LinalgError::Invalid("residual RHS shape mismatch"));
     }
     Ok(crate::l2_norm_all(&crate::sub(&product, b)?)?)
+}
+
+#[cfg(test)]
+mod reflector_tests {
+    #[test]
+    fn regrouping_overflow_retries_ordered_cancellation() {
+        let x = [
+            f64::MAX,
+            -f64::MAX,
+            f64::MAX,
+            -f64::MAX,
+            f64::MAX,
+            -f64::MAX,
+            f64::MAX,
+            -f64::MAX,
+        ];
+        assert_eq!(super::reflector_dot(0.0, &[1.0; 8], &x), 0.0);
+    }
 }
