@@ -1,0 +1,1306 @@
+{
+  "schema_version": 1,
+  "series": "0.5",
+  "operations": [
+    {
+      "operation": "Tensor::permute",
+      "vjp": "supported",
+      "tape": [
+        "permute"
+      ],
+      "contract": "Complete valid axis permutation; Tape materializes values and records the inverse VJP.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "Tensor::reshape_view",
+      "vjp": "supported",
+      "tape": [
+        "reshape"
+      ],
+      "contract": "Same-numel reshape; Tape materializes logical C order.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "abs",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "add",
+      "vjp": "supported",
+      "tape": [
+        "add"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "add_assign",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "all_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "all_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "any_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "any_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "argmax_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "argmax_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "argmin_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "argmin_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "argsort_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "assign",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "atan2",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "cast",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_add",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_div",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_mul",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_neg",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_rem",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "checked_sub",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "chunk_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "clamp",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "concat",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "cos",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "count_nonzero_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "count_nonzero_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "cumprod_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "cumsum_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "div",
+      "vjp": "supported",
+      "tape": [
+        "div"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "div_assign",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "dot",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "equal",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "exp",
+      "vjp": "supported",
+      "tape": [
+        "exp"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "expm1",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "fold_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "gather_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "gelu",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "greater",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "greater_equal",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "hypot",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "is_finite",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "is_nan",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "l2_norm_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "l2_norm_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "leaky_relu",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "less",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "less_equal",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Cholesky::factor",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Cholesky::lower",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Cholesky::solve",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::determinant",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::factor",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::factor_with_tolerance",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::inverse",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::packed",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::permutation",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::slogdet",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Lu::solve",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Qr::factor",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Qr::q",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Qr::r",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::Qr::solve_least_squares",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::determinant",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::eye",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::inverse",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::least_squares",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::residual_norm",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "linalg::solve",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "ln",
+      "vjp": "supported",
+      "tape": [
+        "ln"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "log1mexp",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "log1p",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "log_softmax",
+      "vjp": "supported",
+      "tape": [
+        "log_softmax"
+      ],
+      "contract": "Signed axis; finite logits and representable results.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "log_softmax_online",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "log_softmax_temperature",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logaddexp",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logdiffexp",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logical_and",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logical_not",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logical_or",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logical_xor",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logsigmoid",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logsumexp_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logsumexp_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logsumexp_online_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "logsumexp_online_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "map",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "masked_log_softmax",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "masked_log_softmax_temperature",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "masked_select",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "masked_softmax",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "masked_softmax_temperature",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "matmul",
+      "vjp": "partial",
+      "tape": [
+        "matmul"
+      ],
+      "contract": "Rank-two operands only; no vector or broadcast-batch VJP.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::matmul_and_dense_shared_parameter_gradients"
+      ]
+    },
+    {
+      "operation": "matmul_reference",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "max_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "max_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "mean_all",
+      "vjp": "supported",
+      "tape": [
+        "mean"
+      ],
+      "contract": "All elements; empty mean returns EmptyReduction.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "mean_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "min_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "min_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "mish",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "mul",
+      "vjp": "supported",
+      "tape": [
+        "mul"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "mul_assign",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "neg",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "neural::avg_pool2d",
+      "vjp": "supported",
+      "tape": [
+        "avg_pool2d"
+      ],
+      "contract": "NCHW geometry; pooling ties follow the documented first-winner rule.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::convolution_and_pooling_gradients"
+      ]
+    },
+    {
+      "operation": "neural::avg_pool2d_backward",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Explicit free VJP helper; not recorded for higher-order differentiation.",
+      "tests": []
+    },
+    {
+      "operation": "neural::binary_cross_entropy_with_logits",
+      "vjp": "supported",
+      "tape": [
+        "binary_cross_entropy"
+      ],
+      "contract": "Documented finite target/logit domain; labels are not differentiated.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::loss_gradients_match_independent_perturbations"
+      ]
+    },
+    {
+      "operation": "neural::conv2d",
+      "vjp": "supported",
+      "tape": [
+        "conv2d"
+      ],
+      "contract": "NCHW geometry; pooling ties follow the documented first-winner rule.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::convolution_and_pooling_gradients"
+      ]
+    },
+    {
+      "operation": "neural::conv2d_backward",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Explicit free VJP helper; not recorded for higher-order differentiation.",
+      "tests": []
+    },
+    {
+      "operation": "neural::conv2d_reference",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "neural::cross_entropy_with_logits",
+      "vjp": "supported",
+      "tape": [
+        "cross_entropy"
+      ],
+      "contract": "Documented finite target/logit domain; labels are not differentiated.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::loss_gradients_match_independent_perturbations"
+      ]
+    },
+    {
+      "operation": "neural::layer_norm",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Forward normalization only; no Tape VJP for input or affine parameters.",
+      "tests": []
+    },
+    {
+      "operation": "neural::linear",
+      "vjp": "partial",
+      "tape": [
+        "linear"
+      ],
+      "contract": "Rank-two input only; forward accepts arbitrary leading axes.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::matmul_and_dense_shared_parameter_gradients"
+      ]
+    },
+    {
+      "operation": "neural::max_pool2d",
+      "vjp": "supported",
+      "tape": [
+        "max_pool2d"
+      ],
+      "contract": "NCHW geometry; pooling ties follow the documented first-winner rule.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::convolution_and_pooling_gradients"
+      ]
+    },
+    {
+      "operation": "neural::max_pool2d_backward",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Explicit free VJP helper; not recorded for higher-order differentiation.",
+      "tests": []
+    },
+    {
+      "operation": "neural::mse_loss",
+      "vjp": "supported",
+      "tape": [
+        "mse"
+      ],
+      "contract": "Documented finite target/logit domain; labels are not differentiated.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::loss_gradients_match_independent_perturbations"
+      ]
+    },
+    {
+      "operation": "nonzero",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "not_equal",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "outer",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "pad_constant",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "prod_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "prod_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "relu",
+      "vjp": "supported",
+      "tape": [
+        "relu"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "rem",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "repeat_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "roll_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "rsqrt",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "scatter_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sigmoid",
+      "vjp": "supported",
+      "tape": [
+        "sigmoid"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "silu",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sin",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "softmax",
+      "vjp": "supported",
+      "tape": [
+        "softmax"
+      ],
+      "contract": "Signed axis; finite logits and representable results.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "softmax_online",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "softmax_online_temperature",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "softmax_temperature",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "softplus",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "softplus_beta",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sort_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "split_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sqrt",
+      "vjp": "supported",
+      "tape": [
+        "sqrt"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "stack",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "std_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "std_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sub",
+      "vjp": "supported",
+      "tape": [
+        "sub"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "sub_assign",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sum_all",
+      "vjp": "supported",
+      "tape": [
+        "sum"
+      ],
+      "contract": "All elements; empty sum has an empty input gradient.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "sum_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sum_compensated_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "sum_sequential_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "take_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "tanh",
+      "vjp": "supported",
+      "tape": [
+        "tanh"
+      ],
+      "contract": "Finite f32/f64 inputs and gradients; first-order reverse mode.",
+      "tests": [
+        "crates/kernix/tests/autograd_tests.rs::all_elementwise_and_broadcast_derivatives"
+      ]
+    },
+    {
+      "operation": "tensordot",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "tile",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "topk_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "trace",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "try_cast",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "try_map",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "try_map_indexed",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "try_zip_map",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "try_zip_map_indexed",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "unfold_axis",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "variance_all",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "variance_axes",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "vision::RgbFrame::crop",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "vision::RgbFrame::from_rows",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "vision::RgbFrame::new",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "vision::RgbFrame::resize_nchw",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
+      "tests": []
+    },
+    {
+      "operation": "where_select",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "zip_map",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    },
+    {
+      "operation": "zip_mut",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "No Tape recording API.",
+      "tests": []
+    }
+  ]
+}

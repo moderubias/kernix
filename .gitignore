@@ -1,4 +1,5 @@
 /target/
+/benchmarks/harness/target/
 /web/
 .env
 .env.*

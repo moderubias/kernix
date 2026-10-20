@@ -1,4 +1,4 @@
-// Kernix numerics-softmax overlay 04 (applied by tools/kernix-update-04/apply.py)
+// Public CPU numerical operations and their scalar/input capabilities.
 mod broadcast;
 mod checked;
 mod compare;

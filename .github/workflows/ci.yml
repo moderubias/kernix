@@ -20,6 +20,9 @@ jobs:
       - run: cargo run -p kernix --example train_patterns --locked
       - run: cargo run -p kernix --example temporal_state --locked
       - run: python tools/check_doc_examples.py
+      - run: python tools/check_operation_support.py
+      - run: python -m unittest discover -s tools -p 'test_*.py'
+      - run: python -m unittest discover -s benchmarks -p 'test_*.py'
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - run: cargo check -p kernix --no-default-features --locked
       - run: cargo doc --workspace --all-features --no-deps --locked
@@ -42,3 +45,17 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - run: cargo check -p kernix --no-default-features --target ${{ matrix.target }} --locked
+
+  evidence-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path benchmarks/harness/Cargo.toml -- --check
+      - run: cargo test --manifest-path benchmarks/harness/Cargo.toml --locked
+      - run: cargo test --manifest-path benchmarks/harness/Cargo.toml --locked --features allocation-counting -- --test-threads=1
+      - run: cargo clippy --manifest-path benchmarks/harness/Cargo.toml --all-targets --all-features --locked -- -D warnings
+      - run: cargo run --manifest-path benchmarks/harness/Cargo.toml --locked -- matmul_sum_backward_32x16x8_f64 candle first
+      - run: cargo run --manifest-path benchmarks/harness/Cargo.toml --locked -- qr_96x32_f64 faer first

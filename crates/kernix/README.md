@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.5.0"
+kernix = "0.5.1"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.5.0", default-features = false }
+kernix = { version = "0.5.1", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -122,6 +122,10 @@ copying elements. Functions `Tensor::from_values(dims, values)`,
 for adapters and programmatic dimensions. For column-major data, explicit alignment,
 fixed rank or device storage, use the existing constructors and capability traits.
 The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
+
+See the [0.5 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.5.md)
+and [forward/VJP coverage](https://github.com/moderubias/kernix/blob/main/docs/AUTOGRAD-COVERAGE.md)
+for available APIs and their exact limits.
 
 ## Shapes
 
@@ -347,17 +351,19 @@ generation; none is a runtime dependency. On Arch: install `python-numpy python-
 texlive-xetex texlive-latexextra`; on other systems install equivalent tools.
 
 ```sh
-python benchmarks/run.py my-unique-run
+python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
-Results are saved without overwriting previous runs in
-[`benchmarks/results`](benchmarks/results): raw measurements, environment metadata,
-Markdown tables and printable PDF. The harness compares allocation-inclusive CPU
-operations with ndarray, nalgebra and NumPy using a single-thread policy and
-Linux CPU affinity where available. Source snapshots accompany new reports. It verifies matrix
-results before timing. Read each report's limits; measured improvements on a laptop
-are not performance guarantees on all systems. A 120-Hz vision pipeline has an
-8.333-ms **complete frame** budget, including capture, preprocessing and inference.
+The evidence runner requires a clean commit and saves uniquely named local results
+with source/tree IDs, lockfiles and hashes. It records separate per-call and
+batch-mean distributions, first-use observations, allocation counts outside timing
+and process peak RSS. It compares matching CPU work with ndarray, nalgebra, faer,
+Candle and an explicitly selected NumPy backend. See the
+[methodology](https://github.com/moderubias/kernix/blob/main/docs/BENCHMARKING.md)
+for boundaries and commands. Official reports are retained in
+[`benchmarks/results`](benchmarks/results); `benchmarks/run.py` reproduces the older
+batch-only reports. A shared laptop benchmark is not a universal performance guarantee
+or evidence that an unspecified complete model reaches 120 FPS.
 
 ## License
 

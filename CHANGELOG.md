@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1
+
+- Add a versioned capability matrix and source-checked numerical/VJP inventory,
+  explicitly documenting rank-two recording and unsupported normalization gradients.
+- Add a standalone benchmark harness with clean revision/registry provenance,
+  separate individual-call and batch distributions, fresh-process first-use samples,
+  allocation probes outside timing and process peak RSS.
+- Compare equivalent CPU work with faer and Candle as well as ndarray/nalgebra/NumPy;
+  preserve explicit accuracy budgets and optimized-BLAS configuration metadata.
+- Numerical behavior and the runtime dependency surface are unchanged from 0.5.0.
+
 ## 0.5.0
 
 - Add fallible `tensor!`, `matrix!`, `full!` and `shape!` literals and a focused
