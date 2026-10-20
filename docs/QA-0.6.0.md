@@ -73,5 +73,33 @@ speedup. Kernix still loses representative GEMM128, QR and Cholesky cases to
 specialized comparators; every result is retained. No existing numerical kernel
 was changed in this release.
 
-Remote CI and actual publication/registry-consumer checks are recorded after
-their respective release gates finish.
+## Publication and downstream verification
+
+All three 0.6.0 packages were uploaded and confirmed available by Cargo. Their
+registry VCS records point to `56e71f003a1e8234ac0bed9bc1a97d8ffac35666`, tagged
+`v0.6.0`. This report commit follows the measured source but preserves its exact
+crates tree; no published Rust/README payload changed after the benchmark.
+
+Downloaded registry archives were inspected, not only local package staging:
+
+| Package | Files | Archive SHA-256 |
+|---|---:|---|
+| kernix-core | 48 | `2b89fa09f216cbe06e1dea3e0caca858db8574a2c898e9a66b9ac40e4afe36d4` |
+| kernix-ops | 51 | `3996dd2837761806b09c09722689f7da05036fb6586f1b0c08c028ed286fae39` |
+| kernix | 26 | `2f04bd00a0330713b0af484f864621cdb3b28e420abcf1b22d04e4753b9eb396` |
+
+Source/test/example/README bytes match the release checkout, VCS records are clean,
+and no private planning, web or benchmark files enter these packages. All three
+extracted license/passport checks passed.
+
+A separate registry-only consumer with a renamed Kernix dependency and default
+features disabled ran on Rust 1.86. It checks identities/custom scalar legacy trait
+imports, existing array-element literals, zero-copy Vec adoption, solve and QR.
+Its actual no_std library also compiled for wasm32. Cargo metadata confirms all
+three dependencies come from registry 0.6.0, with no workspace path substitution.
+
+[Release-source CI](https://github.com/moderubias/kernix/actions/runs/39459504041)
+completed successfully on Linux, Windows and macOS, MSRV 1.86, all three portable
+targets and the separate benchmark-tooling job. These checks refer to the published
+source commit; the subsequent verification-documentation commit does not alter
+published crate bytes.

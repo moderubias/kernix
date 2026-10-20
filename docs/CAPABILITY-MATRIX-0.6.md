@@ -3,7 +3,7 @@
 Version 0.6 adds numeric identity constructors, executable workflow checks and
 clean evidence tooling to the 0.5 foundation. It adds no new derivatives. `Implemented` means
 an available documented API; `partial` identifies its boundary. Compilation alone
-is not hardware runtime validation. The archived 0.4 table is historical.
+is not hardware runtime validation. The [0.5 snapshot](CAPABILITY-MATRIX-0.5.md) and archived 0.4 table are historical.
 
 | Area | Status | Available contract | Remaining boundary |
 |---|---|---|---|
