@@ -64,7 +64,7 @@ values and required decomposition results must be finite. f32 and f64 are suppor
 ## Execution and resource policy
 
 Default functions operate on CPU data and do not read files or global settings.
-f32/f64 rank-two matrix products use the Rust matrixmultiply engine with checked
+f32/f64 contiguous vector/batched and rank-two matrix products use the Rust matrixmultiply engine with checked
 slice/stride boundaries. Integer/custom scalar products, vector/batched products
 and unsupported fast paths use portable scalar implementations. A downstream scalar
 can implement `MatmulElement` without implementing a native kernel. `TensorInput`
@@ -115,9 +115,10 @@ Jacobian product. A fresh backward call starts fresh gradients; explicitly call
 axes to the original shape; shared DAG paths accumulate their contributions.
 
 Available recording operations include add/sub/mul/div, exp/ln/sqrt, relu/tanh/
-sigmoid, rank-two matmul/linear, sum/mean, reshape/permutation, softmax/log-softmax,
+sigmoid, vector/batched matmul and last-axis linear, all/axis sum/mean, layer norm,
+reshape/permutation/signed-step slices, softmax/log-softmax,
 convolution, average/max pooling and MSE/categorical/binary-logit losses. General
-batched matmul, decomposition derivatives and arbitrary callbacks are not recorded.
+decomposition derivatives, general integer gather/scatter VJPs and arbitrary callbacks are not recorded.
 Domain failures or nonfinite gradients return errors rather than silently updating
 parameters. ReLU at zero uses derivative zero; max-pool ties follow the documented
 first-winner convention. Normalization has a free inference API, not a tape API.
@@ -178,3 +179,46 @@ and outputs together. Measure the chosen model with warmed real frame sequences,
 allocation counts and frame latency tails. Microbenchmark batch means do not establish
 an end-to-end FPS guarantee. CPU performance, including graph overhead and unoptimized
 fallbacks, remains active development; retained reports disclose both wins and gaps.
+
+
+## Batched and normalized training
+
+`Tape::matmul` uses the same vector/batch shape rules as `matmul`, including scalar
+dot outputs and empty batches. Broadcast contributions are summed back into the
+original operand shapes. `Linear::record` accepts `[...,in]` like inference; it
+preserves shared parameter leaves across multiple calls. Native contractions may
+change floating accumulation order. No higher-order graph is retained.
+
+```rust
+use kernix::{Tensor, autograd::Tape};
+let mut tape = Tape::<f64>::new();
+let x = tape.variable(Tensor::from_values([2, 2, 3], (0..12).map(|i| i as f64 / 10.0).collect())?)?;
+let w = tape.variable(Tensor::ones([3, 4])?)?;
+let y = tape.matmul(&x, &w)?;
+let normalized = tape.layer_norm(&y, 1, 1e-4)?;
+let rows = tape.mean_axes(&normalized, &[-1], false)?;
+let loss = tape.sum(&rows)?;
+let gradients = tape.backward(&loss)?;
+assert_eq!(gradients.get(&w)?.unwrap().shape().dims(), &[3, 4]);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Normalization recomputes population statistics for its backward pass; it allocates
+scratch and output. Positive finite epsilon is fixed, not differentiated. Compose
+`tape.mul`/`add` with trainable scale/bias for affine normalization. Constant groups
+are centered with the same Welford mean used by variance. Nonfinite data and
+unrepresentable statistics/derivatives return errors. In particular, overflowing
+variance is rejected instead of producing spurious finite zeros; extreme values
+are not a promise of arbitrary-range exact arithmetic.
+
+The external no_std workflow also executes batched gradients, axis means and layer
+norm under a host allocator. The standalone benchmark harness validates independent
+Candle graphs and separately measures inference, eager graph recording/forward,
+fresh backward and fixed-gradient transactional SGD. See [benchmark boundaries](BENCHMARKING.md).
+
+
+`Tape::slice_axis` keeps the existing `(axis, start, len, step)` convention,
+including negative steps. It copies selected values into the owned graph; its VJP
+scatters into an input-shaped zero buffer and accumulates overlapping branches.
+Plain `Tensor::slice_axis` remains a zero-copy view for inference. General integer
+indexing and duplicate scatter-write semantics are separate future work.

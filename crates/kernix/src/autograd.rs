@@ -84,7 +84,7 @@ pub struct Variable {
     owner: Rc<()>,
 }
 #[derive(Clone)]
-enum Op {
+enum Op<T> {
     Leaf,
     Add(usize, usize),
     Sub(usize, usize),
@@ -92,8 +92,10 @@ enum Op {
     Div(usize, usize),
     Matmul(usize, usize),
     Sum(usize, bool),
+    ReduceAxes(usize, Vec<usize>, bool),
     Reshape(usize),
     Permute(usize, Vec<usize>),
+    Slice(usize, usize, usize, usize, isize),
     Relu(usize),
     Tanh(usize),
     Sigmoid(usize),
@@ -101,6 +103,7 @@ enum Op {
     Ln(usize),
     Sqrt(usize),
     Softmax(usize, isize, bool),
+    LayerNorm(usize, usize, T),
     Conv(usize, usize, Conv2dOptions),
     Pool(usize, [usize; 2], [usize; 2], bool),
     CrossEntropy(usize, Vec<usize>),
@@ -109,7 +112,7 @@ enum Op {
 }
 struct Node<T> {
     value: Tensor<T>,
-    op: Op,
+    op: Op<T>,
     requires_grad: bool,
 }
 /// Application-owned reverse-mode graph. Values are materialized CPU tensors.
@@ -214,7 +217,7 @@ impl<T: TrainFloat> Tape<T> {
     fn record(
         &mut self,
         value: Tensor<T>,
-        op: Op,
+        op: Op<T>,
         requires_grad: bool,
     ) -> Result<Variable, AutogradError> {
         let value = if value.layout().is_c_contiguous()
@@ -247,22 +250,14 @@ impl<T: TrainFloat> Tape<T> {
     unary!(exp, Exp);
     unary!(ln, Ln);
     unary!(sqrt, Sqrt);
-    /// Record rank-two matmul `[m,k]` x `[k,n]`. Gradients use transposed contractions.
-    /// Other ranks return ExactRank; plain kernix::matmul supports the general
-    /// batch/vector API. Dense/recurrent training can explicitly flatten batch axes.
+    /// Record vector, matrix or batched matmul with the same geometry as [`crate::matmul`].
+    /// Batch axes broadcast right-aligned. VJPs sum broadcast contributions back to
+    /// each operand, including empty batches; vector dot products produce scalars.
+    /// Scalars are invalid operands. Gradients allocate CPU outputs, without copying
+    /// operands for their virtual singleton axes or transposed contraction views.
     pub fn matmul(&mut self, left: &Variable, right: &Variable) -> Result<Variable, AutogradError> {
         let a = self.index(left)?;
         let b = self.index(right)?;
-        for i in [a, b] {
-            if self.nodes[i].value.rank() != 2 {
-                return Err(OpsError::ExactRank {
-                    operation: "Tape::matmul",
-                    expected: 2,
-                    actual: self.nodes[i].value.rank(),
-                }
-                .into());
-            }
-        }
         let value = crate::matmul(&self.nodes[a].value, &self.nodes[b].value)?;
         self.record(
             value,
@@ -270,8 +265,10 @@ impl<T: TrainFloat> Tape<T> {
             self.nodes[a].requires_grad || self.nodes[b].requires_grad,
         )
     }
-    /// Record a dense transform of rank-two input with `[out,in]` weights and
-    /// optional `[out]` bias, through differentiable permute/matmul/broadcast-add.
+    /// Record a last-axis dense transform of `[...,in]` input with `[out,in]`
+    /// weights, including vector inputs and empty leading batch axes. An optional
+    /// bias broadcasts to the product (conventionally `[out]`), preserving the
+    /// existing permute/matmul/add composition and shared parameter identity.
     pub fn linear(
         &mut self,
         input: &Variable,
@@ -294,6 +291,60 @@ impl<T: TrainFloat> Tape<T> {
     /// Mean every element into a rank-zero value. Empty inputs return EmptyReduction.
     pub fn mean(&mut self, input: &Variable) -> Result<Variable, AutogradError> {
         self.reduce(input, true)
+    }
+    /// Record sum over signed axes, with optional retained singleton dimensions.
+    /// Empty axes are the identity; empty reduced extents contribute zero.
+    /// Invalid/duplicate axes fail as in [`crate::sum_axes`]. The VJP broadcasts
+    /// its exact-shape seed to the input, allocating one input-shaped derivative.
+    pub fn sum_axes(
+        &mut self,
+        input: &Variable,
+        axes: &[isize],
+        keepdims: bool,
+    ) -> Result<Variable, AutogradError> {
+        self.reduce_axes(input, axes, keepdims, false)
+    }
+    /// Record population mean over signed axes, retaining dimensions if requested.
+    /// Empty reductions fail when output contains elements; empty outputs are valid.
+    /// VJPs preserve dtype and scale each derivative by the reduced element count.
+    pub fn mean_axes(
+        &mut self,
+        input: &Variable,
+        axes: &[isize],
+        keepdims: bool,
+    ) -> Result<Variable, AutogradError> {
+        self.reduce_axes(input, axes, keepdims, true)
+    }
+    fn reduce_axes(
+        &mut self,
+        input: &Variable,
+        axes: &[isize],
+        keepdims: bool,
+        mean: bool,
+    ) -> Result<Variable, AutogradError> {
+        let a = self.index(input)?;
+        let value = if mean {
+            crate::mean_axes(&self.nodes[a].value, axes, keepdims)?
+        } else {
+            crate::sum_axes(&self.nodes[a].value, axes, keepdims)?
+        };
+        // The forward operation has already validated signed axes and duplicates.
+        let rank = self.nodes[a].value.rank();
+        let axes = axes
+            .iter()
+            .map(|&axis| {
+                if axis < 0 {
+                    rank.checked_add_signed(axis).expect("validated axis")
+                } else {
+                    axis as usize
+                }
+            })
+            .collect();
+        self.record(
+            value,
+            Op::ReduceAxes(a, axes, mean),
+            self.nodes[a].requires_grad,
+        )
     }
     fn reduce(&mut self, input: &Variable, mean: bool) -> Result<Variable, AutogradError> {
         let a = self.index(input)?;
@@ -336,6 +387,29 @@ impl<T: TrainFloat> Tape<T> {
             self.nodes[a].requires_grad,
         )
     }
+    /// Record an axis slice with the same start/length/nonzero signed-step contract
+    /// as [`Tensor::slice_axis`]. Copies selected values into the owned tape; use a
+    /// plain Tensor view for zero-copy inference. The VJP scatters the seed into a
+    /// zero-filled input-shaped buffer, leaving unselected elements at zero.
+    pub fn slice_axis(
+        &mut self,
+        input: &Variable,
+        axis: usize,
+        start: usize,
+        len: usize,
+        step: isize,
+    ) -> Result<Variable, AutogradError> {
+        let a = self.index(input)?;
+        let value = self.nodes[a]
+            .value
+            .slice_axis(axis, start, len, step)?
+            .to_owned_contiguous(Order::C)?;
+        self.record(
+            value,
+            Op::Slice(a, axis, start, len, step),
+            self.nodes[a].requires_grad,
+        )
+    }
     /// Record finite-input softmax on a signed axis. Its VJP uses the full
     /// Jacobian-vector identity, not independent sigmoid derivatives.
     pub fn softmax(&mut self, input: &Variable, axis: isize) -> Result<Variable, AutogradError> {
@@ -364,6 +438,25 @@ impl<T: TrainFloat> Tape<T> {
         self.record(
             value,
             Op::Softmax(a, axis, log),
+            self.nodes[a].requires_grad,
+        )
+    }
+    /// Record population layer normalization over the last `normalized_rank` axes.
+    /// Epsilon is positive, finite and fixed (not differentiated). Input/statistics
+    /// and derivatives must be finite/representable; see [`crate::neural::layer_norm`].
+    /// Backward recomputes statistics, allocating CPU scratch. Compose `mul`/`add`
+    /// with trainable broadcast scale/bias for affine normalization.
+    pub fn layer_norm(
+        &mut self,
+        input: &Variable,
+        normalized_rank: usize,
+        epsilon: T,
+    ) -> Result<Variable, AutogradError> {
+        let a = self.index(input)?;
+        let value = crate::neural::layer_norm(&self.nodes[a].value, normalized_rank, epsilon)?;
+        self.record(
+            value,
+            Op::LayerNorm(a, normalized_rank, epsilon),
             self.nodes[a].requires_grad,
         )
     }
@@ -527,8 +620,93 @@ impl<T: TrainFloat> Tape<T> {
                     send(*b, db)?;
                 }
                 Op::Matmul(a, b) => {
-                    send(*a, crate::matmul(g, &value(*b).transpose()?)?)?;
-                    send(*b, crate::matmul(&value(*a).transpose()?, g)?)?;
+                    let av = value(*a);
+                    let bv = value(*b);
+                    let left_vector = av.rank() == 1;
+                    let right_vector = bv.rank() == 1;
+                    // A shared right matrix/vector contracts all leading input rows
+                    // directly. This avoids allocating a per-batch weight derivative
+                    // and then reducing it; all three reshapes borrow existing data.
+                    let k = av.shape().dims()[av.rank() - 1];
+                    let n = if right_vector {
+                        1
+                    } else {
+                        bv.shape().dims()[bv.rank() - 1]
+                    };
+                    if av.rank() > 2 && bv.rank() <= 2 && k > 0 && n > 0 {
+                        let rows = av.numel() / k;
+                        let left = av.reshape_view([rows, k], Order::C)?;
+                        let right = bv.reshape_view([k, n], Order::C)?;
+                        let seed = g.reshape_view([rows, n], Order::C)?;
+                        if self.nodes[*a].requires_grad {
+                            let dx = crate::matmul(&seed, &right.swap_axes(0, 1)?)?;
+                            send(*a, reshape_owned(dx, av.shape().dims())?)?;
+                        }
+                        if self.nodes[*b].requires_grad {
+                            let dw = crate::matmul(&left.swap_axes(0, 1)?, &seed)?;
+                            send(*b, reshape_owned(dw, bv.shape().dims())?)?;
+                        }
+                        continue;
+                    }
+                    let left = if left_vector {
+                        av.reshape_view([1, av.numel()], Order::C)?
+                    } else {
+                        av.view()?
+                    };
+                    let right = if right_vector {
+                        bv.reshape_view([bv.numel(), 1], Order::C)?
+                    } else {
+                        bv.view()?
+                    };
+                    let seed = if left_vector || right_vector {
+                        let batch_rank =
+                            g.rank() - usize::from(!left_vector) - usize::from(!right_vector);
+                        let mut dims = g.shape().dims()[..batch_rank].to_vec();
+                        dims.push(left.shape().dims()[left.rank() - 2]);
+                        dims.push(right.shape().dims()[right.rank() - 1]);
+                        g.reshape_view(dims, Order::C)?
+                    } else {
+                        g.view()?
+                    };
+                    if self.nodes[*a].requires_grad {
+                        let rank = right.rank();
+                        let mut dx = crate::matmul(&seed, &right.swap_axes(rank - 2, rank - 1)?)?;
+                        if left_vector {
+                            let mut dims = dx.shape().dims().to_vec();
+                            dims.remove(dims.len() - 2);
+                            dx = reshape_owned(dx, dims)?;
+                        }
+                        send(*a, dx)?;
+                    }
+                    if self.nodes[*b].requires_grad {
+                        let rank = left.rank();
+                        let mut dw = crate::matmul(&left.swap_axes(rank - 2, rank - 1)?, &seed)?;
+                        if right_vector {
+                            let mut dims = dw.shape().dims().to_vec();
+                            dims.pop();
+                            dw = reshape_owned(dw, dims)?;
+                        }
+                        send(*b, dw)?;
+                    }
+                }
+                Op::ReduceAxes(a, axes, mean) => {
+                    let mut dims = value(*a).shape().dims().to_vec();
+                    for &axis in axes {
+                        dims[axis] = 1;
+                    }
+                    let seed = g.reshape_view(dims, Order::C)?;
+                    let expanded = seed.broadcast_to(value(*a).shape().dims())?;
+                    let count = if *mean && !value(*a).is_empty() {
+                        // A nonempty validated tensor bounds every subproduct.
+                        T::from_count(
+                            axes.iter()
+                                .map(|&axis| value(*a).shape().dims()[axis])
+                                .product(),
+                        )
+                    } else {
+                        T::one()
+                    };
+                    send(*a, crate::map(&expanded, |x| *x / count)?)?;
                 }
                 Op::Sum(a, mean) => {
                     let count = if *mean {
@@ -557,6 +735,15 @@ impl<T: TrainFloat> Tape<T> {
                         inv[axis] = i;
                     }
                     send(*a, g.permute(inv)?.to_owned_contiguous(Order::C)?)?;
+                }
+                Op::Slice(a, axis, start, len, step) => {
+                    let mut dx = Tensor::zeros(value(*a).shape().dims())?;
+                    {
+                        let mut destination =
+                            dx.view_mut()?.slice_axis(*axis, *start, *len, *step)?;
+                        crate::assign(&mut destination, g)?;
+                    }
+                    send(*a, dx)?;
                 }
                 Op::Relu(a) => send(
                     *a,
@@ -589,6 +776,12 @@ impl<T: TrainFloat> Tape<T> {
                         crate::mul(&node.value, &crate::sub(g, &dot)?)?
                     };
                     send(*a, gradient)?;
+                }
+                Op::LayerNorm(a, rank, epsilon) => {
+                    send(
+                        *a,
+                        crate::neural::layer_norm_backward(value(*a), g, *rank, *epsilon)?,
+                    )?;
                 }
                 Op::Conv(a, b, options) => {
                     let (dx, dw) =
@@ -654,6 +847,19 @@ fn finite<T: TrainFloat>(value: &Tensor<T>, node: usize) -> Result<(), AutogradE
         Ok(())
     }
 }
+// Reuse a derivative's owned contiguous buffer when removing virtual axes or
+// reversing a broadcast reduction. Layout validation remains checked.
+fn reshape_owned<T>(
+    mut value: Tensor<T>,
+    dims: impl AsRef<[usize]>,
+) -> Result<Tensor<T>, AutogradError> {
+    let layout = value
+        .layout()
+        .reshape_view(dims, Order::C)
+        .map_err(TensorError::from)?;
+    value.set_layout(layout)?;
+    Ok(value)
+}
 fn accumulate<T: TrainFloat>(
     nodes: &[Node<T>],
     gradients: &mut [Option<Tensor<T>>],
@@ -672,13 +878,18 @@ fn accumulate<T: TrainFloat>(
             return Err(AutogradError::GradientShape);
         }
         let lead = gd.len() - dims.len();
+        if gd[lead..]
+            .iter()
+            .zip(dims)
+            .any(|(&from, &to)| from != to && to != 1)
+        {
+            return Err(AutogradError::GradientShape);
+        }
         let axes: Vec<isize> = (0..gd.len())
             .filter(|&axis| axis < lead || dims[axis - lead] == 1 && gd[axis] != 1)
             .map(|x| x as isize)
             .collect();
-        crate::sum_axes(&gradient, &axes, true)?
-            .reshape_view(dims, Order::C)?
-            .to_owned_contiguous(Order::C)?
+        reshape_owned(crate::sum_axes(&gradient, &axes, true)?, dims)?
     };
     finite(&gradient, index)?;
     let combined = if let Some(old) = &gradients[index] {
@@ -727,5 +938,27 @@ impl<T: TrainFloat> Gradients<T> {
         }
         self.values = values;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unbroadcast_rejects_incompatible_equal_numel_axes() {
+        let nodes = [Node {
+            value: Tensor::<f64>::ones([2, 3]).unwrap(),
+            op: Op::Leaf,
+            requires_grad: true,
+        }];
+        let mut gradients = [None];
+        assert!(matches!(
+            accumulate(&nodes, &mut gradients, 0, Tensor::ones([1, 6]).unwrap()),
+            Err(AutogradError::GradientShape)
+        ));
+        assert!(gradients[0].is_none());
+        accumulate(&nodes, &mut gradients, 0, Tensor::ones([4, 2, 3]).unwrap()).unwrap();
+        assert_eq!(gradients[0].as_ref().unwrap().storage_slice(), &[4.0; 6]);
     }
 }

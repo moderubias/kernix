@@ -1,6 +1,10 @@
 //! Reproducible CPU measurements; not linked into any published Kernix package.
 #![deny(unsafe_op_in_unsafe_fn)]
+#[cfg(all(test, not(feature = "legacy-autograd")))]
+mod gradient_checks;
 mod profile;
+#[cfg(not(feature = "legacy-autograd"))]
+mod training;
 use kernix::{
     Tensor,
     autograd::Tape,
@@ -146,6 +150,54 @@ fn gemm(mode: &str, library: &str, n: usize) -> Value {
             )
         }
         _ => panic!("unknown library"),
+    }
+}
+fn batched_gemm(mode: &str, library: &str) -> Value {
+    let a: Vec<f64> = (0..4 * 16 * 32).map(|i| (i % 13) as f64 / 13.0).collect();
+    let b: Vec<f64> = (0..32 * 16).map(|i| (i % 17) as f64 / 17.0).collect();
+    let check = |get: &dyn Fn(usize, usize, usize) -> f64| {
+        let mut error = 0.0f64;
+        for batch in 0..4 {
+            for row in 0..16 {
+                for col in 0..16 {
+                    let expected: f64 = (0..32)
+                        .map(|k| a[(batch * 16 + row) * 32 + k] * b[k * 16 + col])
+                        .sum();
+                    let delta = (get(batch, row, col) - expected).abs();
+                    assert!(delta < 1e-11 * (1.0 + expected.abs()));
+                    error = error.max(delta);
+                }
+            }
+        }
+        json!({"max_absolute_error":error,"relative_plus_absolute_budget":1e-11})
+    };
+    match library {
+        "kernix" => {
+            let a = Tensor::from_values([4, 16, 32], a.clone()).unwrap();
+            let b = Tensor::from_values([1, 32, 16], b.clone()).unwrap();
+            measure(
+                mode,
+                || kernix::matmul(&a, &b).unwrap(),
+                |out| check(&|i, j, k| *out.get(&[i, j, k]).unwrap()),
+            )
+        }
+        "candle" => {
+            let a =
+                candle_core::Tensor::from_vec(a.clone(), (4, 16, 32), &candle_core::Device::Cpu)
+                    .unwrap();
+            let b =
+                candle_core::Tensor::from_vec(b.clone(), (1, 32, 16), &candle_core::Device::Cpu)
+                    .unwrap();
+            measure(
+                mode,
+                || a.broadcast_matmul(&b).unwrap(),
+                |out| {
+                    let data = out.to_vec3::<f64>().unwrap();
+                    check(&|i, j, k| data[i][j][k])
+                },
+            )
+        }
+        _ => panic!("unknown batched matmul library"),
     }
 }
 fn qr_error(
@@ -480,8 +532,20 @@ fn main() {
     assert!(["time", "resources", "first"].contains(&mode));
     faer::set_global_parallelism(faer::Par::Seq);
     let result = match workload {
+        name if name.starts_with("training_") => {
+            #[cfg(not(feature = "legacy-autograd"))]
+            {
+                training::run(name, library, mode)
+            }
+            #[cfg(feature = "legacy-autograd")]
+            {
+                let _ = name;
+                panic!("legacy registry baseline does not support these Tape operations")
+            }
+        }
         "create_zeros_64x64_f32" => identity_constructor(mode, library, false),
         "create_ones_64x64_f32" => identity_constructor(mode, library, true),
+        "matmul_batched_4x16x32x16_f64" => batched_gemm(mode, library),
         "matmul_32_f64" => gemm(mode, library, 32),
         "matmul_128_f64" => gemm(mode, library, 128),
         "qr_96x32_f64" => qr(mode, library, 96, 32),

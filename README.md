@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.6.0"
+kernix = "0.7.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -36,7 +36,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Linux x86_64 is verified locally. Release 0.4.0 CI passed on Windows, macOS and Linux.
+Linux x86_64 is verified locally. Release 0.6.0 CI passed on Windows, macOS and Linux.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.6.0", default-features = false }
+kernix = { version = "0.7.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -124,7 +124,7 @@ for adapters and programmatic dimensions. For column-major data, explicit alignm
 fixed rank or device storage, use the existing constructors and capability traits.
 The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
 
-See the [0.6 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.6.md)
+See the [0.7 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.7.md)
 and [forward/VJP coverage](https://github.com/moderubias/kernix/blob/main/docs/AUTOGRAD-COVERAGE.md)
 for available APIs and their exact limits.
 
@@ -139,6 +139,12 @@ and element type `[i32; 2]`. For a scalar matrix, use `matrix![1, 2; 3, 4]?` or
 `Tensor::from_rows([[1, 2], [3, 4]])?`. Higher-rank construction uses explicit
 `Tensor::from_values(dims, values)`. No existing literal silently flattens array elements.
 See the [executable ergonomics suite and design audit](https://github.com/moderubias/kernix/blob/main/docs/API-ERGONOMICS.md).
+
+Training uses the same vector/batched matmul geometry: `Tape::matmul` and
+`Linear::record` accept leading batch/sequence axes. `Tape::sum_axes`, `mean_axes`
+`layer_norm` and signed-step `slice_axis` compose with broadcast scale/bias and ordinary optimizers.
+Recording is explicit and first-order; unsupported operations never silently detach.
+See [the training guide](https://github.com/moderubias/kernix/blob/main/docs/USER_GUIDE.md#batched-and-normalized-training).
 
 ## Shapes
 
@@ -246,7 +252,7 @@ backends implement their own capabilities without requiring `HostBuffer`.
 
 `CpuExecutor::matmul_into` writes contiguous rank-two results into an existing
 allocation. The allocating API retains the general strided/batched fallback.
-f32/f64 rank-two GEMM dispatches to checked matrixmultiply kernels, including signed
+f32/f64 GEMM, including contiguous vector/batched products, dispatches to checked matrixmultiply kernels, including signed
 strides. This Rust dependency requires no external BLAS. Native SIMD/FMA and packed
 summation can change last bits. `matmul_reference` or
 `CpuExecutor::default().with_ordered_matmul(true)` selects increasing-k scalar order.

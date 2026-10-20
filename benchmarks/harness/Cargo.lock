@@ -687,7 +687,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "kernix"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "kernix-core",
  "kernix-ops",
@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "kernix-core"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "serde",
  "smallvec",
@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "kernix-ops"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "kernix-core",
  "libm",

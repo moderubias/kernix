@@ -59,6 +59,7 @@ jobs:
       - run: cargo fmt --manifest-path benchmarks/harness/Cargo.toml -- --check
       - run: cargo test --manifest-path benchmarks/harness/Cargo.toml --locked
       - run: cargo test --manifest-path benchmarks/harness/Cargo.toml --locked --features allocation-counting -- --test-threads=1
+      - run: cargo clippy --manifest-path benchmarks/harness/Cargo.toml --all-targets --locked -- -D warnings
       - run: cargo clippy --manifest-path benchmarks/harness/Cargo.toml --all-targets --all-features --locked -- -D warnings
       - run: cargo run --manifest-path benchmarks/harness/Cargo.toml --locked -- matmul_sum_backward_32x16x8_f64 candle first
       - run: cargo run --manifest-path benchmarks/harness/Cargo.toml --locked -- qr_96x32_f64 faer first

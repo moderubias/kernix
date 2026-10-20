@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0
+
+- Record vector/broadcast-batched matmul, signed-axis sum/mean, signed-step axis slicing and layer norm VJPs.
+  Linear recording now supports vectors and arbitrary leading batch/sequence axes.
+- Reuse promoted/reshaped/transposed views in matmul VJPs; contract shared right-hand
+  weights over flattened rows and skip derivatives of constant operands.
+- Dispatch contiguous vector/batched floating matmul per matrix to checked native
+  kernels. Rank-two/batched output allocation now returns resource errors rather
+  than panicking on impossible zero-contraction output capacities.
+- Share layer-norm Welford mean/variance, avoid variance+epsilon overflow, and reject
+  nonfinite/unrepresentable statistics instead of spurious zero/NaN outputs. This
+  tightens numerical validation; it does not promise arbitrary-range statistics.
+- Add f64 finite differences, independent Candle graphs, empty/strided/shared-DAG
+  cases, normalized batched training and actual no_std training consumers.
+- Add separate inference, graph recording/forward, backward and fixed-gradient SGD
+  evidence; no general performance ranking or higher-order gradient claim.
+
 ## 0.6.0
 
 - Add `Tensor::zeros`/`ones` without Clone, Default or arithmetic bounds, sharing

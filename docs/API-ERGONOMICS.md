@@ -1,9 +1,9 @@
 # API ergonomics: verified workflows and design decisions
 
-The 0.6 API adds numeric identity constructors while preserving existing literal,
+The 0.7 API builds on the 0.6 identity constructors while preserving existing literal,
 layout, ownership and device behavior. This audit is grounded in executable workflows,
-not proposed syntax alone. Batched matmul differentiation and normalization VJPs
-remain future M1 work; the forward examples do not imply new gradient support.
+not proposed syntax alone. Vector/batched matmul differentiation, axis sums/means, signed-step slicing and layer normalization
+now have executable VJP coverage; no forward-only example implies other gradients.
 
 ## Simple construction, explicit escape hatches
 
@@ -84,7 +84,7 @@ CI also compiles that consumer for i686 and aarch64.
 |---|---|---|
 | Vector/matrix arithmetic and broadcasting | `vector_matrix_arithmetic_and_broadcasting` | Free functions compose through Results; each allocating operation owns its output |
 | Higher-rank creation and reshape | `higher_rank_creation_and_zero_copy_reshape` | Vec adopted once; reshape_view shares storage, with explicit order/viewability |
-| Batched matrix multiplication | `batched_forward_matmul` | Existing forward API; no batched Tape VJP is implied |
+| Batched matrix multiplication | `batched_forward_matmul` | Forward workflow plus independently tested batched/vector Tape VJPs in autograd_tensor_tests |
 | Statistical reductions | `statistical_reductions` | Axis policy and population correction are explicit |
 | Solving a linear system | `linear_system_with_residual` | Root/prelude solve and residual; residual is not a condition estimate |
 | Neural forward pass | `small_neural_forward_pass` | Seeded layers compose with ordinary operations; no implicit graph |
@@ -111,7 +111,7 @@ literal tests retain move/evaluation/inference and compile-fail coverage.
 | Arithmetic operators | Deferred design | Could improve formulas, but failures must compose predictably | Panicking operators are not acceptable shorthand; Result-valued operators/expression wrappers need usability and overhead evaluation |
 | Fluent operation extension trait | Additive proposal; deferred | May improve IDE discovery for repeated chains | Must live above core and show benefit over existing free functions; broad aliases alone do not justify it |
 | Automatic reshape copying | Compatibility-sensitive; not implemented | A single name could hide view failures | Existing reshape_view fails explicitly; to_owned_contiguous exposes copying and selected traversal order |
-| Broader gradient/Linear recording surface | Existing M1 priority; not implemented here | Forward/record shape asymmetry complicates real training | Extend mathematically tested VJPs and the same workflow suite, rather than adding a separate programming model |
+| Broader gradient/Linear recording surface | Additive M1 work; implemented in 0.7 | Vector/batched matmul, axis sum/mean, signed-step slices, layer norm and leading-axis Linear recording remove training shape asymmetry | Finite differences, Candle graphs, empty/shared-DAG tests and normalized batched training pass; operations remain explicit and first-order |
 
 Relevant implementation boundaries are [construction](../crates/kernix-core/src/tensor/create.rs),
 [owned/view APIs](../crates/kernix-core/src/tensor/owned.rs),
@@ -119,3 +119,11 @@ Relevant implementation boundaries are [construction](../crates/kernix-core/src/
 [CPU output reuse](../crates/kernix-ops/src/execution.rs),
 [Tape](../crates/kernix/src/autograd.rs) and [layers](../crates/kernix/src/nn.rs).
 No existing good API is rewritten solely to make a formula look shorter.
+
+
+The [tensor training regressions](../crates/kernix/tests/autograd_tensor_tests.rs)
+exercise affine normalization, signed reductions, shared Linear parameters, repeated
+backward, empty contractions and a normalized two-layer batched model. Normalization
+now rejects nonfinite/unrepresentable statistics that could formerly produce zeros
+or NaNs; this is an explicit numerical validation correction. General integer indexing VJPs,
+operator syntax and ND literal grammar remain deferred, not reported as implemented.

@@ -16,6 +16,11 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'matmul_batched_4x16x32x16_f64':['kernix','candle','numpy'],
+    'training_forward_2x4x8x4_f64':['kernix','candle'],
+    'training_record_2x4x8x4_f64':['kernix','candle'],
+    'training_backward_2x4x8x4_f64':['kernix','candle'],
+    'training_sgd_2x4x8x4_f64':['kernix'],
     'create_zeros_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
     'create_ones_64x64_f32':['kernix','ndarray','faer','candle','numpy'],
     'matmul_32_f64': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
@@ -64,6 +69,14 @@ def numpy_case(workload,mode):
         def check(out):
             assert out.shape==(64,64) and out.dtype==np.float32 and np.all(out==value)
             return dict(max_absolute_error=0.0,budget=0.0)
+    elif workload=='matmul_batched_4x16x32x16_f64':
+        a=((np.arange(4*16*32)%13).astype(np.float64)/13).reshape(4,16,32)
+        b=((np.arange(32*16)%17).astype(np.float64)/17).reshape(1,32,16)
+        operation=lambda:a@b
+        def check(out):
+            expected=np.array([[[sum(float(a[t,i,k])*float(b[0,k,j]) for k in range(32)) for j in range(16)] for i in range(16)] for t in range(4)])
+            error=np.abs(out-expected);assert np.all(error<=1e-11*(1+np.abs(expected)))
+            return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=1e-11)
     elif workload.startswith('matmul_'):
         n=int(workload.split('_')[1]);a=((np.arange(n*n)%13).astype(np.float64)/13).reshape(n,n)
         operation=lambda:a@a
@@ -161,6 +174,8 @@ def render_report(dest,data):
         f"Library source: {meta['library_source']}. One pinned CPU; f64 operations and explicitly named f32 constructors; row-major inputs.",
         '', '| Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |',
         '|---|---:|---:|---:|---:|---:|']
+    if meta.get('unavailable_workloads'):
+        lines[5:5]=['Unavailable historical Tape stages: '+', '.join(meta['unavailable_workloads'])+'. '+meta['unavailable_reason']+'.', '']
     for key,value in sorted(data['results'].items()):
         call=value['timing']['per_call'];batch=value['timing']['batch_means'];resources=value['resources'];alloc=resources['rust_allocator']
         rss=resources['process_peak_rss_bytes'];rss=f'{rss/1048576:.2f}' if rss is not None else 'unavailable'
@@ -178,6 +193,7 @@ def render_report(dest,data):
         '- Requested-byte peak is additional live Rust allocation during one call, including output; it is not scratch-only memory or peak RSS. RSS is the process high-water mark including fixtures, validation and runtime, read from Linux VmHWM. Other platforms may report unavailable.',
         '- The published cases are allocation-inclusive CPU APIs and graph workloads. Pure internal kernel-only and end-to-end application/model latency are not measured. No workload result implies a complete application frame rate.',
         '- faer is explicitly serial; Rayon and BLAS thread counts are one. No GPU comparison. Python/NumPy timings include Python dispatch. Backend and dependency versions/configuration, governor and RAM are recorded.',
+        '- Training stages use batched matmul + bias + layer_norm + tanh + step-two feature slice + MSE (Candle index_select). Forward excludes graph recording; record includes parameter/input/target snapshots and eager forward/loss; backward reuses a prepared graph and returns fresh derivatives. Allocation probes measure the corresponding stage, including graph values/scratch, not graph-container-only bytes. SGD uses fixed precomputed real gradients and includes transactional validation/parameter updates; it is not an end-to-end converging training loop. Candle normalization is an explicit population-statistics composition; its checks/rounding differ. Historical registry baselines without these Tape operations omit the stages, recorded in metadata, rather than substitute manual derivatives.',
         '- A shared laptop has uncontrolled load/frequency/cache effects. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.', '']
     (dest/'README.md').write_text('\n'.join(lines), encoding='utf-8')
     import matplotlib
@@ -228,9 +244,10 @@ def main():
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
     legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
+    legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
-        if legacy:
-            features=['--features',('allocation-counting,' if mode=='resources' else '')+'legacy-constructors']
+        enabled=(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])
+        features=['--features',','.join(enabled)] if enabled else []
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
         built=target/'release'/('kernix-benchmark-harness'+('.exe' if os.name=='nt' else ''))
@@ -253,6 +270,8 @@ def main():
     metadata=dict(schema_version=2,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
+        unavailable_workloads=([w for w in CASES if w.startswith('training_')] if legacy_autograd else []),
+        unavailable_reason=('registry Tape lacks batched matmul/layer_norm; no substitute derivatives used' if legacy_autograd else None),
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
         library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
         environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,
@@ -261,6 +280,7 @@ def main():
     results={}
     try:
         for workload,libraries in CASES.items():
+            if legacy_autograd and workload.startswith('training_'):continue
             for library in libraries:
                 def worker(mode):
                     if library=='numpy':return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode))

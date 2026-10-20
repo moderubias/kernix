@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.6",
+  "series": "0.7",
   "operations": [
     {
       "operation": "Tensor::permute",
@@ -22,6 +22,18 @@
       "contract": "Same-numel reshape; Tape materializes logical C order.",
       "tests": [
         "crates/kernix/tests/autograd_tests.rs::reductions_reshape_permutation_and_normalization_vjps"
+      ]
+    },
+    {
+      "operation": "Tensor::slice_axis",
+      "vjp": "supported",
+      "tape": [
+        "slice_axis"
+      ],
+      "contract": "One axis with explicit start/length/nonzero signed step; tape copies selected values, VJP scatters to zeros. General integer indexing remains unsupported.",
+      "tests": [
+        "crates/kernix/tests/autograd_tensor_tests.rs::signed_axis_slice_vjps_and_overlapping_branches",
+        "crates/kernix/tests/autograd_tensor_tests.rs::slice_errors_and_empty_inputs_preserve_checked_semantics"
       ]
     },
     {
@@ -690,13 +702,15 @@
     },
     {
       "operation": "matmul",
-      "vjp": "partial",
+      "vjp": "supported",
       "tape": [
         "matmul"
       ],
-      "contract": "Rank-two operands only; no vector or broadcast-batch VJP.",
+      "contract": "Vector/matrix and right-aligned broadcast batches; scalar dot output and zero extents; finite first-order TrainFloat VJP.",
       "tests": [
-        "crates/kernix/tests/autograd_tests.rs::matmul_and_dense_shared_parameter_gradients"
+        "crates/kernix/tests/autograd_tensor_tests.rs::matmul_vector_matrix_and_broadcast_batch_finite_differences",
+        "crates/kernix/tests/autograd_tensor_tests.rs::matmul_zero_extents_have_exact_shaped_zero_gradients",
+        "benchmarks/harness/src/gradient_checks.rs::batched_and_vector_vjps_match_independent_candle_graphs"
       ]
     },
     {
@@ -733,10 +747,15 @@
     },
     {
       "operation": "mean_axes",
-      "vjp": "unsupported",
-      "tape": [],
-      "contract": "No Tape recording API.",
-      "tests": []
+      "vjp": "supported",
+      "tape": [
+        "mean_axes"
+      ],
+      "contract": "Signed unique axes and keepdims; empty reductions fail for nonempty output; input VJP scales by count.",
+      "tests": [
+        "crates/kernix/tests/autograd_tensor_tests.rs::axis_reductions_finite_differences_and_axis_errors",
+        "benchmarks/harness/src/gradient_checks.rs::axis_reduction_vjps_match_independent_candle_graphs"
+      ]
     },
     {
       "operation": "min_all",
@@ -851,20 +870,35 @@
     },
     {
       "operation": "neural::layer_norm",
+      "vjp": "supported",
+      "tape": [
+        "layer_norm"
+      ],
+      "contract": "Last normalized_rank axes; fixed positive finite epsilon; representable population statistics and first-order derivatives; affine mul/add compose.",
+      "tests": [
+        "crates/kernix/tests/autograd_tensor_tests.rs::layer_norm_input_and_affine_vjps_finite_differences",
+        "benchmarks/harness/src/gradient_checks.rs::normalization_affine_vjps_match_independent_candle_graphs"
+      ]
+    },
+    {
+      "operation": "neural::layer_norm_backward",
       "vjp": "unsupported",
       "tape": [],
-      "contract": "Forward normalization only; no Tape VJP for input or affine parameters.",
-      "tests": []
+      "contract": "Explicit input VJP; no higher-order Tape recording. Exact gradient shape and finite representable statistics/derivatives required.",
+      "tests": [
+        "crates/kernix/tests/autograd_tensor_tests.rs::layer_norm_extreme_statistics_errors_and_checked_parameters"
+      ]
     },
     {
       "operation": "neural::linear",
-      "vjp": "partial",
+      "vjp": "supported",
       "tape": [
         "linear"
       ],
-      "contract": "Rank-two input only; forward accepts arbitrary leading axes.",
+      "contract": "Last-axis input including vectors and arbitrary leading axes; shared parameter leaves; compose broadcast bias.",
       "tests": [
-        "crates/kernix/tests/autograd_tests.rs::matmul_and_dense_shared_parameter_gradients"
+        "crates/kernix/tests/autograd_tensor_tests.rs::linear_record_accepts_vectors_batches_and_shared_parameters",
+        "crates/kernix/tests/autograd_tensor_tests.rs::normalized_batched_model_trains_without_custom_gradients"
       ]
     },
     {
@@ -1132,10 +1166,15 @@
     },
     {
       "operation": "sum_axes",
-      "vjp": "unsupported",
-      "tape": [],
-      "contract": "No Tape recording API.",
-      "tests": []
+      "vjp": "supported",
+      "tape": [
+        "sum_axes"
+      ],
+      "contract": "Signed unique axes; keepdims or removed dimensions; empty axes identity and zero reductions; broadcast input VJP.",
+      "tests": [
+        "crates/kernix/tests/autograd_tensor_tests.rs::axis_reductions_finite_differences_and_axis_errors",
+        "crates/kernix/tests/autograd_tensor_tests.rs::axis_reductions_scalar_empty_and_zero_broadcast"
+      ]
     },
     {
       "operation": "sum_compensated_all",

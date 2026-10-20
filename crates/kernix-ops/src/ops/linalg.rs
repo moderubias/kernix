@@ -13,9 +13,9 @@ use super::{OpsError, TensorInput, Zero, broadcast::broadcast_shape, error::flat
 /// Rank-1 × rank-1 produces a scalar; rank-1 × rank-N and rank-N × rank-1
 /// remove the corresponding singleton matrix dimension. All batch axes
 /// broadcast right-aligned. Zero contracted dimension yields additive zero.
-/// Contiguous f32/f64 rank-two inputs use runtime-dispatched packed CPU kernels
+/// Contiguous f32/f64 inputs use runtime-dispatched packed CPU kernels per matrix
 /// (matrixmultiply), with no external BLAS requirement. Floating accumulation/FMA
-/// order may differ from matmul_reference. Other layouts/ranks use the checked
+/// order may differ from matmul_reference. Other layouts use the checked
 /// portable fallback. Integer scalar arithmetic retains native overflow semantics.
 ///
 /// # Examples
@@ -126,21 +126,49 @@ where
             (left.as_c_contiguous_slice(), right.as_c_contiguous_slice())
         {
             if m.checked_mul(k) == Some(a_data.len()) && k.checked_mul(n) == Some(b_data.len()) {
-                let mut values = vec![T::zero(); output.numel()];
-                if !kernel.is_some_and(|kernel| kernel.0(a_data, b_data, &mut values, m, k, n)) {
-                    dense_matmul(a_data, b_data, &mut values, m, k, n, true);
+                let mut result = Tensor::<T>::zeros(output.dims())?;
+                let values = result.storage_slice_mut();
+                if !kernel.is_some_and(|kernel| kernel.0(a_data, b_data, values, m, k, n)) {
+                    dense_matmul(a_data, b_data, values, m, k, n, true);
                 }
-                return Ok(Tensor::from_vec(values, output, Order::C)?);
+                return Ok(result);
             }
         }
     }
     if a.len() == 2 && b.len() == 2 {
         if let Some((_, strided)) = kernel {
             if let (Some(a), Some(b)) = (left.as_matrix(), right.as_matrix()) {
-                let mut values = vec![T::zero(); output.numel()];
-                if strided(a, b, &mut values) {
-                    return Ok(Tensor::from_vec(values, output, Order::C)?);
+                let mut result = Tensor::<T>::zeros(output.dims())?;
+                if strided(a, b, result.storage_slice_mut()) {
+                    return Ok(result);
                 }
+            }
+        }
+    }
+    if let Some((dense, _)) = kernel {
+        if let (Some(av), Some(bv)) = (left.as_c_contiguous_slice(), right.as_c_contiguous_slice())
+        {
+            // Validate advertised extents before slicing even custom TensorInput implementations.
+            if av.len() == Kahen::new(a)?.numel() && bv.len() == Kahen::new(b)?.numel() {
+                let mk = m
+                    .checked_mul(k)
+                    .ok_or(OpsError::DimensionOverflow { axis: a.len() - 1 })?;
+                let kn = k
+                    .checked_mul(n)
+                    .ok_or(OpsError::DimensionOverflow { axis: b.len() - 1 })?;
+                // Nonempty output has positive batch/m/n and a checked product.
+                let mn = m * n;
+                let mut result = Tensor::<T>::zeros(output.dims())?;
+                for (index, out) in result.storage_slice_mut().chunks_exact_mut(mn).enumerate() {
+                    let ai = batch_index(index, &batch, &a[..a_batch_rank]) * mk;
+                    let bi = batch_index(index, &batch, &b[..b_batch_rank]) * kn;
+                    let am = &av[ai..ai + mk];
+                    let bm = &bv[bi..bi + kn];
+                    if !dense(am, bm, out, m, k, n) {
+                        dense_matmul(am, bm, out, m, k, n, true);
+                    }
+                }
+                return Ok(result);
             }
         }
     }
@@ -182,6 +210,24 @@ where
         Ok::<T, OpsError>(value)
     })
     .map_err(flatten_build_error)
+}
+
+// Map a row-major output batch to a broadcast operand's row-major matrix number.
+// Called only for nonempty output: batch dimensions are positive, and every
+// operand batch subproduct is bounded by the checked output batch product.
+fn batch_index(mut index: usize, batch: &[usize], operand: &[usize]) -> usize {
+    let lead = batch.len() - operand.len();
+    let mut output = 0;
+    let mut stride = 1;
+    for axis in (0..operand.len()).rev() {
+        let coord = index % batch[lead + axis];
+        index /= batch[lead + axis];
+        if operand[axis] != 1 {
+            output += coord * stride;
+        }
+        stride *= operand[axis];
+    }
+    output
 }
 
 // Four-by-four register tiles preserve increasing-k order for each output.

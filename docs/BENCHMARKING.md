@@ -87,3 +87,28 @@ cargo test --manifest-path benchmarks/harness/Cargo.toml --locked --features all
 The inventory checker validates the project's explicit export conventions and
 known declaration macros; it is not a general Rust parser or a gradient proof.
 Changes in those conventions require updating the checker and reviewing its table.
+
+
+## Tensor training stages (0.7)
+
+The normalized batched fixture uses input `[2,4,8]`, weight `[8,4]`, bias `[4]`,
+last-axis population layer norm, tanh, a step-two last-axis slice selecting two
+features and MSE. Candle uses index_select for the equivalent slice, with indices
+prepared outside timing. A separate scalar implementation
+validates losses, with f64 central differences for weight/bias derivatives. Candle
+uses a real graph and explicit population-statistics normalization composition.
+Independent harness tests also compare vector/broadcast matmul and affine norm VJPs.
+
+- `training_forward`: inference kernels/loss, without a graph.
+- `training_record`: fresh parameter/input/target snapshots plus eager graph and forward/loss.
+- `training_backward`: fresh derivatives of a graph prepared outside timing.
+- `training_sgd`: transactional Kernix SGD with fixed real precomputed gradients;
+  repeated calls update the parameters but are not a converging full training loop.
+
+Allocation counts/peak requested bytes belong to each stage; recording includes
+retained graph values and transient kernel scratch, not isolated container bytes.
+No subtraction of noisy timing medians is used to assert a graph-only cost. Candle
+and Kernix validation/normalization rounding differ. Registry baselines before0.7
+omit these unsupported Tape stages and record why, rather than replace them with
+manual derivatives. The new broadcast-batched GEMM case is available in0.6 too,
+so it remains a direct baseline. CPU affinity/thread/dtype controls are unchanged.

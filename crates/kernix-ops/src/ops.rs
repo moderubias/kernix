@@ -81,3 +81,4 @@ pub use linalg_extra::{dot, outer, tensordot, trace};
 pub use stable::{cast, l2_norm_all, l2_norm_axis, logsumexp_all, logsumexp_axis, try_cast};
 
 pub(crate) use linalg::dense_matmul;
+pub(crate) use stats::{mean_variance_axes, mean_welford_axes};

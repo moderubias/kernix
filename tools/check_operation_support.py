@@ -59,7 +59,7 @@ def discover(root=ROOT):
     for typename in ['Lu', 'Cholesky', 'Qr']:
         names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(encoding='utf-8'), typename))
     names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(encoding='utf-8'), 'RgbFrame'))
-    names.update(['Tensor::reshape_view', 'Tensor::permute'])
+    names.update(['Tensor::reshape_view', 'Tensor::permute', 'Tensor::slice_axis'])
     tape = methods((root / 'crates/kernix/src/autograd.rs').read_text(encoding='utf-8'), 'Tape') - CONTROL
     return names, tape
 
@@ -68,7 +68,7 @@ def render(data):
     lines = [f"# Forward and reverse-mode coverage ({data['series']} series)", '',
              'Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.', '',
              'Scope: exported CPU numerical free functions, dense factor methods, RGB frame',
-             'methods and the Tensor reshape/permutation counterparts of Tape operations.',
+             'methods and the Tensor reshape/permutation/slice counterparts of Tape operations.',
              'Shape/layout/storage lifecycle APIs, configuration, optimizers and checkpoints',
              'are outside this numerical inventory. Every public Tape method is classified;',
              'control/lifetime/backward methods are explicitly excluded from recording operations.', '',

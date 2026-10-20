@@ -859,7 +859,10 @@ pub fn binary_cross_entropy_with_logits<T: FloatMath, A: TensorInput<T>, B: Tens
 }
 /// Normalize the last normalized_rank axes independently for each leading group,
 /// using population Welford variance and positive finite epsilon. Allocates C-order;
-/// no learned scale/bias is implicit. Invalid rank/epsilon/reduction returns an error.
+/// no learned scale/bias is implicit. Invalid rank/epsilon/reduction, nonfinite data
+/// or unrepresentable statistics/results return errors. Variance overflow is rejected
+/// rather than silently normalizing finite inputs to zero. A scaled combination of
+/// sqrt(variance) and sqrt(epsilon) avoids overflow in variance + epsilon.
 ///
 /// # Examples
 ///
@@ -876,6 +879,14 @@ pub fn layer_norm<T: FloatMath + AddAssign, A: TensorInput<T>>(
     normalized_rank: usize,
     epsilon: T,
 ) -> Result<Tensor<T>, OpsError> {
+    Ok(layer_norm_parts(input, normalized_rank, epsilon)?.0)
+}
+
+fn layer_norm_parts<T: FloatMath + AddAssign, A: TensorInput<T>>(
+    input: &A,
+    normalized_rank: usize,
+    epsilon: T,
+) -> Result<(Tensor<T>, Tensor<T>), OpsError> {
     let rank = input.dims().len();
     if normalized_rank == 0
         || normalized_rank > rank
@@ -890,10 +901,89 @@ pub fn layer_norm<T: FloatMath + AddAssign, A: TensorInput<T>>(
     let axes: Vec<isize> = ((rank - normalized_rank)..rank)
         .map(|x| x as isize)
         .collect();
-    let mean = crate::mean_axes(input, &axes, true)?;
-    let variance = crate::variance_axes(input, &axes, true, 0)?;
+    let (mean, variance) = crate::ops::mean_variance_axes(input, &axes, true)?;
+    let epsilon_root = FloatMath::sqrt(epsilon);
+    let stddev = crate::try_map(&variance, |v| {
+        if !FloatMath::is_finite(*v) {
+            return Err(invalid(
+                "layer_norm",
+                "finite representable statistics required",
+            ));
+        }
+        let variance_root = FloatMath::sqrt(*v);
+        let (high, low) = if variance_root > epsilon_root {
+            (variance_root, epsilon_root)
+        } else {
+            (epsilon_root, variance_root)
+        };
+        let ratio = low / high;
+        let denominator = high * FloatMath::sqrt(T::one() + ratio * ratio);
+        if !FloatMath::is_finite(denominator) || denominator <= T::zero() {
+            return Err(invalid(
+                "layer_norm",
+                "positive representable standard deviation required",
+            ));
+        }
+        Ok(denominator)
+    })?;
     let centered = crate::sub(input, &mean)?;
-    crate::zip_map(&centered, &variance, |x, v| {
-        *x / FloatMath::sqrt(*v + epsilon)
+    let normalized = crate::try_zip_map(&centered, &stddev, |x, std| {
+        let value = *x / *std;
+        if !FloatMath::is_finite(*x) || !FloatMath::is_finite(value) {
+            return Err(invalid(
+                "layer_norm",
+                "finite representable input and output required",
+            ));
+        }
+        Ok(value)
+    })?;
+    Ok((normalized, stddev))
+}
+
+/// Input VJP of [`layer_norm`] with an exact-shape finite upstream gradient.
+/// Recomputes the forward population statistics and allocates C-order scratch/output;
+/// no graph or higher-order derivative is recorded. For each normalized group,
+/// computes `(g - mean(g) - normalized * mean(g * normalized)) / stddev`.
+/// Invalid geometry/epsilon, empty nonempty-output reductions and unrepresentable
+/// statistics or derivatives fail explicitly. Scale/bias gradients can be composed
+/// with ordinary broadcast multiply/add (or their Tape counterparts).
+///
+/// ```
+/// use kernix_core::tensor::Tensor;
+/// let x = Tensor::from_values([2], vec![1.0f64, 3.0])?;
+/// let g = Tensor::ones([2])?;
+/// let dx = kernix_ops::neural::layer_norm_backward(&x, &g, 1, 1e-5)?;
+/// assert_eq!(dx.storage_slice(), &[0.0, 0.0]);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn layer_norm_backward<T: FloatMath + AddAssign, A: TensorInput<T>, G: TensorInput<T>>(
+    input: &A,
+    gradient: &G,
+    normalized_rank: usize,
+    epsilon: T,
+) -> Result<Tensor<T>, OpsError> {
+    if input.dims() != gradient.dims() {
+        return Err(invalid(
+            "layer_norm_backward",
+            "gradient must match input shape exactly",
+        ));
+    }
+    let (normalized, stddev) = layer_norm_parts(input, normalized_rank, epsilon)?;
+    let axes: Vec<isize> = ((input.dims().len() - normalized_rank)..input.dims().len())
+        .map(|x| x as isize)
+        .collect();
+    let mean_g = crate::ops::mean_welford_axes(gradient, &axes, true)?;
+    let mean_gy = crate::ops::mean_welford_axes(&crate::mul(gradient, &normalized)?, &axes, true)?;
+    let centered_g = crate::sub(gradient, &mean_g)?;
+    let numerator = crate::sub(&centered_g, &crate::mul(&normalized, &mean_gy)?)?;
+    crate::try_zip_map(&numerator, &stddev, |g, std| {
+        let value = *g / *std;
+        if !FloatMath::is_finite(value) {
+            return Err(invalid(
+                "layer_norm_backward",
+                "finite representable derivative required",
+            ));
+        }
+        Ok(value)
     })
 }

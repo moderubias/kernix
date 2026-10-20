@@ -38,8 +38,8 @@ pub struct RecordedLayer {
     pub bias: Variable,
 }
 /// Last-axis dense affine layer with `[out,in]` weights and `[out]` bias.
-/// Constructors use seeded Xavier weights and zero bias. Inference accepts leading
-/// batch/sequence axes; differentiable recording currently requires rank-two input.
+/// Constructors use seeded Xavier weights and zero bias. Inference and differentiable
+/// recording accept vectors and arbitrary leading batch/sequence axes.
 pub struct Linear<T: TrainFloat> {
     /// Trainable `[out,in]` weight matrix; replacement must remain compatible with inputs.
     pub weight: Parameter<T>,
@@ -75,7 +75,7 @@ impl<T: TrainFloat> Linear<T> {
             crate::neural::linear(input, self.weight.value(), Some(self.bias.value()))
         }
     }
-    /// Snapshot parameters onto a tape and record rank-two dense computation.
+    /// Snapshot parameters onto a tape and record last-axis dense computation.
     /// Returned leaves identify derivatives for this particular forward pass.
     pub fn record(
         &self,

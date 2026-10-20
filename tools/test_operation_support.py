@@ -13,8 +13,8 @@ class CoverageTests(unittest.TestCase):
     def test_current_exports_and_tape_are_fully_classified(self):
         support.validate(self.data, self.names, self.tape)
         rows = {r['operation']: r for r in self.data['operations']}
-        self.assertEqual(rows['matmul']['vjp'], 'partial')
-        self.assertEqual(rows['neural::layer_norm']['vjp'], 'unsupported')
+        self.assertEqual(rows['matmul']['vjp'], 'supported')
+        self.assertEqual(rows['neural::layer_norm']['vjp'], 'supported')
         self.assertEqual(support.methods('impl<T> Tape<T> { binary!(add, Add); pub fn solve() {} }', 'Tape'), {'add','solve'})
 
     def test_new_forward_export_cannot_escape_review(self):
@@ -22,7 +22,7 @@ class CoverageTests(unittest.TestCase):
             support.validate(self.data, self.names | {'new_op'}, self.tape)
 
     def test_new_or_removed_tape_method_is_rejected(self):
-        for tape in [self.tape | {'layer_norm'}, self.tape - {'matmul'}]:
+        for tape in [self.tape | {'new_recording_op'}, self.tape - {'matmul'}]:
             with self.assertRaisesRegex(ValueError, 'Tape drift'):
                 support.validate(self.data, self.names, tape)
 

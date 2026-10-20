@@ -113,6 +113,16 @@ pub fn variance_axes<T: FloatMath, A: TensorInput<T>>(
     keepdims: bool,
     correction: usize,
 ) -> Result<Tensor<T>, OpsError> {
+    let states = moments_axes(source, axes, keepdims)?;
+    // Use a fallible initializer to preserve exact OpsError for invalid ddof.
+    super::elementwise::try_map(&states, |state| state.variance(correction))
+}
+
+fn moments_axes<T: FloatMath, A: TensorInput<T>>(
+    source: &A,
+    axes: &[isize],
+    keepdims: bool,
+) -> Result<Tensor<State<T>>, OpsError> {
     let source_shape = Kahen::new(source.dims())?;
     let mask = axes_mask(source.dims().len(), axes)?;
     let output_shape = Kahen::new(reduced_dims(source.dims(), &mask, keepdims))?;
@@ -129,8 +139,37 @@ pub fn variance_axes<T: FloatMath, A: TensorInput<T>>(
         states.get_mut(&dest)?.update(*source.get(&coords)?);
         next_c(&mut coords, source.dims());
     }
-    // Use a fallible initializer to preserve exact OpsError for invalid ddof.
-    super::elementwise::try_map(&states, |state| state.variance(correction))
+    Ok(states)
+}
+
+fn state_mean<T: FloatMath>(state: &State<T>) -> Result<T, OpsError> {
+    if state.count == 0 {
+        Err(OpsError::EmptyReduction)
+    } else {
+        Ok(state.mean)
+    }
+}
+
+// Normalization must center with the same mean used by its variance recurrence.
+// Independent scaled-sum means can perturb identical-value groups with tiny epsilon.
+pub(crate) fn mean_variance_axes<T: FloatMath, A: TensorInput<T>>(
+    source: &A,
+    axes: &[isize],
+    keepdims: bool,
+) -> Result<(Tensor<T>, Tensor<T>), OpsError> {
+    let states = moments_axes(source, axes, keepdims)?;
+    Ok((
+        super::elementwise::try_map(&states, state_mean)?,
+        super::elementwise::try_map(&states, |state| state.variance(0))?,
+    ))
+}
+
+pub(crate) fn mean_welford_axes<T: FloatMath, A: TensorInput<T>>(
+    source: &A,
+    axes: &[isize],
+    keepdims: bool,
+) -> Result<Tensor<T>, OpsError> {
+    super::elementwise::try_map(&moments_axes(source, axes, keepdims)?, state_mean)
 }
 
 /// Allocate square roots of Welford variances over selected axes.

@@ -35,13 +35,12 @@ unrepresentable intermediates. Compensation can recover cancellation such as
 `[1e16,1,-1e16]`, but still does not make every sum exact. An exact accumulator or
 higher-precision type is future work.
 
-Native f32/f64 rank-two matmul may use packed SIMD/FMA kernels. Reassociation/FMA
+Native f32/f64 rank-two and contiguous vector/batched matmul may use packed SIMD/FMA kernels. Reassociation/FMA
 can differ in final bits from increasing-k scalar reference arithmetic. Choose
 `matmul_reference` or executor `ordered_matmul=true` when that order is required.
 This controls accumulation order rather than guaranteeing architecture-independent
 IEEE behavior. Optimized contiguous convolution packs bounded output tiles and uses
-native GEMM; `neural::conv2d_reference` retains ordered scalar accumulation. Other
-layouts use the reference path. Temporary packing is bounded by kernel dimensions,
+native GEMM; `neural::conv2d_reference` retains ordered scalar accumulation. Noncontiguous batches use the reference path. Temporary packing is bounded by kernel dimensions,
 channels per group and at most 128 spatial positions, rather than the full image.
 
 With std, elementary float functions use the platform implementation by default.
@@ -55,7 +54,12 @@ not just bitwise comparisons with a different arithmetic order.
 Softmax subtracts the row maximum, validates logits and caches exponentials for
 normalization. Temperature softmax handles differences before unsafe scaling where
 possible. Stable losses avoid unnecessary overflow in logit differences and means.
-Variance uses Welford accumulation; L2 norm uses scaled sums of squares. Extreme
+Variance uses Welford accumulation; L2 norm uses scaled sums of squares.
+Layer norm shares one Welford mean/variance state and combines their standard
+deviation with sqrt(epsilon) using scaling. Nonfinite/unrepresentable statistics
+are errors, including variance overflow that could previously yield finite zeros.
+Its explicit input VJP and Tape recording recompute population statistics; trainable
+affine scale/bias compose through ordinary broadcast operations. Epsilon is fixed. Extreme
 representability limits still produce documented errors or IEEE results.
 
 Pivoted LU solves square systems and defaults to a scale-relative near-singular
@@ -82,8 +86,10 @@ coverage does not certify every architecture-specific assembly path.
 
 Benchmarks retain dtype, thread count, sizes, allocation boundaries, raw batches,
 environment/dependency metadata and a source snapshot for new runs. Current Linux
-runs pin one allowed CPU. p95 in these reports is the maximum of 15 batch means,
-not a request-level latency percentile. Historical unpinned reports show indicative
+runs pin one allowed CPU. Clean evidence reports use nearest-rank p95 over 256
+individual warmed calls, separately from 15 batch means and three first-use samples.
+Older batch-only reports used the maximum of 15 means as their reported p95; those
+figures are not individual-call latency percentiles. Historical unpinned reports show indicative
 trends and must not be treated as controlled causal comparisons. Kernix and ndarray
 share matrixmultiply for native GEMM. The manual derivative baseline omits the graph
 and safety semantics of autodiff; its speed difference is disclosed. No claim of

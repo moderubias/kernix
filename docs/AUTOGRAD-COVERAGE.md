@@ -1,9 +1,9 @@
-# Forward and reverse-mode coverage (0.6 series)
+# Forward and reverse-mode coverage (0.7 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 
 Scope: exported CPU numerical free functions, dense factor methods, RGB frame
-methods and the Tensor reshape/permutation counterparts of Tape operations.
+methods and the Tensor reshape/permutation/slice counterparts of Tape operations.
 Shape/layout/storage lifecycle APIs, configuration, optimizers and checkpoints
 are outside this numerical inventory. Every public Tape method is classified;
 control/lifetime/backward methods are explicitly excluded from recording operations.
@@ -18,6 +18,7 @@ No operation silently detaches: unsupported recording requires explicit caller c
 |---|---|---|---|
 | `Tensor::permute` | supported | `permute` | Complete valid axis permutation; Tape materializes values and records the inverse VJP. |
 | `Tensor::reshape_view` | supported | `reshape` | Same-numel reshape; Tape materializes logical C order. |
+| `Tensor::slice_axis` | supported | `slice_axis` | One axis with explicit start/length/nonzero signed step; tape copies selected values, VJP scatters to zeros. General integer indexing remains unsupported. |
 | `abs` | unsupported | — | No Tape recording API. |
 | `add` | supported | `add` | Finite f32/f64 inputs and gradients; first-order reverse mode. |
 | `add_assign` | unsupported | — | No Tape recording API. |
@@ -110,12 +111,12 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `masked_select` | unsupported | — | No Tape recording API. |
 | `masked_softmax` | unsupported | — | No Tape recording API. |
 | `masked_softmax_temperature` | unsupported | — | No Tape recording API. |
-| `matmul` | partial | `matmul` | Rank-two operands only; no vector or broadcast-batch VJP. |
+| `matmul` | supported | `matmul` | Vector/matrix and right-aligned broadcast batches; scalar dot output and zero extents; finite first-order TrainFloat VJP. |
 | `matmul_reference` | unsupported | — | No Tape recording API. |
 | `max_all` | unsupported | — | No Tape recording API. |
 | `max_axes` | unsupported | — | No Tape recording API. |
 | `mean_all` | supported | `mean` | All elements; empty mean returns EmptyReduction. |
-| `mean_axes` | unsupported | — | No Tape recording API. |
+| `mean_axes` | supported | `mean_axes` | Signed unique axes and keepdims; empty reductions fail for nonempty output; input VJP scales by count. |
 | `min_all` | unsupported | — | No Tape recording API. |
 | `min_axes` | unsupported | — | No Tape recording API. |
 | `mish` | unsupported | — | No Tape recording API. |
@@ -129,8 +130,9 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `neural::conv2d_backward` | unsupported | — | Explicit free VJP helper; not recorded for higher-order differentiation. |
 | `neural::conv2d_reference` | unsupported | — | No Tape recording API. |
 | `neural::cross_entropy_with_logits` | supported | `cross_entropy` | Documented finite target/logit domain; labels are not differentiated. |
-| `neural::layer_norm` | unsupported | — | Forward normalization only; no Tape VJP for input or affine parameters. |
-| `neural::linear` | partial | `linear` | Rank-two input only; forward accepts arbitrary leading axes. |
+| `neural::layer_norm` | supported | `layer_norm` | Last normalized_rank axes; fixed positive finite epsilon; representable population statistics and first-order derivatives; affine mul/add compose. |
+| `neural::layer_norm_backward` | unsupported | — | Explicit input VJP; no higher-order Tape recording. Exact gradient shape and finite representable statistics/derivatives required. |
+| `neural::linear` | supported | `linear` | Last-axis input including vectors and arbitrary leading axes; shared parameter leaves; compose broadcast bias. |
 | `neural::max_pool2d` | supported | `max_pool2d` | NCHW geometry; pooling ties follow the documented first-winner rule. |
 | `neural::max_pool2d_backward` | unsupported | — | Explicit free VJP helper; not recorded for higher-order differentiation. |
 | `neural::mse_loss` | supported | `mse` | Documented finite target/logit domain; labels are not differentiated. |
@@ -164,7 +166,7 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `sub` | supported | `sub` | Finite f32/f64 inputs and gradients; first-order reverse mode. |
 | `sub_assign` | unsupported | — | No Tape recording API. |
 | `sum_all` | supported | `sum` | All elements; empty sum has an empty input gradient. |
-| `sum_axes` | unsupported | — | No Tape recording API. |
+| `sum_axes` | supported | `sum_axes` | Signed unique axes; keepdims or removed dimensions; empty axes identity and zero reductions; broadcast input VJP. |
 | `sum_compensated_all` | unsupported | — | No Tape recording API. |
 | `sum_sequential_all` | unsupported | — | No Tape recording API. |
 | `take_axis` | unsupported | — | No Tape recording API. |
