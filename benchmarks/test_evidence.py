@@ -42,4 +42,17 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):evidence.clean_revision(root)
 
 
+
+class BackendPolicyTests(unittest.TestCase):
+    def test_non_accelerate_needs_no_shim_and_cannot_claim_api_verification(self):
+        value=evidence.configure_numpy_threads({'Build Dependencies':{'blas':{'name':'scipy-openblas'}}},Path('/unused'))
+        self.assertEqual(value,dict(method='backend environment variables',requested_threads=1))
+
+    def test_accelerate_cannot_fall_back_silently_on_missing_controller(self):
+        from unittest.mock import patch
+        import os
+        with patch.object(evidence.sys,'platform','darwin'),patch.dict(os.environ,{},clear=True):
+            with self.assertRaisesRegex(ValueError,'explicit Accelerate controller'):
+                evidence.apply_accelerate_policy()
+
 if __name__=='__main__':unittest.main()

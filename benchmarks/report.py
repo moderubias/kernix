@@ -81,6 +81,8 @@ def baseline_warnings(data, baseline):
         warnings.append('Different effective compiler flags.')
     if a.get('numpy_configuration') != b.get('numpy_configuration'):
         warnings.append('Different NumPy backend configuration.')
+    if a.get('numpy_thread_policy') != b.get('numpy_thread_policy'):
+        warnings.append('Different NumPy thread-policy verification.')
     return warnings
 
 

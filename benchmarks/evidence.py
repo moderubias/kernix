@@ -77,8 +77,35 @@ def peak_rss():
     return None
 
 
+def configure_numpy_threads(configuration, binaries):
+    blas=configuration.get('Build Dependencies',{}).get('blas',{}).get('name','')
+    if 'accelerate' not in blas.lower():
+        return dict(method='backend environment variables',requested_threads=1)
+    if sys.platform!='darwin':raise ValueError('Accelerate controller requires macOS')
+    controller=binaries/'accelerate-threads.dylib'
+    command('clang','-dynamiclib','-O2','-framework','Accelerate',
+            str(ROOT/'benchmarks/accelerate_threads.c'),'-o',str(controller))
+    os.environ['KERNIX_BENCH_ACCELERATE_CONTROLLER']=str(controller)
+    apply_accelerate_policy()
+    return dict(method='BLASSetThreading/BLASGetThreading',verified_threads=1,
+                controller_sha256=hashlib.sha256(controller.read_bytes()).hexdigest())
+
+
+def apply_accelerate_policy():
+    if sys.platform!='darwin':return
+    import ctypes
+    controller=os.environ.get('KERNIX_BENCH_ACCELERATE_CONTROLLER')
+    if not controller:raise ValueError('macOS NumPy worker requires an explicit Accelerate controller')
+    library=ctypes.CDLL(controller)
+    function=library.kernix_bench_single_thread
+    function.argtypes=[];function.restype=ctypes.c_int
+    if function()!=0:raise ValueError('Accelerate single-thread policy could not be verified')
+
+
 def numpy_case(workload,mode):
     import numpy as np
+    if sys.platform=='darwin' and 'accelerate' in np.show_config(mode='dicts')['Build Dependencies']['blas']['name'].lower():
+        apply_accelerate_policy()
     if workload.startswith('create_'):
         one=workload.startswith('create_ones_');value=1.0 if one else 0.0
         operation=(lambda:np.ones((64,64),dtype=np.float32)) if one else (lambda:np.zeros((64,64),dtype=np.float32))
@@ -262,6 +289,7 @@ def main():
     builds={}
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
+    numpy_threads=configure_numpy_threads(configuration,binaries)
     legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
     legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
@@ -293,7 +321,7 @@ def main():
         unavailable_reason=('registry Tape lacks batched matmul/layer_norm; no substitute derivatives used' if legacy_autograd else None),
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
         library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
-        environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,
+        environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,numpy_thread_policy=numpy_threads,
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
     schedule=measurement_schedule(args.seed,legacy_autograd)

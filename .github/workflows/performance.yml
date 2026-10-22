@@ -1,6 +1,12 @@
 name: Hardware performance evidence
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner to measure
+        type: choice
+        default: all
+        options: [all, ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
   schedule:
     - cron: '11 3 1 * *'
 permissions:
@@ -10,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+        os: ${{ fromJSON((inputs.runner == 'all' || inputs.runner == '') && '["ubuntu-latest","ubuntu-24.04-arm","windows-latest","macos-latest"]' || format('["{0}"]', inputs.runner)) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:

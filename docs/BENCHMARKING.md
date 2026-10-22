@@ -182,3 +182,13 @@ Python pins Linux affinity when supported; macOS/Windows affinity may be unavail
 which is recorded as null rather than an assumed fixed core. Hardware details and
 NumPy's actual BLAS configuration are retained; runner labels alone do not establish
 CPU vendor, physical host isolation or reproducible multi-machine speed rankings.
+
+On Accelerate-backed macOS, OpenBLAS/OMP environment variables do not establish
+Accelerate's thread policy. New runs compile the benchmark-only SDK shim and call
+[BLASSetThreading / BLASGetThreading](https://developer.apple.com/documentation/accelerate/blassetthreading(_:))
+on the same NumPy worker thread before timing, requiring the single-thread model.
+The SDK supplies the enum value; it is not guessed in Python. Missing/unsupported
+control fails the run. Metadata retains verification and the controller hash.
+First-call operation timing excludes this explicit control initialization.
+The initial macOS run39719312815 lacked this check and must not establish a
+single-thread comparison; its original samples are not rewritten.
