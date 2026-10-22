@@ -56,7 +56,8 @@ def main():
     for workload in args.workloads:
         for data in [current,baseline]:
             if workload+'/kernix' not in data['results']:raise ValueError('missing workload: '+workload)
-    env=dict(os.environ,RAYON_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
+    os.environ.update(RAYON_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
+    env=dict(os.environ)
     affinity=os.sched_getaffinity(0) if hasattr(os,'sched_getaffinity') else None
     cpu=current['metadata']['environment'].get('affinity_cpu')
     if affinity is not None:
@@ -86,7 +87,10 @@ def main():
         statistic='median of paired fresh-process per-call p50 latency ratios, current/baseline',
         interval='95% percentile bootstrap over paired process blocks; 10000 resamples; exploratory, no multiple-comparison adjustment')
     (args.output/'paired.json').write_text(json.dumps(data,indent=2)+'\n',encoding='utf-8')
-    lines=['# Paired process comparison','',f'{args.rounds} fresh-process pairs per workload. Lower ratio is faster.',
+    current_version=next(p['version'] for p in current['metadata']['library_packages'] if p['name']=='kernix')
+    baseline_version=next(p['version'] for p in baseline['metadata']['library_packages'] if p['name']=='kernix')
+    lines=[f'# Kernix {current_version} vs {baseline_version} · paired processes','',
+        f"Current: `{current['metadata']['run_id']}`. Baseline: `{baseline['metadata']['run_id']}`.",'',f'{args.rounds} fresh-process pairs per workload. Lower ratio is faster.',
         '95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.',
         'Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.','',
         '| Workload | Current / baseline latency | 95% interval |','|---|---:|---:|']
