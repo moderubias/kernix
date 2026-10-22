@@ -41,5 +41,14 @@ cargo +nightly fuzz run layout -- -max_total_time=60 -max_len=512
 cargo +nightly fuzz run factorizations -- -max_total_time=60 -max_len=512
 ```
 
-Coverage thresholds, a broad sanitizer/target matrix and a stable structured API
-findings format remain follow-ups. A passing workflow must not imply those exist.
+The coverage job pins Rust 1.99.0 / cargo-llvm-cov 0.9.1 and requires at least
+85% library source line coverage in the all-features Linux GNU suite, excluding
+integration-test and example source. The measured initial baseline is 85.44%
+(7,263 / 8,501 lines); the floor rounds this down and prevents material regressions.
+This development-tool version does not raise the library's Rust 1.86 MSRV.
+Raw per-file summaries remain artifacts. Lines, generic instantiations, branches,
+assembly and numerical-domain coverage are different quantities: this is not a
+branch/MC/DC gate or proof that every mathematical case is tested. Error formatting,
+configuration, fixed-rank forwarding and neural module wrappers have remaining gaps.
+A broad sanitizer/target matrix and a stable structured API findings format remain
+follow-ups. A passing workflow must not imply those exist.
