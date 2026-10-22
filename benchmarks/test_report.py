@@ -16,6 +16,11 @@ def result(ns):
 
 
 class ReportTests(unittest.TestCase):
+    def test_hardware_names_are_readable_without_mutating_provenance(self):
+        self.assertEqual(report.cpu_name(dict(cpu_model='arm',hardware_details='Apple M1 (Virtual)')),'Apple M1 (Virtual)')
+        self.assertEqual(report.cpu_name(dict(cpu_model='aarch64',hardware_details='{"lscpu":[{"field":"Model name:","data":"Neoverse-N2"}]}')),'Neoverse-N2')
+        self.assertEqual(report.cpu_name({}),'CPU unspecified')
+
     def test_nominal_throughput_uses_call_latency_and_only_dense_gemm(self):
         self.assertEqual(report.throughput('matmul_128_f64',result(1000)),2*128**3/1000)
         self.assertIsNone(report.throughput('qr_96x32_f64',result(10)))

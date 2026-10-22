@@ -34,6 +34,17 @@ WORKLOADS = {
 }
 
 
+def cpu_name(environment):
+    details=environment.get('hardware_details')
+    if details:
+        try:
+            for row in json.loads(details).get('lscpu',[]):
+                if row.get('field')=='Model name:':return row['data']
+        except (ValueError,AttributeError):
+            return details.strip()
+    return environment.get('cpu_model') or 'CPU unspecified'
+
+
 def label(workload):
     # Future workloads stay visible even before a presentation label is added.
     return WORKLOADS.get(workload, (workload.replace('_', ' '), '', ''))
@@ -98,7 +109,7 @@ def render_report(dest, data, baseline=None):
     names = lambda lib: NAMES.get(lib, lib)
     version = next((p['version'] for p in meta.get('library_packages', []) if p['name'] == 'kernix'), 'workspace')
     env = meta.get('environment', {})
-    description = f"{env.get('cpu_model', 'CPU unspecified')} · one CPU · allocation-inclusive · warmed individual calls"
+    description = f"{cpu_name(env)} · one BLAS/Rayon thread · allocation-inclusive · warmed individual calls"
     warnings = baseline_warnings(data, baseline)
     summary = []
     table = []
