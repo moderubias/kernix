@@ -258,7 +258,7 @@ def main():
         text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
         manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
         shutil.copyfile(ROOT/'benchmarks/harness/Cargo.lock',manifest.with_name('Cargo.lock'))
-        command('cargo','update','--manifest-path',str(manifest),'-p','kernix','--precise',args.registry_baseline)
+        command('cargo','metadata','--format-version','1','--manifest-path',str(manifest))
     builds={}
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
