@@ -56,6 +56,9 @@ def discover(root=ROOT):
     for module in ['neural', 'linalg']:
         body = (ops / (module + '.rs')).read_text(encoding='utf-8')
         names.update(module + '::' + n for n in re.findall(r'^pub fn\s+(\w+)', code_only(body), re.M))
+    diagnostics = (ops / 'linalg/diagnostics.rs').read_text(encoding='utf-8')
+    names.update('linalg::' + n for n in re.findall(r'^pub fn\s+(\w+)', code_only(diagnostics), re.M))
+    names.update('linalg::RefinedSolution::' + n for n in methods(diagnostics, 'RefinedSolution'))
     for typename in ['Lu', 'Cholesky', 'Qr']:
         names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(encoding='utf-8'), typename))
     names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(encoding='utf-8'), 'RgbFrame'))
@@ -96,6 +99,9 @@ def validate(data, names, tape, root=ROOT):
     for path in ['README.md', 'crates/kernix/README.md']:
         if f'kernix = "{version}"' not in (root / path).read_text(encoding='utf-8'):
             raise ValueError('installation version drift in ' + path)
+    guide = (root / 'docs/USER_GUIDE.md').read_text(encoding='utf-8')
+    if f"public {data['series']} API" not in guide:
+        raise ValueError('user-guide version drift')
     rows = data['operations']
     keys = [r['operation'] for r in rows]
     if len(keys) != len(set(keys)):

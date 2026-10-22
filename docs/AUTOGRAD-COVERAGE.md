@@ -1,4 +1,4 @@
-# Forward and reverse-mode coverage (0.7 series)
+# Forward and reverse-mode coverage (0.8 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 
@@ -82,12 +82,20 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `linalg::Qr::q` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
 | `linalg::Qr::r` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
 | `linalg::Qr::solve_least_squares` | unsupported | — | No Tape recording API. |
+| `linalg::RefinedSolution::backward_error` | not_applicable | — | Inspect refinement or move the owned solution; no graph recording. |
+| `linalg::RefinedSolution::into_solution` | not_applicable | — | Inspect refinement or move the owned solution; no graph recording. |
+| `linalg::RefinedSolution::iterations` | not_applicable | — | Inspect refinement or move the owned solution; no graph recording. |
+| `linalg::RefinedSolution::solution` | not_applicable | — | Inspect refinement or move the owned solution; no graph recording. |
+| `linalg::RefinedSolution::termination` | not_applicable | — | Inspect refinement or move the owned solution; no graph recording. |
+| `linalg::condition_number_one` | unsupported | — | One-norm LU diagnostic; no decomposition VJP. |
 | `linalg::determinant` | unsupported | — | No Tape recording API. |
 | `linalg::eye` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
 | `linalg::inverse` | unsupported | — | No Tape recording API. |
 | `linalg::least_squares` | unsupported | — | No Tape recording API. |
+| `linalg::reciprocal_condition_number_one` | unsupported | — | One-norm LU diagnostic; no decomposition VJP. |
 | `linalg::residual_norm` | unsupported | — | No Tape recording API. |
 | `linalg::solve` | unsupported | — | No Tape recording API. |
+| `linalg::solve_refined` | unsupported | — | Working-precision LU refinement; explicit stopping report, no VJP. |
 | `ln` | supported | `ln` | Finite f32/f64 inputs and gradients; first-order reverse mode. |
 | `log1mexp` | unsupported | — | No Tape recording API. |
 | `log1p` | unsupported | — | No Tape recording API. |

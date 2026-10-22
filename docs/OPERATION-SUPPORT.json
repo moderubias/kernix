@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.7",
+  "series": "0.8",
   "operations": [
     {
       "operation": "Tensor::permute",
@@ -490,6 +490,60 @@
       "tests": []
     },
     {
+      "operation": "linalg::RefinedSolution::backward_error",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect refinement or move the owned solution; no graph recording.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
+    },
+    {
+      "operation": "linalg::RefinedSolution::into_solution",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect refinement or move the owned solution; no graph recording.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
+    },
+    {
+      "operation": "linalg::RefinedSolution::iterations",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect refinement or move the owned solution; no graph recording.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
+    },
+    {
+      "operation": "linalg::RefinedSolution::solution",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect refinement or move the owned solution; no graph recording.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
+    },
+    {
+      "operation": "linalg::RefinedSolution::termination",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect refinement or move the owned solution; no graph recording.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
+    },
+    {
+      "operation": "linalg::condition_number_one",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "One-norm LU diagnostic; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::condition_diagonal_rotated_scaled_singular_and_empty"
+      ]
+    },
+    {
       "operation": "linalg::determinant",
       "vjp": "unsupported",
       "tape": [],
@@ -518,6 +572,15 @@
       "tests": []
     },
     {
+      "operation": "linalg::reciprocal_condition_number_one",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "One-norm LU diagnostic; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::condition_diagonal_rotated_scaled_singular_and_empty"
+      ]
+    },
+    {
       "operation": "linalg::residual_norm",
       "vjp": "unsupported",
       "tape": [],
@@ -530,6 +593,15 @@
       "tape": [],
       "contract": "No Tape recording API.",
       "tests": []
+    },
+    {
+      "operation": "linalg::solve_refined",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Working-precision LU refinement; explicit stopping report, no VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/diagnostics_tests.rs::refinement_reports_budget_stagnation_and_never_accepts_worse_backward_error"
+      ]
     },
     {
       "operation": "ln",

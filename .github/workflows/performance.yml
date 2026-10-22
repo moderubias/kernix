@@ -1,0 +1,32 @@
+name: Hardware performance evidence
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '11 3 1 * *'
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy matplotlib
+      - name: Measure clean source and record actual hardware
+        run: python benchmarks/evidence.py runner-${{ matrix.os }}-${{ github.run_id }}
+        env:
+          RUSTC_WRAPPER: ''
+          CARGO_BUILD_JOBS: '2'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-${{ matrix.os }}
+          path: web/benchmarks/runner-*/

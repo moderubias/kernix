@@ -1,0 +1,23 @@
+[package]
+name = "kernix-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+[package.metadata]
+cargo-fuzz = true
+[workspace]
+[dependencies]
+libfuzzer-sys = "0.4"
+kernix = { path = "../crates/kernix", default-features = false, features = ["std"] }
+[[bin]]
+name = "layout"
+path = "fuzz_targets/layout.rs"
+test = false
+doc = false
+bench = false
+[[bin]]
+name = "factorizations"
+path = "fuzz_targets/factorizations.rs"
+test = false
+doc = false
+bench = false

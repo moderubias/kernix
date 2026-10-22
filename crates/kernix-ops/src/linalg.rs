@@ -23,6 +23,12 @@ use kernix_core::{
 };
 use thiserror::Error;
 
+mod diagnostics;
+pub use diagnostics::{
+    RefinedSolution, RefinementTermination, condition_number_one, reciprocal_condition_number_one,
+    solve_refined,
+};
+
 /// Floating element capability for finite dense decompositions (f32/f64 provided).
 pub trait LinalgFloat: FloatMath + MatmulElement {
     /// Distance from one to the next representable value in this dtype.
@@ -377,7 +383,7 @@ impl<T: LinalgFloat> Cholesky<T> {
     /// Factor a finite symmetric positive-definite matrix. Nonpositive pivots and
     /// nonsymmetric inputs return contextual errors. O(n^3) time, O(n^2) storage.
     pub fn factor<A: TensorInput<T>>(input: &A) -> Result<Self, LinalgError> {
-        let a = copy_matrix(input)?;
+        let mut a = copy_matrix(input)?;
         let n = square(&a)?;
         let data = a.storage_slice();
         let tol = (T::EPSILON * T::from_count(n.max(1))) * max_abs(data);
@@ -388,30 +394,70 @@ impl<T: LinalgFloat> Cholesky<T> {
                 }
             }
         }
-        let mut lower = vec![T::zero(); a.numel()];
-        for row in 0..n {
-            for col in 0..=row {
-                let mut value = data[row * n + col];
-                for (&x, &y) in lower[row * n..row * n + col]
-                    .iter()
-                    .zip(&lower[col * n..col * n + col])
-                {
-                    value = value - x * y;
+        // Reuse the checked input copy as output. Small matrices use a contiguous
+        // O(n) column workspace for right-looking rank-one updates; larger matrices
+        // use independent-lane row products with an ordered range fallback.
+        let data = a.storage_slice_mut();
+        if n <= 96 && n != 0 {
+            let mut workspace = Tensor::<T>::zeros([n])?;
+            let column = workspace.storage_slice_mut();
+            for k in 0..n {
+                let value = data[k * n + k];
+                if value <= T::zero() {
+                    return Err(LinalgError::NotPositiveDefinite { pivot: k });
                 }
-                if row == col {
-                    if value <= T::zero() {
-                        return Err(LinalgError::NotPositiveDefinite { pivot: row });
+                let diagonal = FloatMath::sqrt(value);
+                data[k * n + k] = diagonal;
+                for row in k + 1..n {
+                    column[row] = data[row * n + k] / diagonal;
+                    data[row * n + k] = column[row];
+                }
+                for row in k + 1..n {
+                    let multiplier = column[row];
+                    for (value, &other) in data[row * n + k + 1..row * n + row + 1]
+                        .iter_mut()
+                        .zip(&column[k + 1..row + 1])
+                    {
+                        *value = *value - multiplier * other;
                     }
-                    lower[row * n + col] = FloatMath::sqrt(value);
-                } else {
-                    lower[row * n + col] = value / lower[col * n + col];
+                }
+            }
+        } else {
+            for row in 0..n {
+                let (previous, rest) = data.split_at_mut(row * n);
+                let current = &mut rest[..n];
+                for col in 0..=row {
+                    let other = if row == col {
+                        &current[..col]
+                    } else {
+                        &previous[col * n..col * n + col]
+                    };
+                    let original = current[col];
+                    let mut value = original - reflector_dot(T::zero(), &current[..col], other);
+                    if !FloatMath::is_finite(value) || (row == col && value <= T::zero()) {
+                        value = original;
+                        for (&x, &y) in current[..col].iter().zip(other) {
+                            value = value - x * y;
+                        }
+                    }
+                    if row == col {
+                        if value <= T::zero() {
+                            return Err(LinalgError::NotPositiveDefinite { pivot: row });
+                        }
+                        current[col] = FloatMath::sqrt(value);
+                    } else {
+                        current[col] = value / previous[col * n + col];
+                    }
                 }
             }
         }
-        check_finite(&lower)?;
-        Ok(Self {
-            lower: Tensor::from_vec(lower, Kahen::new([n, n])?, Order::C)?,
-        })
+        if n != 0 {
+            for (i, row) in data.chunks_exact_mut(n).enumerate() {
+                row[i + 1..].fill(T::zero());
+            }
+        }
+        check_finite(data)?;
+        Ok(Self { lower: a })
     }
     /// Borrow the C-order lower triangular factor (upper triangle is exactly zero).
     pub fn lower(&self) -> &Tensor<T> {
@@ -460,17 +506,45 @@ impl<T: LinalgFloat> Qr<T> {
     /// Factor a finite rectangular matrix using stable-sign Householder reflectors.
     /// Zero columns are supported. O(m*n*min(m,n)) time; thin Q/R are materialized.
     pub fn factor<A: TensorInput<T>>(input: &A) -> Result<Self, LinalgError> {
-        let a = copy_matrix(input)?;
-        let dims = a.shape().dims();
+        let dims = input.dims();
+        if dims.len() != 2 {
+            return Err(LinalgError::Invalid("rank-two matrix required"));
+        }
+        let shape = Kahen::new(dims)?;
         let (m, n) = (dims[0], dims[1]);
         let rank = m.min(n);
-        // Reflectors traverse columns; pack column-major to keep those scans contiguous.
-        let input = a.storage_slice();
-        let mut packed = vec![T::zero(); input.len()];
-        for col in 0..n {
-            for row in 0..m {
-                packed[col * m + row] = input[row * n + col];
+        let contiguous = input.as_c_contiguous_slice();
+        if let Some(values) = contiguous {
+            if values.len() != shape.numel() {
+                return Err(LinalgError::Invalid(
+                    "contiguous capability length mismatch",
+                ));
             }
+        }
+        if rank == 0 {
+            // Avoid dimension-sized loops on valid empty [0,isize::MAX] inputs.
+            return Ok(Self {
+                q: Tensor::zeros([m, 0])?,
+                r: Tensor::zeros([0, n])?,
+                cutoff: T::zero(),
+            });
+        }
+        // Pack directly from the validated capability, without a temporary C copy.
+        let mut packed = Tensor::<T>::zeros([n, m])?.into_storage_vec();
+        if let Some(values) = contiguous {
+            check_finite(values)?;
+            for (col, column) in packed.chunks_exact_mut(m).enumerate() {
+                for (row, value) in column.iter_mut().enumerate() {
+                    *value = values[row * n + col];
+                }
+            }
+        } else {
+            for (col, column) in packed.chunks_exact_mut(m).enumerate() {
+                for (row, value) in column.iter_mut().enumerate() {
+                    *value = *input.get(&[row, col])?;
+                }
+            }
+            check_finite(&packed)?;
         }
         let scale = max_abs(&packed);
         let cutoff = (T::EPSILON * T::from_count(m.max(n).max(1))) * scale;

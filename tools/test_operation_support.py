@@ -15,6 +15,8 @@ class CoverageTests(unittest.TestCase):
         rows = {r['operation']: r for r in self.data['operations']}
         self.assertEqual(rows['matmul']['vjp'], 'supported')
         self.assertEqual(rows['neural::layer_norm']['vjp'], 'supported')
+        self.assertEqual(rows['linalg::solve_refined']['vjp'], 'unsupported')
+        self.assertIn('linalg::RefinedSolution::termination', self.names)
         self.assertEqual(support.methods('impl<T> Tape<T> { binary!(add, Add); pub fn solve() {} }', 'Tape'), {'add','solve'})
 
     def test_new_forward_export_cannot_escape_review(self):

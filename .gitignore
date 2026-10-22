@@ -18,3 +18,8 @@
 !benchmarks/results/**/DETAILS.md
 PROGRESS.md
 __pycache__/
+
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/
+/fuzz/coverage/

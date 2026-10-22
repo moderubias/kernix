@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0
+
+- Add one-norm condition/reciprocal-condition diagnostics and working-precision LU
+  refinement with explicit backward error, iteration budget and stopping reason.
+  No implicit precision conversion or promise of convergence.
+- Reuse Cholesky input storage, improve memory traversal/accumulation, and pack QR
+  directly without an intermediate C-order copy. Preserve finite/SPD checks;
+  large-factor rounding can differ. Return empty QR factors without huge loops.
+- Synchronize guide/capability versions, classify new numerical exports and expose
+  standard root dual-license files for repository license discovery.
+- Add API/advisory/ASan/fuzz assurance, ARM runtime CI, hardware evidence jobs,
+  randomized process comparison, p99 and nominal GEMM throughput in readable reports.
+
 ## 0.7.3
 
 - Extend the measured large-dense x86-64/std native engine to f32 using serial

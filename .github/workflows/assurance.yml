@@ -1,0 +1,55 @@
+name: API and security assurance
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 5 * * 1'
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-semver-checks@0.51.0
+      - run: python tools/check_api.py --output api-compatibility.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-compatibility
+          path: api-compatibility.json
+  advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.1
+      - name: Audit library and comparator dependencies
+        run: python tools/check_advisories.py --output advisory-reports
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-advisories
+          path: advisory-reports/
+  address-sanitizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Exercise native wrappers and decompositions
+        run: >-
+          cargo test -p kernix-ops --target x86_64-unknown-linux-gnu
+          --test native_kernel_tests --test factorization_regressions --test diagnostics_tests
+          --locked
+        env:
+          RUSTFLAGS: -Zsanitizer=address
+          ASAN_OPTIONS: detect_leaks=1

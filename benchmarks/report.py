@@ -3,6 +3,7 @@
 import argparse
 import html
 import json
+import re
 from pathlib import Path
 
 LIBRARIES = ('kernix', 'ndarray', 'nalgebra', 'faer', 'candle', 'numpy')
@@ -20,6 +21,8 @@ WORKLOADS = {
     'qr_96x32_f64': ('Thin QR', '96 × 32', 'f64'),
     'qr_256x64_f64': ('Thin QR', '256 × 64', 'f64'),
     'cholesky_factor_64_f64': ('Cholesky factorization', '64 × 64', 'f64'),
+    'cholesky_factor_128_f64': ('Cholesky factorization', '128 × 128', 'f64'),
+    'cholesky_factor_256_f64': ('Cholesky factorization', '256 × 256', 'f64'),
     'softmax_256x64_f64': ('Row softmax', '256 × 64', 'f64'),
     'create_zeros_64x64_f32': ('Create zeros', '64 × 64', 'f32'),
     'create_ones_64x64_f32': ('Create ones', '64 × 64', 'f32'),
@@ -47,6 +50,15 @@ def rows(data):
 
 def micros(result, metric='p50_ns'):
     return result['timing']['per_call'][metric] / 1000
+
+
+def throughput(workload, value):
+    """Nominal 2*n^3 operations per allocation-inclusive GEMM latency, GFLOP/s."""
+    match = re.fullmatch(r'matmul_(\d+)_f(?:32|64)', workload)
+    if not match:
+        return None
+    ns = value['timing']['per_call']['p50_ns']
+    return 2 * int(match[1])**3 / ns if ns > 0 else None
 
 
 def change(current, previous):
@@ -139,13 +151,17 @@ def render_report(dest, data, baseline=None):
             allocation = str(alloc['allocation_calls']) if alloc else 'unavailable'
             peak = f"{alloc['peak_live_requested_bytes']:,}" if alloc else 'unavailable'
             batch = timing['batch_means']
-            lines.append(f'<tr><th>{escape(names(lib))}</th><td>{micros(value):.3f} / {micros(value,"p95_ns"):.3f}</td><td>{batch["p50_ns"]/1000:.3f} / {batch["p95_ns"]/1000:.3f}</td><td>{allocation}</td><td>{peak}</td></tr>')
-        details.append(f'<details><summary>{escape(title)} <span>{escape(shape)} · {escape(dtype)}</span></summary><div class="scroll"><table><thead><tr><th>Library</th><th>Call p50 / p95, µs</th><th>Batch mean p50 / p95, µs</th><th>Rust allocations</th><th>Peak requested bytes</th></tr></thead><tbody>{"".join(lines)}</tbody></table></div></details>')
+            tail = timing['per_call'].get('p99_ns')
+            p99 = f'{tail/1000:.3f}' if tail is not None else 'unavailable'
+            rate = throughput(workload, value)
+            gflops = f'{rate:.2f}' if rate is not None else '—'
+            lines.append(f'<tr><th>{escape(names(lib))}</th><td>{micros(value):.3f} / {micros(value,"p95_ns"):.3f} / {p99}</td><td>{gflops}</td><td>{batch["p50_ns"]/1000:.3f} / {batch["p95_ns"]/1000:.3f}</td><td>{allocation}</td><td>{peak}</td></tr>')
+        details.append(f'<details><summary>{escape(title)} <span>{escape(shape)} · {escape(dtype)}</span></summary><div class="scroll"><table><thead><tr><th>Library</th><th>Call p50 / p95 / p99, µs</th><th>Nominal GEMM GFLOP/s</th><th>Batch mean p50 / p95, µs</th><th>Rust allocations</th><th>Peak requested bytes</th></tr></thead><tbody>{"".join(lines)}</tbody></table></div></details>')
     document = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kernix CPU benchmarks</title><style>
 :root{color-scheme:light;--ink:#22263c;--muted:#626b80;--line:#e2e5ef;--purple:#5b47d6}*{box-sizing:border-box}body{margin:0;background:#f5f6fb;color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:1320px;margin:auto;padding:48px 28px}header{margin-bottom:32px}.eyebrow{color:var(--purple);font-size:12px;letter-spacing:.15em;font-weight:750;text-transform:uppercase}h1{font-size:clamp(30px,4vw,48px);line-height:1.2;letter-spacing:-.04em;margin:12px 0}h2{font-size:23px;letter-spacing:-.02em}p{color:var(--muted)}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:24px;margin:24px 0;box-shadow:0 4px 22px #25214a05}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}th,td{border-bottom:1px solid var(--line);padding:13px 12px;text-align:right;white-space:nowrap}th:first-child{text-align:left}thead th{color:var(--muted);font-size:12px;letter-spacing:.02em}tbody th{font-weight:600}small{display:block;color:var(--muted);font-size:12px;font-weight:400}.kernix{color:var(--purple)}.best{background:#f0edff;color:#4936b8;font-weight:750}.missing{color:#a3a8b8}.faster{color:#247552}.slower{color:#aa5a28}.note{font-size:13px;color:var(--muted)}.warning{color:#9b5c21}a{color:var(--purple);text-underline-offset:3px}input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:10px 14px;width:min(100%,340px);margin:8px 0}img{max-width:100%;height:auto}details{border-top:1px solid var(--line);padding:14px 0}summary{cursor:pointer;font-weight:600}summary span{font-weight:400;color:var(--muted);font-size:13px;margin-left:12px}footer{font-size:13px;color:var(--muted);overflow-wrap:anywhere}@media print{body{background:white}main{padding:0}.card{box-shadow:none;break-inside:avoid}input{display:none}details{display:none}a{color:inherit}}
 </style><main><header><div class="eyebrow">Kernix · performance evidence</div><h1>Numerics, measured.</h1><p>VERSION<br>DESCRIPTION</p></header>
-<section class="card"><h2>At a glance</h2><p>Microseconds per call · median · lower is faster. Shaded cells mark the lowest observed median.</p><p class="note">BASELINE</p>WARNINGS<label for="search" class="note">Filter workloads</label><br><input id="search" type="search" placeholder="Try matmul, backward or f32" autocomplete="off"><div class="scroll"><table id="comparison"><thead><tr><th>Workload</th>COLUMNS</tr></thead><tbody>ROWS</tbody></table></div><p class="note">Hover over a timing for its per-call p95. A missing cell means unmeasured, not unsupported.</p></section>
+<section class="card"><h2>At a glance</h2><p>Microseconds per call · median · lower is faster. Shaded cells mark the lowest observed median.</p><p class="note">BASELINE</p>WARNINGS<label for="search" class="note">Filter workloads</label><br><input id="search" type="search" placeholder="Try matmul, backward or f32" autocomplete="off"><div class="scroll"><table id="comparison"><thead><tr><th>Workload</th>COLUMNS</tr></thead><tbody>ROWS</tbody></table></div><p class="note">Hover over a timing for its per-call p95. Expand a workload for p99 and nominal GEMM throughput (2n³ divided by allocating API latency). A missing cell means unmeasured, not unsupported.</p></section>
 <section class="card"><h2>The relative picture</h2><p>Each workload uses its own scale. Library / Kernix median: below 1 means the comparator was faster.</p><img src="latency.png" alt="Per-workload relative latency panels, with comparator wins and losses"><p class="note">One shared laptop; uncontrolled frequency and background load. Sequential runs establish no universal ranking. GEMM inputs are row-major; output layout and validation contracts may differ. Timings include output allocation and destruction.</p></section>
 <section class="card"><h2>Distributions &amp; resources</h2><p>256 individual warmed calls and 15 separate 10-ms batch means. Resource probes use a separate instrumented binary; NumPy native allocations are unavailable. Requested bytes include output and are not scratch-only memory or RSS. Native engines may retain thread-local packing memory; warmed probes exclude its first-use allocation and retention.</p>DETAILS</section>
 <footer><p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable chart</a></p>PROVENANCE</footer></main><script>document.getElementById('search').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#comparison tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)})})</script></html>'''

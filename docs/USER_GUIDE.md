@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.5 API; the linked rustdoc contains
+foundation. This guide follows the public 0.8 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -60,6 +60,19 @@ returns thin Q/R, and solves full-column-rank overdetermined least squares.
 Rank-deficient and underdetermined solving need a different algorithm and currently
 return errors. Empty matrices have explicit valid algebraic identities. All input
 values and required decomposition results must be finite. f32 and f64 are supported.
+
+For an explicit conditioning diagnostic, `linalg::condition_number_one(&a)` computes
+`||A||_1 * ||inverse(A)||_1` using scaled LU and all identity-column solves.
+`reciprocal_condition_number_one` returns zero for exactly singular factors. This
+costs O(n³); it is neither a cheap estimator nor the SVD/two-norm condition number.
+Unrepresentable required solves return an error. Empty square matrices return one.
+
+`linalg::solve_refined(&a, &b, max_iterations, tolerance)` reuses LU for corrections
+and evaluates compensated residuals in the input dtype. Inspect `termination()`
+and `backward_error()` before using the result: an iteration limit or rejected
+stagnating step does not imply convergence. It reports componentwise backward
+error, not a certified forward-error bound; it cannot rescue every ill-conditioned
+system. No hidden precision conversion occurs.
 
 ## Execution and resource policy
 

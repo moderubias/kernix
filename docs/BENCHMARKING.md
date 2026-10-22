@@ -49,7 +49,8 @@ mathematical work, while graph representation and validation remain library choi
 It is separate from the historical manual-derivative SGD lower bound.
 
 Each worker records its first operation call with fixture/framework loading excluded,
-checks its result against a scalar/analytic/reconstruction oracle, warms eight times,
+checks its result against a scalar/analytic/reconstruction oracle, warms at least eight times
+and for at least 10 ms (0.8 and later; earlier runs used eight calls),
 and saves 256 individually timed calls plus 15 separately timed 10-ms batch means.
 Each distribution has its own nearest-rank p50/p95/max and raw observations in order.
 Three extra processes provide first-use observations. They do not flush CPU caches
@@ -146,3 +147,38 @@ inputs in f64 outside timing and uses relative-plus-absolute budget 1e-5 for all
 comparators. The existing f64 budget remains 1e-11. First-use, timing and resource
 boundaries are unchanged; both exact previous-version and candidate runs include
 all 80 workload/library pairs.
+
+## Process order and uncertainty (0.8)
+
+New runs shuffle all workload/library workers with `--seed` (default 20261022),
+retaining the exact order. Every call/batch distribution also stores nearest-rank
+p99. Two additional Cholesky sizes, 128 and 256, bring the suite to 88 pairs.
+The exact-registry driver preserves the peer lockfile and updates only Kernix;
+this also preserves reproducibility when an upstream comparator dependency is yanked.
+
+After both runs complete, interleave their frozen, hash-verified executables:
+
+```sh
+python benchmarks/compare.py web/benchmarks/current web/benchmarks/baseline web/benchmarks/paired --rounds 9
+```
+
+This runs fresh processes in seeded shuffled blocks on the same recorded CPU,
+checking recorded environment compatibility first. The report gives the median of
+paired process per-call-p50 latency ratios and a 95% percentile bootstrap interval
+from 10,000 resamples of process pairs. It never treats the 256 calls within one
+process as independent process repetitions. Full process distributions, accuracy,
+order and source/binary metadata remain in paired.json. Intervals are exploratory,
+with no multiple-comparison adjustment; nine pairs and shared-machine conditions
+limit inference. They are not confidence intervals for per-call p95 or universal
+hardware rankings. Original single-run distributions remain unchanged.
+
+Expanded HTML tables show call p99 (unavailable for old artifacts) and nominal
+square-GEMM throughput, `2*n^3 / per_call_p50_ns` GFLOP/s. This divides a conventional
+operation count by allocation-inclusive API latency; it is not a pure-kernel metric
+and does not remove validation, copies, packing or allocation costs.
+
+Hardware-workflow runners on Linux/ARM64, Windows and macOS retain separate reports.
+Python pins Linux affinity when supported; macOS/Windows affinity may be unavailable,
+which is recorded as null rather than an assumed fixed core. Hardware details and
+NumPy's actual BLAS configuration are retained; runner labels alone do not establish
+CPU vendor, physical host isolation or reproducible multi-machine speed rankings.

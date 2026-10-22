@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import random
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,8 @@ CASES = {
     'qr_96x32_f64': ['kernix','nalgebra','faer','numpy'],
     'qr_256x64_f64': ['kernix','nalgebra','faer','numpy'],
     'cholesky_factor_64_f64': ['kernix','nalgebra','faer','numpy'],
+    'cholesky_factor_128_f64': ['kernix','nalgebra','faer','numpy'],
+    'cholesky_factor_256_f64': ['kernix','nalgebra','faer','numpy'],
     'softmax_256x64_f64': ['kernix','ndarray','candle','numpy'],
     'matmul_sum_backward_32x16x8_f64': ['kernix','candle'],
 }
@@ -48,12 +51,20 @@ def clean_revision(root=ROOT):
     return command('git','rev-parse','HEAD',cwd=root)
 
 
+def measurement_schedule(seed, legacy_autograd=False):
+    schedule=[(workload,library) for workload,libraries in CASES.items()
+              if not (legacy_autograd and workload.startswith('training_'))
+              for library in libraries]
+    random.Random(seed).shuffle(schedule)
+    return schedule
+
+
 def distribution(samples):
     values=sorted(samples)
     if not values:
         raise ValueError('empty sample set')
     return dict(p50_ns=values[math.ceil(len(values)*0.50)-1],
-                p95_ns=values[math.ceil(len(values)*0.95)-1],max_ns=values[-1],samples_ns=samples)
+                p95_ns=values[math.ceil(len(values)*0.95)-1],p99_ns=values[math.ceil(len(values)*0.99)-1],max_ns=values[-1],samples_ns=samples)
 
 
 def peak_rss():
@@ -115,8 +126,9 @@ def numpy_case(workload,mode):
                 error=max(error,max(abs(float(out[row,col])-weights[col]/total) for col in range(64)))
             assert error<2e-14
             return dict(max_absolute_error=error,budget=2e-14)
-    elif workload=='cholesky_factor_64_f64':
-        row,col=np.indices((64,64));a=.01/(1+np.abs(row-col))+np.eye(64)*4
+    elif workload.startswith('cholesky_factor_'):
+        n=int(workload.split('_')[2])
+        row,col=np.indices((n,n));a=.01/(1+np.abs(row-col))+np.eye(n)*4
         operation=lambda:np.linalg.cholesky(a)
         def check(out):
             error=np.abs(out@out.T-a);assert np.all(error<2e-12*(1+np.abs(a)))
@@ -127,10 +139,13 @@ def numpy_case(workload,mode):
     accuracy=check(first);del first
     if mode=='first':
         return dict(first_call_return_ns=first_ns,accuracy=accuracy)
-    for _ in range(8):operation()
+    warmup_start=time.perf_counter_ns();warmup_calls=0
+    while warmup_calls<8 or time.perf_counter_ns()-warmup_start<10_000_000:
+        operation();warmup_calls+=1
+    warmup_ns=time.perf_counter_ns()-warmup_start
     if mode=='resources':
         operation()
-        return dict(rust_allocator=None,process_peak_rss_bytes=peak_rss(),accuracy=accuracy)
+        return dict(warmup_calls=warmup_calls,warmup_ns=warmup_ns,rust_allocator=None,process_peak_rss_bytes=peak_rss(),accuracy=accuracy)
     calls=[]
     for _ in range(256):
         start=time.perf_counter_ns();operation();calls.append(time.perf_counter_ns()-start)
@@ -143,7 +158,7 @@ def numpy_case(workload,mode):
     timers=[]
     for _ in range(256):
         start=time.perf_counter_ns();timers.append(time.perf_counter_ns()-start)
-    return dict(first_call_return_ns=first_ns,per_call=distribution(calls),batch_means=distribution(batches),
+    return dict(first_call_return_ns=first_ns,warmup_calls=warmup_calls,warmup_ns=warmup_ns,per_call=distribution(calls),batch_means=distribution(batches),
                 batch_call_counts=counts,timer_pair=distribution(timers),process_peak_rss_bytes=peak_rss(),accuracy=accuracy)
 
 
@@ -164,10 +179,18 @@ def environment(cpu):
     def read(path):
         try:return Path(path).read_text(encoding='utf-8').strip()
         except OSError:return None
+    def capture(*args):
+        try:return subprocess.check_output(args,text=True,stderr=subprocess.DEVNULL).strip()
+        except (OSError,subprocess.CalledProcessError):return None
+    hardware=(capture('lscpu','--json') if sys.platform.startswith('linux') else
+              capture('sysctl','-n','machdep.cpu.brand_string') if sys.platform=='darwin' else
+              capture('powershell','-NoProfile','-Command','(Get-CimInstance Win32_Processor).Name'))
+    try:ram_bytes=os.sysconf('SC_PHYS_PAGES')*os.sysconf('SC_PAGE_SIZE')
+    except (AttributeError,OSError,ValueError):ram_bytes=None
     cpu_info=read('/proc/cpuinfo') or ''
     model=next((line.split(':',1)[1].strip() for line in cpu_info.splitlines() if line.startswith('model name')),platform.processor())
-    return dict(platform=platform.platform(),cpu_model=model,logical_cpus=os.cpu_count(),
-                ram_bytes=(os.sysconf('SC_PHYS_PAGES')*os.sysconf('SC_PAGE_SIZE') if hasattr(os,'sysconf') else None),
+    return dict(platform=platform.platform(),cpu_model=model,hardware_details=hardware,logical_cpus=os.cpu_count(),
+                ram_bytes=ram_bytes,
                 affinity_cpu=cpu,governor=read(f'/sys/devices/system/cpu/cpu{cpu}/cpufreq/scaling_governor'),
                 scaling_driver=read(f'/sys/devices/system/cpu/cpu{cpu}/cpufreq/scaling_driver'),
                 rustc=command('rustc','-Vv'),cargo=command('cargo','-V'),python=sys.version,
@@ -210,6 +233,7 @@ def render_details(dest,data):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run_id',nargs='?')
+    parser.add_argument('--seed',type=int,default=20261022,help='seed for shuffled workload/library process order')
     parser.add_argument('--registry-baseline',help='pin all Kernix crates to this published version')
     parser.add_argument('--require-openblas',action='store_true')
     parser.add_argument('--worker',nargs=2,metavar=('WORKLOAD','MODE'),help=argparse.SUPPRESS)
@@ -233,7 +257,8 @@ def main():
         text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std"] }}',text)
         text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
         manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
-        command('cargo','generate-lockfile','--manifest-path',str(manifest))
+        shutil.copyfile(ROOT/'benchmarks/harness/Cargo.lock',manifest.with_name('Cargo.lock'))
+        command('cargo','update','--manifest-path',str(manifest),'-p','kernix','--precise',args.registry_baseline)
     builds={}
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
@@ -271,19 +296,20 @@ def main():
         environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
+    schedule=measurement_schedule(args.seed,legacy_autograd)
+    metadata['measurement_order_seed']=args.seed
+    metadata['measurement_order']=[w+'/'+lib for w,lib in schedule]
     results={}
     try:
-        for workload,libraries in CASES.items():
-            if legacy_autograd and workload.startswith('training_'):continue
-            for library in libraries:
-                def worker(mode):
-                    if library=='numpy':return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode))
-                    binary=builds['resources' if mode=='resources' else 'time']
-                    return json.loads(command(str(binary),workload,library,mode))
-                timing=worker('time');resources=worker('resources')
-                first=[worker('first')['first_call_return_ns'] for _ in range(3)]
-                results[workload+'/'+library]=dict(timing=timing,resources=resources,fresh_process_first_calls=distribution(first))
-                (dest/'partial.json').write_text(json.dumps(dict(metadata=metadata,results=results),indent=2)+'\n', encoding='utf-8')
+        for workload,library in schedule:
+            def worker(mode):
+                if library=='numpy':return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode))
+                binary=builds['resources' if mode=='resources' else 'time']
+                return json.loads(command(str(binary),workload,library,mode))
+            timing=worker('time');resources=worker('resources')
+            first=[worker('first')['first_call_return_ns'] for _ in range(3)]
+            results[workload+'/'+library]=dict(timing=timing,resources=resources,fresh_process_first_calls=distribution(first))
+            (dest/'partial.json').write_text(json.dumps(dict(metadata=metadata,results=results),indent=2)+'\n', encoding='utf-8')
     finally:
         if original_affinity is not None:os.sched_setaffinity(0,original_affinity)
     if clean_revision()!=revision:raise ValueError('source revision changed during measurement')

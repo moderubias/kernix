@@ -26,7 +26,7 @@ fn quantile(sorted: &[f64], numerator: usize, denominator: usize) -> f64 {
 fn distribution(samples: Vec<f64>) -> Value {
     let mut sorted = samples.clone();
     sorted.sort_by(f64::total_cmp);
-    json!({"p50_ns":quantile(&sorted,50,100),"p95_ns":quantile(&sorted,95,100),
+    json!({"p50_ns":quantile(&sorted,50,100),"p95_ns":quantile(&sorted,95,100),"p99_ns":quantile(&sorted,99,100),
         "max_ns":sorted.last(),"samples_ns":samples})
 }
 fn peak_rss() -> Option<u64> {
@@ -51,12 +51,16 @@ fn measure<R>(
     if mode == "first" {
         return json!({"first_call_return_ns":first_ns,"accuracy":accuracy});
     }
-    for _ in 0..8 {
+    let warmup_start = Instant::now();
+    let mut warmup_calls = 0usize;
+    while warmup_calls < 8 || warmup_start.elapsed() < Duration::from_millis(10) {
         drop(black_box(operation()));
+        warmup_calls += 1;
     }
+    let warmup_ns = warmup_start.elapsed().as_nanos();
     if mode == "resources" {
         let allocations = profile::count(|| drop(black_box(operation())));
-        return json!({"rust_allocator":allocations,"process_peak_rss_bytes":peak_rss(),"accuracy":accuracy});
+        return json!({"warmup_calls":warmup_calls,"warmup_ns":warmup_ns,"rust_allocator":allocations,"process_peak_rss_bytes":peak_rss(),"accuracy":accuracy});
     }
     let mut calls = Vec::with_capacity(CALLS);
     for _ in 0..CALLS {
@@ -83,7 +87,7 @@ fn measure<R>(
             start.elapsed().as_secs_f64() * 1e9
         })
         .collect();
-    json!({"first_call_return_ns":first_ns,"per_call":distribution(calls),
+    json!({"first_call_return_ns":first_ns,"warmup_calls":warmup_calls,"warmup_ns":warmup_ns,"per_call":distribution(calls),
         "batch_means":distribution(batches),"batch_call_counts":counts,
         "timer_pair":distribution(timer),"process_peak_rss_bytes":peak_rss(),"accuracy":accuracy})
 }
@@ -621,6 +625,8 @@ fn main() {
         "qr_96x32_f64" => qr(mode, library, 96, 32),
         "qr_256x64_f64" => qr(mode, library, 256, 64),
         "cholesky_factor_64_f64" => cholesky(mode, library, 64),
+        "cholesky_factor_128_f64" => cholesky(mode, library, 128),
+        "cholesky_factor_256_f64" => cholesky(mode, library, 256),
         "softmax_256x64_f64" => softmax(mode, library),
         "matmul_sum_backward_32x16x8_f64" => backward(mode, library),
         _ => panic!("unknown workload"),
@@ -648,6 +654,7 @@ mod tests {
         let v: Vec<f64> = (1..=100).map(f64::from).collect();
         assert_eq!(super::quantile(&v, 50, 100), 50.0);
         assert_eq!(super::quantile(&v, 95, 100), 95.0);
+        assert_eq!(super::quantile(&v, 99, 100), 99.0);
         assert_eq!(super::quantile(&[7.0], 95, 100), 7.0);
         let data = super::distribution(vec![4.0, 1.0, 3.0, 2.0]);
         assert_eq!(data["samples_ns"], serde_json::json!([4.0, 1.0, 3.0, 2.0]));

@@ -76,8 +76,25 @@ identity columns that cannot change while materializing Q. QR rejects deficient 
 underdetermined solves; no hidden pseudo-inverse is substituted. Determinant products
 may underflow; `slogdet` avoids directly multiplying pivots. Residual norm is an
 absolute residual, not a condition estimate. An ill-conditioned matrix can have a
-small residual and a large solution error. SVD, condition estimates, iterative
-refinement, complex and extended-precision decompositions remain future work.
+small residual and a large solution error. One-norm conditioning and working-precision iterative refinement are available
+since 0.8. `condition_number_one` / `reciprocal_condition_number_one` use a globally
+scaled LU and every identity-column solve: O(n³), not an inexpensive estimator or
+two-norm condition number. Exact singular factors give reciprocal zero; required
+unrepresentable solves give NonFinite. Global scaling cannot cover every exponent
+range. `solve_refined` uses compensated residuals and a scaled componentwise
+backward-error denominator, accepts only improving corrections, and reports
+convergence, stagnation or the explicit correction budget. It retains original A
+and LU, allocates RHS-sized scratch per attempt, and uses the input dtype. Neither
+convergence nor a forward-error bound is promised. Default LU pivot policy applies.
+SVD, complex and extended-precision decompositions remain future work.
+
+Cholesky reuses its validated input copy as the C-order lower factor. Small
+matrices use right-looking updates with O(n) column workspace; larger ones use
+independent accumulation lanes and retry ordered subtraction on nonfinite products
+or nonpositive diagonal candidates. This can change rounding, not the finite/SPD
+validation policy. QR packs directly into column-major work storage without an
+intermediate C-order matrix; empty thin factors return without dimension-sized
+loops. Neither decomposition promises bitwise agreement across versions.
 
 ## Validation and interpreting reports
 

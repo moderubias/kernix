@@ -13,9 +13,19 @@ class EvidenceTests(unittest.TestCase):
         samples=list(range(100,0,-1));result=evidence.distribution(samples)
         self.assertEqual(result['p50_ns'],50)
         self.assertEqual(result['p95_ns'],95)
+        self.assertEqual(result['p99_ns'],99)
         self.assertEqual(result['max_ns'],100)
         self.assertEqual(result['samples_ns'],samples)
         with self.assertRaises(ValueError):evidence.distribution([])
+
+    def test_seeded_schedule_is_a_permutation_and_retains_every_library(self):
+        expected={(w,lib) for w,libs in evidence.CASES.items() for lib in libs}
+        schedule=evidence.measurement_schedule(123)
+        self.assertEqual(set(schedule),expected)
+        self.assertEqual(len(schedule),len(expected))
+        self.assertEqual(schedule,evidence.measurement_schedule(123))
+        self.assertNotEqual(schedule,evidence.measurement_schedule(124))
+        self.assertFalse(any(w.startswith('training_') for w,_ in evidence.measurement_schedule(123,True)))
 
     def test_dirty_and_untracked_sources_are_refused_but_ignored_notes_are_allowed(self):
         with tempfile.TemporaryDirectory() as temporary:

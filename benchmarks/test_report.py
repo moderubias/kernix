@@ -16,6 +16,11 @@ def result(ns):
 
 
 class ReportTests(unittest.TestCase):
+    def test_nominal_throughput_uses_call_latency_and_only_dense_gemm(self):
+        self.assertEqual(report.throughput('matmul_128_f64',result(1000)),2*128**3/1000)
+        self.assertIsNone(report.throughput('qr_96x32_f64',result(10)))
+        self.assertIsNone(report.throughput('matmul_128_f64',result(0)))
+
     def test_latency_change_keeps_sign_and_missing_is_not_zero(self):
         self.assertAlmostEqual(report.change(result(80), result(100)), -20)
         self.assertAlmostEqual(report.change(result(120), result(100)), 20)
