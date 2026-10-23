@@ -73,4 +73,31 @@ fuzz_target!(|bytes: &[u8]| {
     let initial = solve_refined(&a, &b, 0, 0.).unwrap();
     let refined = solve_refined(&a, &b, 3, 0.).unwrap();
     assert!(refined.backward_error() <= initial.backward_error());
+    // Exercise the actual blocked path as well as the small factorization domain.
+    if bytes.len() >= 5 && bytes[3] & 15 == 15 {
+        let size = [191usize,192,193,255,256,257][bytes[4] as usize % 6];
+        let diagonal = 0.0625 + f64::from(bytes[2] % 16) / 16.;
+        let scale = [1e-200f64,1.,1e200][bytes[0] as usize % 3];
+        let u:Vec<f64>=(0..size).map(|i| (f64::from(bytes[i % bytes.len()])-128.)/128.).collect();
+        let values:Vec<f64>=(0..size*size).map(|p| {
+            let (i,j)=(p/size,p%size);
+            (u[i]*u[j]+if i==j{diagonal}else{0.})*scale
+        }).collect();
+        let matrix=Tensor::from_values([size,size],values).unwrap();
+        let factor=Cholesky::factor(&matrix).unwrap();
+        let lower=factor.lower().storage_slice();
+        let mut previous=diagonal;
+        for j in 0..size {
+            let next=previous+u[j]*u[j];
+            let expected=(diagonal*next/previous).sqrt();
+            assert!((lower[j*size+j]/scale.sqrt()-expected).abs()<2e-10);
+            for i in [j,size-1] {
+                if i==j{continue;}
+                let expected=u[i]*u[j]*diagonal.sqrt()/(previous*next).sqrt();
+                assert!((lower[i*size+j]/scale.sqrt()-expected).abs()<2e-10);
+            }
+            previous=next;
+        }
+    }
+
 });
