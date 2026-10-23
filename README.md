@@ -67,7 +67,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 `Lu` reuses partial-pivoted factors for multiple solves, inverse, determinant and
 signed log determinant. `Cholesky` factors symmetric positive-definite systems.
 `Qr` exposes thin Householder factors and full-column-rank least squares without
-forming normal equations. Both f32 and f64 support arbitrary input strides.
+forming normal equations. `PivotedQr` adds an explicit numerical-rank policy and
+minimum-norm solutions for deficient or underdetermined systems; its separate basic
+solve avoids the extra right factorization. See the [solver contracts](docs/NUMERICS.md#column-pivoted-qr-and-rank-truncated-solving-09).
+Both f32 and f64 support arbitrary input strides.
 Pivot tolerances are explicit rejection policies; a small residual does not prove
 small solution error for an ill-conditioned matrix. SVD, eigenproblems, sparse and
 complex algebra are planned extensions, rather than available APIs.
@@ -388,6 +391,11 @@ for boundaries and commands. Official reports are retained in
 [`benchmarks/results`](benchmarks/results); `benchmarks/run.py` reproduces the older
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
+
+Start with the [0.9.0 readable comparison](benchmarks/results/0.9.0-final/README.md)
+and [paired comparison against 0.8.0](benchmarks/results/0.9.0-paired-final/README.md).
+The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.9.0)
+include the standalone HTML reports and complete measurement evidence.
 
 ## License
 

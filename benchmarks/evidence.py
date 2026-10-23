@@ -247,7 +247,7 @@ def environment(cpu):
 def render_details(dest,data):
     meta=data['metadata'];lines=['# Clean CPU evidence: '+meta['run_id'],'',
         f"Measured source `{meta['revision']}`, tree `{meta['tree']}`; dirty before/after: false.",
-        f"Library source: {meta['library_source']}. One pinned CPU; dtype explicitly named per workload; row-major inputs.",
+        f"Library source: {meta['library_source']}. CPU affinity: {meta['environment'].get('affinity_cpu') if meta['environment'].get('affinity_cpu') is not None else 'not pinned'}. Dtype explicitly named per workload; row-major inputs.",
         '', '| Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |',
         '|---|---:|---:|---:|---:|---:|']
     if meta.get('unavailable_workloads'):
@@ -272,7 +272,7 @@ def render_details(dest,data):
         '- The published cases are allocation-inclusive CPU APIs and graph workloads. Pure internal kernel-only and end-to-end application/model latency are not measured. No workload result implies a complete application frame rate.',
         '- faer is explicitly serial; Rayon and BLAS thread counts are one. No GPU comparison. Python/NumPy timings include Python dispatch. Backend and dependency versions/configuration, governor and RAM are recorded.',
         '- Training stages use batched matmul + bias + layer_norm + tanh + step-two feature slice + MSE (Candle index_select). Forward excludes graph recording; record includes parameter/input/target snapshots and eager forward/loss; backward reuses a prepared graph and returns fresh derivatives. Allocation probes measure the corresponding stage, including graph values/scratch, not graph-container-only bytes. SGD uses fixed precomputed real gradients and includes transactional validation/parameter updates; it is not an end-to-end converging training loop. Candle normalization is an explicit population-statistics composition; its checks/rounding differ. Historical registry baselines without these Tape operations omit the stages, recorded in metadata, rather than substitute manual derivatives.',
-        '- A shared laptop has uncontrolled load/frequency/cache effects. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.', '']
+        '- Host load/frequency/cache effects are uncontrolled. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.', '']
     (dest/'DETAILS.md').write_text('\n'.join(lines), encoding='utf-8')
 
 

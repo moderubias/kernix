@@ -1,7 +1,7 @@
 # Clean CPU evidence: 0.9.0-final
 
 Measured source `4e40ea5a98e7f98505da7cc3dd8a2d80c1a4bd92`, tree `885fd4628515aa5df5de2609d5ec4ca9ab82ef63`; dirty before/after: false.
-Library source: workspace 4e40ea5a98e7f98505da7cc3dd8a2d80c1a4bd92. One pinned CPU; dtype explicitly named per workload; row-major inputs.
+Library source: workspace 4e40ea5a98e7f98505da7cc3dd8a2d80c1a4bd92. CPU affinity: 0. Dtype explicitly named per workload; row-major inputs.
 
 | Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |
 |---|---:|---:|---:|---:|---:|
@@ -123,4 +123,4 @@ Library source: workspace 4e40ea5a98e7f98505da7cc3dd8a2d80c1a4bd92. One pinned C
 - The published cases are allocation-inclusive CPU APIs and graph workloads. Pure internal kernel-only and end-to-end application/model latency are not measured. No workload result implies a complete application frame rate.
 - faer is explicitly serial; Rayon and BLAS thread counts are one. No GPU comparison. Python/NumPy timings include Python dispatch. Backend and dependency versions/configuration, governor and RAM are recorded.
 - Training stages use batched matmul + bias + layer_norm + tanh + step-two feature slice + MSE (Candle index_select). Forward excludes graph recording; record includes parameter/input/target snapshots and eager forward/loss; backward reuses a prepared graph and returns fresh derivatives. Allocation probes measure the corresponding stage, including graph values/scratch, not graph-container-only bytes. SGD uses fixed precomputed real gradients and includes transactional validation/parameter updates; it is not an end-to-end converging training loop. Candle normalization is an explicit population-statistics composition; its checks/rounding differ. Historical registry baselines without these Tape operations omit the stages, recorded in metadata, rather than substitute manual derivatives.
-- A shared laptop has uncontrolled load/frequency/cache effects. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.
+- Host load/frequency/cache effects are uncontrolled. Report comparator wins and losses; no universal ranking follows. The source archive comes from committed bytes, with result directories excluded. Library dependencies are pinned by the saved driver lockfile.

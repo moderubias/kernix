@@ -62,6 +62,25 @@ class ReportTests(unittest.TestCase):
         self.assertIn('Different governor.', warnings)
         self.assertEqual(report.baseline_warnings(a, None), [])
 
+    def test_affinity_and_solver_contract_follow_actual_observations(self):
+        data = dict(metadata=dict(revision='abc', run_id='host', environment=dict(cpu_model='AMD', affinity_cpu=None)),
+                    results={'min_norm_32x64_rank32_f64/kernix': result(100)})
+        original = copy.deepcopy(data)
+        with tempfile.TemporaryDirectory() as temporary, patch.object(report, 'render_chart'):
+            root = Path(temporary)
+            report.render_report(root, data)
+            for name in ['README.md', 'report.html']:
+                text = (root/name).read_text()
+                self.assertIn('CPU affinity was not pinned.', text)
+                self.assertNotIn('shared laptop', text)
+                self.assertIn('native SVD/solve', text)
+                self.assertIn('rank policies differ', text)
+            data['metadata']['environment']['affinity_cpu'] = 0
+            report.render_report(root, data)
+            self.assertIn('CPU affinity pinned to logical CPU 0.', (root/'README.md').read_text())
+        data['metadata']['environment']['affinity_cpu'] = None
+        self.assertEqual(data, original)
+
 
 if __name__ == '__main__':
     unittest.main()
