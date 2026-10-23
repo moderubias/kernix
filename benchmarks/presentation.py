@@ -144,5 +144,5 @@ def render(dest,data,baseline,paired,h):
     files=['report.py','presentation.py','report_frontend.html','report_style.css']
     try:revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=base,text=True,stderr=subprocess.DEVNULL).strip()
     except (OSError,subprocess.CalledProcessError):revision=None
-    receipt=dict(measured_revision=meta['revision'],renderer_revision=revision,renderer_sha256={f:hashlib.sha256((base/f).read_bytes()).hexdigest() for f in files},input_sha256=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest(),paired_evidence_attached=bool(ratios),raw_modified=False)
+    receipt=dict(measured_revision=meta['revision'],renderer_revision=revision,renderer_sha256={f:hashlib.sha256((base/f).read_bytes()).hexdigest() for f in files},input_sha256=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest(),baseline_canonical_sha256=hashlib.sha256(json.dumps(baseline,sort_keys=True).encode()).hexdigest() if baseline else None,paired_canonical_sha256=hashlib.sha256(json.dumps(paired,sort_keys=True).encode()).hexdigest() if paired else None,paired_evidence_attached=bool(ratios),raw_modified=False)
     (dest/'presentation.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')

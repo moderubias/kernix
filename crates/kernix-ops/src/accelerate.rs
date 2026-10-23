@@ -157,7 +157,9 @@ scalar!(f64, kernix_accelerate_f64);
 #[cfg(target_os = "macos")]
 mod ffi {
     unsafe extern "C" {
+        #[link_name = "kernix_accelerate_0_11_available"]
         pub(super) fn kernix_accelerate_available() -> core::ffi::c_int;
+        #[link_name = "kernix_accelerate_0_11_f32"]
         pub(super) fn kernix_accelerate_f32(
             m: i32,
             n: i32,
@@ -166,6 +168,7 @@ mod ffi {
             b: *const f32,
             out: *mut f32,
         ) -> core::ffi::c_int;
+        #[link_name = "kernix_accelerate_0_11_f64"]
         pub(super) fn kernix_accelerate_f64(
             m: i32,
             n: i32,
@@ -205,6 +208,7 @@ mod tests {
     #[test]
     fn sdk_restores_the_calling_threads_original_policy() {
         unsafe extern "C" {
+            #[link_name = "kernix_accelerate_0_11_threading"]
             fn kernix_accelerate_threading() -> core::ffi::c_int;
         }
         fn check() {
