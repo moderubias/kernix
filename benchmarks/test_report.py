@@ -45,8 +45,8 @@ class ReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, patch.object(report, 'render_chart'):
             root = Path(temporary)
             report.render_report(root, data, baseline)
-            md = (root/'README.md').read_text()
-            html = (root/'report.html').read_text()
+            md = (root/'README.md').read_text(encoding='utf-8')
+            html = (root/'report.html').read_text(encoding='utf-8')
         self.assertIn('0.120 | **0.080** | +20.0%', md)
         self.assertIn('future <case>', md)
         self.assertIn('future &lt;case&gt;', html)
@@ -86,7 +86,7 @@ class ReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, patch.object(report, 'render_chart'):
             root = Path(temporary)
             report.render_report(root, data)
-            text = (root/'report.html').read_text()
+            text = (root/'report.html').read_text(encoding='utf-8')
         links = Links()
         links.feed(text)
         self.assertEqual(links.hrefs, ['DETAILS.md', 'raw.json', 'latency.pdf'])
@@ -102,18 +102,18 @@ class ReportTests(unittest.TestCase):
             root = Path(temporary)
             report.render_report(root, data)
             for name in ['README.md', 'report.html']:
-                text = (root/name).read_text()
+                text = (root/name).read_text(encoding='utf-8')
                 self.assertIn('CPU affinity was not pinned.', text)
                 self.assertNotIn('shared laptop', text)
                 self.assertIn('native SVD/solve', text)
                 self.assertIn('rank policies differ', text)
             data['metadata']['environment']['affinity_cpu'] = 0
             report.render_report(root, data)
-            self.assertIn('CPU affinity pinned to logical CPU 0.', (root/'README.md').read_text())
+            self.assertIn('CPU affinity pinned to logical CPU 0.', (root/'README.md').read_text(encoding='utf-8'))
             data['metadata']['minimum_norm_algorithm'] = 'pivoted QR plus scaled implicit RZ'
             report.render_report(root, data)
             for name in ['README.md', 'report.html']:
-                self.assertIn('scaled implicit RZ', (root/name).read_text())
+                self.assertIn('scaled implicit RZ', (root/name).read_text(encoding='utf-8'))
             del data['metadata']['minimum_norm_algorithm']
         data['metadata']['environment']['affinity_cpu'] = None
         self.assertEqual(data, original)
@@ -127,7 +127,7 @@ class ComparisonMeaningTests(unittest.TestCase):
     def render(self,data,baseline=None,paired=None):
         with tempfile.TemporaryDirectory() as d,patch.object(report,'render_chart'):
             p=Path(d);report.render_report(p,data,baseline,paired)
-            return (p/'README.md').read_text(),(p/'report.html').read_text()
+            return (p/'README.md').read_text(encoding='utf-8'),(p/'report.html').read_text(encoding='utf-8')
     def test_single_measurement_is_not_a_peer_winner(self):
         d=self.data();del d['results']['matmul_128_f64/numpy']
         md,html=self.render(d)
