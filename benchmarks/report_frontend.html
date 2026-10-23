@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kernix {{VERSION}} performance</title><style>{{CSS}}</style>
+<main data-paired="{{HAS_PAIRED}}">
+<header><div class="brand">KERNIX / PERFORMANCE</div><h1>What changed in {{VERSION}}?</h1><p class="host">{{CPU}}</p><div class="facts">{{FACTS}}</div><p>{{HOST}}</p><p id="selection-summary"></p></header>
+<section><h2>Version changes</h2><p>{{BASELINE}}</p><p>{{PAIRED_COUNT}} Ratios below 1 mean less time. An interval crossing 1 leaves direction unclear; it does not prove equal speed.</p><div class="insights">{{INSIGHTS}}</div><p class="note">95% bootstrap intervals over fresh-process pairs; exploratory, without multiple-comparison adjustment.</p></section>
+<section class="limits"><h2>Where we still trail</h2><ul>{{LOSSES}}</ul><p class="note">Observed medians on this host. Portable Kernix and explicit vendor execution keep separate names and conditions.</p></section>
+<section class="controls"><h2>Explore your workload</h2><div class="filters">
+<label>Find an operation<input id="search" type="search" placeholder="Try matmul, backward or f32"></label>
+<label>Workload family<select id="family">{{FAMILIES}}</select></label><button id="reset" type="button">Reset filters</button></div>
+<p id="result-count" role="status" aria-live="polite"></p><div class="modes" role="group" aria-label="Comparison question"><button type="button" data-mode="versions">Compare Kernix versions</button><button type="button" data-mode="libraries">Compare libraries</button></div><p id="empty" hidden>No workloads match. Reset filters to see all measurements.</p></section>
+<section id="versions"><h2>Kernix versus its baseline</h2><p>Paired process ratios, not per-call p95 or batch means. Unpaired rows have no inferred interval.</p><div class="scroll"><table><caption>Previous-version comparison on matching recorded conditions</caption><thead><tr><th scope="col">Workload and conditions</th><th scope="col">Time ratio [95% interval]</th><th scope="col">Interpretation</th></tr></thead><tbody>{{VERSIONS}}</tbody></table></div></section>
+<section id="libraries"><h2>Libraries on this host</h2><p>Median µs per public API call; lower is faster. Shading marks a lowest observed median only where at least two libraries were measured. Missing means unmeasured, not unsupported.</p>
+<div class="scroll"><table id="comparison"><caption>Absolute API latency, with execution conditions per row</caption><thead><tr><th scope="col">Workload and conditions</th>{{COLUMNS}}<th scope="col">Coverage</th></tr></thead><tbody>{{ROWS}}</tbody></table></div>
+<h2>By workload</h2><div class="plots">{{PLOTS}}</div><h2>Distributions and resources</h2><p>256 individual warmed calls and 15 separate 10-ms batch means. Allocation probes use a separate binary. Peak additional Rust-requested bytes include output; they are not RSS or total native retention.</p>{{DETAILS}}</section>
+<section><h2>Method and interpretation</h2><p>{{NUMERICAL}}</p><p>Ordinary allocating operations include output allocation and destruction. Explicit reused-output rows exclude pool/output preparation and may have a different recorded affinity. First API call is not a cold-cache measurement.</p><p>Native execution may retain thread-local packing scratch. NumPy allocation counts are unavailable. A numeric minimum alone is not a universal performance claim.</p>{{WARNINGS}}</section>
+<footer><p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable family charts</a></p>{{PROVENANCE}}</footer>
+</main><script>
+(()=>{
+ const search=document.getElementById('search'),family=document.getElementById('family');
+ let mode=document.querySelector('main').dataset.paired==='true'?'versions':'libraries';
+ function apply(){
+  const q=search.value.toLowerCase(),f=family.value;
+  document.querySelectorAll('[data-workload]').forEach(e=>e.hidden=!(e.dataset.search.includes(q)&&(!f||e.dataset.family===f)));
+  const rows=[...document.querySelectorAll('#comparison tbody tr')],n=rows.filter(r=>!r.hidden).length;
+  document.getElementById('result-count').textContent=n+' of '+rows.length+' workloads shown';
+  document.getElementById('empty').hidden=n!==0;
+  document.getElementById('selection-summary').textContent=(f?family.selectedOptions[0].text:'All workload families')+(q?' · search: '+search.value:'')+' · '+n+' workloads';
+  for(const name of ['versions','libraries'])document.getElementById(name).hidden=mode!==name;
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+ }
+ let printOpened=[];window.addEventListener('beforeprint',()=>{printOpened=[...document.querySelectorAll('details')].filter(d=>!d.open&&!d.hidden);printOpened.forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>{printOpened.forEach(d=>d.open=false);printOpened=[]});
+ search.addEventListener('input',apply);family.addEventListener('change',apply);
+ document.getElementById('reset').addEventListener('click',()=>{search.value='';family.value='';apply();search.focus()});
+ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;apply()}));apply();
+})();
+</script></html>

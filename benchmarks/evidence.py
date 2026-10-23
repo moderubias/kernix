@@ -16,7 +16,11 @@ import tarfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+ACCELERATE_CASES = ['matmul_128_f64','matmul_256_f64','matmul_128_f32','matmul_256_f32']
 CASES = {
+    'cholesky_factor_512_f64':['kernix','nalgebra','faer','numpy'],
+    'matmul_ab_128_f64':['kernix','numpy'],
+    'matmul_ab_128_f32':['kernix','numpy'],
     'parallel_matmul_into_64_f64':['kernix'],
     'parallel_matmul_into_128_f64':['kernix'],
     'parallel_matmul_into_256_f64':['kernix'],
@@ -158,6 +162,15 @@ def numpy_case(workload,mode):
             expected=np.array([[[sum(float(a[t,i,k])*float(b[0,k,j]) for k in range(32)) for j in range(16)] for i in range(16)] for t in range(4)])
             error=np.abs(out-expected);assert np.all(error<=1e-11*(1+np.abs(expected)))
             return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=1e-11)
+    elif workload.startswith('matmul_ab_'):
+        dtype=np.float32 if workload.endswith('f32') else np.float64
+        a=((np.arange(128*128)%23).astype(dtype)/16-.5).reshape(128,128)
+        b=((np.arange(128*128)%13).astype(dtype)/8-.5).reshape(128,128)
+        operation=lambda:a@b
+        def check(out):
+            expected=np.array([[sum(float(a[i,k])*float(b[k,j]) for k in range(128)) for j in range(128)] for i in range(128)])
+            error=float(np.max(np.abs(out-expected)));assert error==0. and out.dtype==dtype
+            return dict(coordinate_max_absolute_error=error,budget=0.)
     elif workload.startswith('matmul_'):
         n=int(workload.split('_')[1]);dtype=np.float32 if workload.endswith('_f32') else np.float64
         a=((np.arange(n*n)%13).astype(dtype)/13).reshape(n,n)
@@ -291,6 +304,7 @@ def render_details(dest,data):
         lines.append(f"| {key} | {call['p50_ns']/1000:.3f} / {call['p95_ns']/1000:.3f} | {batch['p50_ns']/1000:.3f} / {batch['p95_ns']/1000:.3f} | {alloc['allocation_calls'] if alloc else 'unavailable'} | {alloc['peak_live_requested_bytes'] if alloc else 'unavailable'} | {rss} |")
     lines += ['', '## Method and limits', '',
         '- Rows explicitly marked two workers use a private Kernix executor with two workers and reusable output allocated before the first call. RefCell borrowing is included; pool construction is excluded. These rows compare Kernix versions, with no single-thread peer score. Linux uses up to two allowed CPUs, preferring distinct reported physical cores; Windows/macOS affinity is not pinned. Exact per-workload CPU sets are in explicit_execution metadata. Ordinary cases retain one BLAS/Rayon thread and the original single-CPU Linux policy.',
+        '- The optional Kernix Accelerate variant is measured only on macOS 15+ when compiled with the explicit feature. SDK calls request one BLAS thread and restore the caller policy. Rust probes exclude native vendor workspace. Registry versions before 0.11 lack this variant; no substitute is measured as historical Kernix.',
         '- Coalesced tensordot contracts [16,32,8] with [32,8,16] over two adjacent axes using the actual Kernix/NumPy tensor APIs. Shared-variable backward uses a prepared real graph of sum(X*X), 64x32 f64, and fresh gradient stores; recording and input construction are excluded in both frameworks.',
         '- Per-call quantiles use nearest ranks over 256 individual warmed calls; batch quantiles use 15 means over separate 10-ms batches. They are separate distributions. Raw samples remain in raw.json.',
         '- Eight warmup calls follow validation. Ordinary timing includes allocation, dispatch, computation and output destruction; explicitly marked reusable-output cases reuse their fixture buffer. The first call field excludes output destruction. Inputs and library/runtime imports are prepared outside timing.',
@@ -324,6 +338,9 @@ def main():
     if not args.run_id or Path(args.run_id).name!=args.run_id or args.run_id in {'.','..'}:
         parser.error('run_id must be one path component')
     revision=clean_revision()
+    accelerate = sys.platform=='darwin' and (not args.registry_baseline or tuple(map(int,args.registry_baseline.split('.'))) >= (0,11,0))
+    if accelerate:
+        for w in ACCELERATE_CASES: CASES[w].append('kernix-accelerate')
     os.environ.update(RAYON_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
     import numpy as np
     configuration=np.show_config(mode='dicts')
@@ -336,6 +353,8 @@ def main():
         if not re.fullmatch(r'\d+\.\d+\.\d+',args.registry_baseline):raise ValueError('invalid baseline version')
         driver=ROOT/'web/drivers'/args.run_id;shutil.copytree(ROOT/'benchmarks/harness/src',driver/'src')
         text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std", "parallel"] }}',text)
+        if tuple(map(int,args.registry_baseline.split('.'))) < (0,11,0):
+            text=text.replace('accelerate = ["kernix/accelerate"]','accelerate = []')
         text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
         manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
         shutil.copyfile(ROOT/'benchmarks/harness/Cargo.lock',manifest.with_name('Cargo.lock'))
@@ -348,7 +367,7 @@ def main():
     legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
     legacy_pivoted=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,9,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
-        enabled=(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])
+        enabled=(['accelerate'] if accelerate else [])+(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])
         features=['--features',','.join(enabled)] if enabled else []
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
@@ -372,7 +391,7 @@ def main():
                 vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
     kernix_version=next(p['version'] for p in library_packages if p['name']=='kernix')
     minimum_norm_algorithm=('pivoted QR plus scaled implicit RZ' if tuple(map(int,kernix_version.split('.'))) >= (0,10,0) else 'pivoted QR plus scaled right QR')
-    metadata=dict(schema_version=2,minimum_norm_algorithm=minimum_norm_algorithm,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
+    metadata=dict(schema_version=2,minimum_norm_algorithm=minimum_norm_algorithm,accelerate_variant=accelerate,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
         unavailable_workloads=[w for w in CASES if (legacy_autograd and w.startswith('training_')) or (legacy_pivoted and w.startswith(('pivoted_qr_','min_norm_')))],

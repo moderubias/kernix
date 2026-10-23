@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.0
+
+- Block Cholesky for native-capable matrices of order at least 192, with borrowed
+  panels, bounded workspace and ordered range retries; preserve validation and pivots.
+- Add fixed NEON GEMM table dispatch on AArch64/std; independent of experimental AMX.
+- Add optional explicit single-thread AccelerateExecutor for macOS 15+ rank-two
+  C-order f32/f64 matrices, with SDK ABI declarations and saved/restored thread policy.
+- Present paired process evidence separately from peer API observations. Add readable
+  summaries, family filters, semantic tables, responsive charts and paginated PDF.
+- Compare independent matrix operands and Cholesky512 alongside existing workloads.
+
 ## 0.10.0
 
 - Reduce deficient/wide minimum-norm solves with structured RZ and implicit right

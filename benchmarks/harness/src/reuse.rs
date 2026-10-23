@@ -64,8 +64,24 @@ mod tests {
     #[test]
     fn new_workers_validate_all_coordinates_before_timing() {
         super::contraction("first");
+        super::independent("first", "kernix", false);
+        super::independent("first", "kernix", true);
         for (n, single) in [(64, false), (128, false), (256, false), (128, true)] {
             super::parallel("first", n, single);
         }
     }
+}
+
+/// Independent operands differ from the historical self-product fixtures.
+pub(super) fn independent(mode: &str, library: &str, single: bool) -> Value {
+    assert_eq!(library, "kernix");
+    macro_rules! run {($ty:ty)=>{{
+ let n=128;let av:Vec<$ty>=(0..n*n).map(|i|(i%23)as $ty/16.-0.5).collect();let bv:Vec<$ty>=(0..n*n).map(|i|(i%13)as $ty/8.-0.5).collect();
+ let expected:Vec<f64>=(0..n*n).map(|i|(0..n).map(|p|f64::from(av[i/n*n+p])*f64::from(bv[p*n+i%n])).sum()).collect();
+ let a=Tensor::from_values([n,n],av).unwrap();let b=Tensor::from_values([n,n],bv).unwrap();
+ measure(mode,||kernix::matmul(&a,&b).unwrap(),|out|{
+ let error=out.storage_slice().iter().zip(&expected).map(|(&x,&y)|(f64::from(x)-y).abs()).fold(0.,f64::max);assert_eq!(error,0.);json!({"coordinate_max_absolute_error":error,"budget":0.})
+ })
+ }}}
+    if single { run!(f32) } else { run!(f64) }
 }

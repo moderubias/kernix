@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.10 API; the linked rustdoc contains
+foundation. This guide follows the public 0.11 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer

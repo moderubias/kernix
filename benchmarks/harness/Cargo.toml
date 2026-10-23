@@ -9,6 +9,7 @@ resolver = "3"
 
 [features]
 allocation-counting = []
+accelerate = ["kernix/accelerate"]
 legacy-constructors = []
 legacy-autograd = []
 legacy-pivoted = []

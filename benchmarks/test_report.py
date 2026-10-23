@@ -91,7 +91,7 @@ class ReportTests(unittest.TestCase):
         links.feed(text)
         self.assertEqual(links.hrefs, ['DETAILS.md', 'raw.json', 'latency.pdf'])
         self.assertEqual(links.details, 1)
-        self.assertEqual(links.workloads, ['matmul_128_f64'])
+        self.assertEqual(links.workloads, ['matmul_128_f64', 'matmul_128_f64'])
         self.assertIn('run DETAILS.md {{VERSION}}.', text)
 
     def test_affinity_and_solver_contract_follow_actual_observations(self):
@@ -118,6 +118,47 @@ class ReportTests(unittest.TestCase):
         data['metadata']['environment']['affinity_cpu'] = None
         self.assertEqual(data, original)
 
+
+
+class ComparisonMeaningTests(unittest.TestCase):
+    def data(self, run='new', cpu='same'):
+        return dict(metadata=dict(revision=run,run_id=run,binary_sha256={'time':run},environment={'cpu_model':cpu}),
+                    results={'matmul_128_f64/kernix':result(100), 'matmul_128_f64/numpy':result(80)})
+    def render(self,data,baseline=None,paired=None):
+        with tempfile.TemporaryDirectory() as d,patch.object(report,'render_chart'):
+            p=Path(d);report.render_report(p,data,baseline,paired)
+            return (p/'README.md').read_text(),(p/'report.html').read_text()
+    def test_single_measurement_is_not_a_peer_winner(self):
+        d=self.data();del d['results']['matmul_128_f64/numpy']
+        md,html=self.render(d)
+        self.assertNotIn('class="best"',html)
+        self.assertIn('No peer comparison measured',html)
+        self.assertNotIn('**0.100**',md)
+    def test_incompatible_environments_disable_directional_delta(self):
+        current=self.data();old=self.data('old','other');old['results']['matmul_128_f64/kernix']=result(50)
+        md,html=self.render(current,old)
+        self.assertIn('deltas are disabled',html)
+        self.assertNotIn('+100.0%',md)
+        self.assertIn('0.100',md)
+    def test_paired_uncertainty_is_visible_and_wrong_runs_are_rejected(self):
+        current=self.data();old=self.data('old')
+        p=dict(current=current['metadata'],baseline=old['metadata'],results={'matmul_128_f64':dict(median_ratio=.99,ci95_low=.96,ci95_high=1.03)})
+        original=copy.deepcopy(current)
+        md,html=self.render(current,old,p)
+        self.assertIn('Timing direction unclear',html)
+        self.assertIn('0.990× [0.960, 1.030]',md)
+        self.assertEqual(current,original)
+        bad=copy.deepcopy(p);bad['current']['run_id']='another'
+        with self.assertRaisesRegex(ValueError,'current run'):self.render(current,old,bad)
+        bad=copy.deepcopy(p);bad['results']['matmul_128_f64']['ci95_low']=float('nan')
+        with self.assertRaisesRegex(ValueError,'invalid paired'):self.render(current,old,bad)
+    def test_all_views_keep_searchable_names_and_explicit_contracts(self):
+        d=self.data();d['results']['parallel_matmul_into_128_f64/kernix']=result(40)
+        md,html=self.render(d)
+        self.assertIn('2 workers · reused output',html)
+        self.assertIn('data-search="parallel_matmul_into_128_f64',html)
+        self.assertIn('scope="col"',html);self.assertIn('scope="row"',html)
+        self.assertIn('<caption>',html);self.assertIn('No paired comparison',md)
 
 if __name__ == '__main__':
     unittest.main()

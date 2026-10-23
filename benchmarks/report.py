@@ -6,10 +6,15 @@ import json
 import re
 from pathlib import Path
 
-LIBRARIES = ('kernix', 'ndarray', 'nalgebra', 'faer', 'candle', 'numpy')
-NAMES = dict(zip(LIBRARIES, ('Kernix', 'ndarray', 'nalgebra', 'faer', 'Candle', 'NumPy')))
-COLORS = dict(zip(LIBRARIES, ('#5b47d6', '#2c8c99', '#bf8742', '#60884a', '#ca627f', '#577da8')))
+LIBRARIES = ('kernix','kernix-accelerate', 'ndarray', 'nalgebra', 'faer', 'candle', 'numpy')
+NAMES = dict(kernix='Kernix',ndarray='ndarray',nalgebra='nalgebra',faer='faer',candle='Candle',numpy='NumPy')
+NAMES['kernix-accelerate']='Kernix · explicit Accelerate'
+COLORS = dict(kernix='#5b47d6',ndarray='#2c8c99',nalgebra='#bf8742',faer='#60884a',candle='#ca627f',numpy='#577da8')
+COLORS['kernix-accelerate']='#8b72d6'
 WORKLOADS = {
+    'cholesky_factor_512_f64':('Cholesky factorization','512 × 512','f64'),
+    'matmul_ab_128_f64':('Independent matrix operands','128 × 128 · 128 × 128','f64'),
+    'matmul_ab_128_f32':('Independent matrix operands','128 × 128 · 128 × 128','f32'),
     'parallel_matmul_into_64_f64': ('Matmul · 2 workers · reused output', '64 × 64 · 64 × 64', 'f64'),
     'parallel_matmul_into_128_f64': ('Matmul · 2 workers · reused output', '128 × 128 · 128 × 128', 'f64'),
     'parallel_matmul_into_256_f64': ('Matmul · 2 workers · reused output', '256 × 256 · 256 × 256', 'f64'),
@@ -65,8 +70,9 @@ def rows(data):
     for key, value in data['results'].items():
         workload, library = key.rsplit('/', 1)
         grouped.setdefault(workload, {})[library] = value
-    order = list(WORKLOADS)
-    return sorted(grouped.items(), key=lambda item: (order.index(item[0]) if item[0] in order else len(order), item[0]))
+    from presentation import family, FAMILIES
+    order = list(WORKLOADS); families=list(FAMILIES)
+    return sorted(grouped.items(), key=lambda item: (families.index(family(item[0])), order.index(item[0]) if item[0] in order else len(order), item[0]))
 
 
 def micros(result, metric='p50_ns'):
@@ -109,154 +115,66 @@ def baseline_warnings(data, baseline):
     return warnings
 
 
-def render_report(dest, data, baseline=None):
-    """Write a compact Markdown/HTML report and comparable per-workload charts."""
-    dest = Path(dest)
-    dest.mkdir(parents=True, exist_ok=True)
-    meta = data['metadata']
-    groups = rows(data)
-    libraries = [lib for lib in LIBRARIES if any(lib in values for _, values in groups)]
-    libraries += sorted({lib for _, values in groups for lib in values} - set(libraries))
-    escape = html.escape
-    names = lambda lib: NAMES.get(lib, lib)
-    version = next((p['version'] for p in meta.get('library_packages', []) if p['name'] == 'kernix'), 'workspace')
-    env = meta.get('environment', {})
-    description = f"{cpu_name(env)} · one BLAS/Rayon thread · allocating APIs unless marked reused · warmed individual calls"
-    affinity = env.get('affinity_cpu')
-    host_note = ('One measured host and one BLAS/Rayon thread. '
-                 + (f'CPU affinity pinned to logical CPU {affinity}. ' if affinity is not None else 'CPU affinity was not pinned. ')
-                 + 'Frequency and background load are uncontrolled; these observations establish no universal ranking.')
-    if meta.get('explicit_execution'):
-        host_note += ' Rows marked 2 workers use a private two-thread executor and reusable output; their recorded CPU affinity can differ. They compare Kernix versions, not single-thread competitors.'
-        description += ' · explicit 2-worker rows labelled'
-    warnings = baseline_warnings(data, baseline)
-    summary = []
-    table = []
-    previous = baseline['results'] if baseline else {}
-    for workload, values in groups:
-        title, shape, dtype = label(workload)
-        available = [micros(value) for value in values.values()]
-        best = min(available)
-        cells = []
-        md = []
-        for lib in libraries:
-            value = values.get(lib)
-            if value is None:
-                cells.append('<td class="missing">—</td>');md.append('—');continue
-            us = micros(value)
-            fastest = us == best
-            klass = 'best' if fastest else ''
-            cells.append(f'<td class="{klass}" title="p95: {micros(value, "p95_ns"):.3f} µs">{us:.3f}</td>')
-            md.append(f'**{us:.3f}**' if fastest else f'{us:.3f}')
-        delta = change(values.get('kernix'), previous.get(workload + '/kernix'))
-        if baseline:
-            text = f'{delta:+.1f}%' if delta is not None else '—'
-            cls = ('faster' if delta < 0 else 'slower') if delta is not None else 'missing'
-            cells.append(f'<td class="{cls}">{text}</td>');md.append(text)
-        table.append(f'<tr data-workload="{escape(workload)}"><th>{escape(title)}<small>{escape(shape)} · {escape(dtype)}</small></th>{"".join(cells)}</tr>')
-        summary.append('| ' + ' · '.join(filter(None, (title, shape, dtype))) + ' | ' + ' | '.join(md) + ' |')
-    columns = [names(lib) for lib in libraries] + (['Kernix Δ vs baseline'] if baseline else [])
-    baseline_note = f"Baseline: {baseline['metadata']['run_id']}. Δ is latency change; negative is faster. Runs are sequential, not randomized/interleaved." if baseline else 'No previous-version baseline is paired with this view.'
-    solver = meta.get('minimum_norm_algorithm', 'pivoted QR plus scaled right QR')
-    numerical_note = (f'Minimum-norm rows include factorization and four RHS. Kernix uses {solver}; '
-                      'NumPy uses native lstsq; nalgebra uses native SVD/solve. Fixtures have a wide rank gap; '
-                      'null-space orthogonality and normal residual are validated independently. Algorithm costs '
-                      'and rank policies differ; see DETAILS.md for thresholds. These are not general SVD comparisons.'
-                      if any(w.startswith('min_norm_') for w, _ in groups) else '')
-    md = [f'# Kernix {version} · CPU benchmarks', '', description, '',
-          '**Microseconds per call, median. Lower is faster; bold marks the lowest observed median in each row.**', '',
-          baseline_note, '', '| Workload | ' + ' | '.join(columns) + ' |',
-          '|---|' + '---:|' * len(columns), *summary, '',
-          '![Relative latency by workload](latency.png)', '',
-          'Each panel has its own scale. Ratios are library / Kernix median; below 1 means the comparator was faster.', '',
-          '## Reading these results', '',
-          '- ' + host_note,
-          '- Timing includes output allocation and destruction except rows explicitly marked reused. Inputs and imports are prepared outside timing. GEMM inputs are row-major; output layout and validation contracts can differ by library.',
-          '- Per-call p95 describes 256 individual warmed calls. The 15 batch means form a separate distribution; neither is a confidence interval.',
-          '- Rust allocation probes use a separate instrumented binary. Native engines may retain packing buffers; warmed probes exclude their first-use allocation and retention. NumPy native allocations are unavailable, never zero.', '',
-          '[Interactive report](report.html) · [Detailed measurements and method](DETAILS.md) · [Raw samples and provenance](raw.json) · [Printable chart](latency.pdf)', '',
-          f"Measured source `{meta['revision']}`. Run `{meta['run_id']}`. Rendering does not remeasure or modify raw evidence.", '']
-    if warnings:
-        md[4:4] = ['**Baseline caveats:** ' + ' '.join(warnings), '']
-    if numerical_note:
-        md[md.index('## Reading these results') + 2:md.index('## Reading these results') + 2] = [numerical_note, '']
-    (dest / 'README.md').write_text('\n'.join(md), encoding='utf-8')
-    details = []
-    for workload, values in groups:
-        title, shape, dtype = label(workload)
-        lines = []
-        for lib, value in values.items():
-            timing, resources = value['timing'], value['resources']
-            alloc = resources.get('rust_allocator')
-            allocation = str(alloc['allocation_calls']) if alloc else 'unavailable'
-            peak = f"{alloc['peak_live_requested_bytes']:,}" if alloc else 'unavailable'
-            batch = timing['batch_means']
-            tail = timing['per_call'].get('p99_ns')
-            p99 = f'{tail/1000:.3f}' if tail is not None else 'unavailable'
-            rate = throughput(workload, value)
-            gflops = f'{rate:.2f}' if rate is not None else '—'
-            lines.append(f'<tr><th>{escape(names(lib))}</th><td>{micros(value):.3f} / {micros(value,"p95_ns"):.3f} / {p99}</td><td>{gflops}</td><td>{batch["p50_ns"]/1000:.3f} / {batch["p95_ns"]/1000:.3f}</td><td>{allocation}</td><td>{peak}</td></tr>')
-        details.append(f'<details><summary>{escape(title)} <span>{escape(shape)} · {escape(dtype)}</span></summary><div class="scroll"><table><thead><tr><th>Library</th><th>Call p50 / p95 / p99, µs</th><th>Nominal GEMM GFLOP/s</th><th>Batch mean p50 / p95, µs</th><th>Rust allocations</th><th>Peak requested bytes</th></tr></thead><tbody>{"".join(lines)}</tbody></table></div></details>')
-    document = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kernix CPU benchmarks</title><style>
-:root{color-scheme:light;--ink:#22263c;--muted:#626b80;--line:#e2e5ef;--purple:#5b47d6}*{box-sizing:border-box}body{margin:0;background:#f5f6fb;color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:1320px;margin:auto;padding:48px 28px}header{margin-bottom:32px}.eyebrow{color:var(--purple);font-size:12px;letter-spacing:.15em;font-weight:750;text-transform:uppercase}h1{font-size:clamp(30px,4vw,48px);line-height:1.2;letter-spacing:-.04em;margin:12px 0}h2{font-size:23px;letter-spacing:-.02em}p{color:var(--muted)}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:24px;margin:24px 0;box-shadow:0 4px 22px #25214a05}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}th,td{border-bottom:1px solid var(--line);padding:13px 12px;text-align:right;white-space:nowrap}th:first-child{text-align:left}thead th{color:var(--muted);font-size:12px;letter-spacing:.02em}tbody th{font-weight:600}small{display:block;color:var(--muted);font-size:12px;font-weight:400}.kernix{color:var(--purple)}.best{background:#f0edff;color:#4936b8;font-weight:750}.missing{color:#a3a8b8}.faster{color:#247552}.slower{color:#aa5a28}.note{font-size:13px;color:var(--muted)}.warning{color:#9b5c21}a{color:var(--purple);text-underline-offset:3px}input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:10px 14px;width:min(100%,340px);margin:8px 0}img{max-width:100%;height:auto}details{border-top:1px solid var(--line);padding:14px 0}summary{cursor:pointer;font-weight:600}summary span{font-weight:400;color:var(--muted);font-size:13px;margin-left:12px}footer{font-size:13px;color:var(--muted);overflow-wrap:anywhere}@media print{body{background:white}main{padding:0}.card{box-shadow:none;break-inside:avoid}input{display:none}details{display:none}a{color:inherit}}
-</style><main><header><div class="eyebrow">Kernix · performance evidence</div><h1>Numerics, measured.</h1><p>{{VERSION}}<br>{{DESCRIPTION}}</p></header>
-<section class="card"><h2>At a glance</h2><p>Microseconds per call · median · lower is faster. Shaded cells mark the lowest observed median.</p><p class="note">{{BASELINE}}</p>{{WARNINGS}}<label for="search" class="note">Filter workloads</label><br><input id="search" type="search" placeholder="Try matmul, backward or f32" autocomplete="off"><div class="scroll"><table id="comparison"><thead><tr><th>Workload</th>{{COLUMNS}}</tr></thead><tbody>{{ROWS}}</tbody></table></div><p class="note">Hover over a timing for its per-call p95. Expand a workload for p99 and nominal GEMM throughput (2n³ divided by allocating API latency). A missing cell means unmeasured, not unsupported.</p></section>
-<section class="card"><h2>The relative picture</h2><p>Each workload uses its own scale. Library / Kernix median: below 1 means the comparator was faster.</p><img src="latency.png" alt="Per-workload relative latency panels, with comparator wins and losses"><p class="note">{{HOST_NOTE}} GEMM inputs are row-major; output layout and validation contracts may differ. Timings include output allocation and destruction.</p></section>
-<section class="card"><h2>Distributions &amp; resources</h2><p>256 individual warmed calls and 15 separate 10-ms batch means. Resource probes use a separate instrumented binary; NumPy native allocations are unavailable. Requested bytes include output and are not scratch-only memory or RSS. Native engines may retain thread-local packing memory; warmed probes exclude its first-use allocation and retention.</p>{{DETAILS}}</section>
-<footer>{{NUMERICAL_NOTE}}<p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable chart</a></p>{{PROVENANCE}}</footer></main><script>document.getElementById('search').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#comparison tbody tr').forEach(row=>{row.hidden=!(row.textContent+' '+row.dataset.workload).toLowerCase().includes(q)})})</script></html>'''
-    replacements = dict(VERSION=escape('Kernix ' + version), DESCRIPTION=escape(description), BASELINE=escape(baseline_note),
-                        WARNINGS='<p class="warning">' + escape(' '.join(warnings)) + '</p>' if warnings else '',
-                        COLUMNS=''.join(f'<th class="{"kernix" if col == "Kernix" else ""}">{escape(col)}</th>' for col in columns),
-                        ROWS=''.join(table), DETAILS=''.join(details), HOST_NOTE=escape(host_note), NUMERICAL_NOTE='<p>'+escape(numerical_note)+'</p>' if numerical_note else '',
-                        PROVENANCE=escape(f"Measured source {meta['revision']} · run {meta['run_id']}. Rendering does not change or remeasure raw evidence."))
-    # Single pass: replacement text containing another placeholder stays literal.
-    import re
-    document = re.sub(r'\{\{([A-Z_]+)\}\}', lambda m: replacements[m[1]], document)
-    (dest / 'report.html').write_text(document, encoding='utf-8')
-    render_chart(dest, groups)
+def render_report(dest, data, baseline=None, paired=None):
+    """Render immutable evidence with separate version and peer comparisons."""
+    from presentation import render
+    dest=Path(dest);dest.mkdir(parents=True,exist_ok=True)
+    render(dest,data,baseline,paired,dict(rows=rows,label=label,micros=micros,
+        names=lambda lib:NAMES.get(lib,lib),cpu=cpu_name(data['metadata'].get('environment',{})),
+        libraries=LIBRARIES,baseline_warnings=baseline_warnings,change=change))
+    render_chart(dest,rows(data),data["metadata"])
 
 
-def render_chart(dest, groups):
+def render_chart(dest, groups, metadata=None):
+    """Paginated family charts, at most six panels per landscape page."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    import math
-    fig, axes = plt.subplots(math.ceil(len(groups)/2), 2, figsize=(13, math.ceil(len(groups)/2)*2.65), layout='constrained', squeeze=False)
-    fig.set_facecolor('#f5f6fb')
-    for axis, (workload, values) in zip(axes.flat, groups):
-        title, shape, dtype = label(workload)
-        reference = values.get('kernix')
-        if reference is None:
-            axis.set_visible(False);continue
-        base = micros(reference)
-        libraries = [lib for lib in LIBRARIES if lib in values]
-        libraries += sorted(set(values) - set(libraries))
-        ratios = [micros(values[lib])/base for lib in libraries]
-        axis.barh(range(len(libraries)), ratios, color=[COLORS.get(lib, '#626b80') for lib in libraries], height=.65)
-        axis.set_yticks(range(len(libraries)), [NAMES.get(lib, lib) for lib in libraries], fontsize=9)
-        axis.invert_yaxis();axis.axvline(1, color='#6b6580', lw=.7, ls='--')
-        axis.set_xlim(0, max(ratios)*1.35)
-        for i, (lib, ratio) in enumerate(zip(libraries, ratios)):
-            axis.text(ratio + max(ratios)*.02, i, f'{micros(values[lib]):.2f} µs · {ratio:.2f}×', va='center', fontsize=8, color='#34364a')
-        axis.set_title(f'{title} · {shape} · {dtype}', loc='left', fontsize=10, weight='bold', pad=12)
-        axis.set_xlabel('Latency / Kernix', fontsize=8, color='#626b80');axis.tick_params(length=0, labelsize=8)
-        axis.spines[['top', 'right', 'left']].set_visible(False);axis.spines['bottom'].set_color('#dadce8')
-        axis.grid(axis='x', alpha=.15);axis.set_axisbelow(True)
-    for axis in list(axes.flat)[len(groups):]:axis.set_visible(False)
-    fig.savefig(dest/'latency.png', dpi=160);fig.savefig(dest/'latency.pdf');plt.close(fig)
+    from matplotlib.backends.backend_pdf import PdfPages
+    from presentation import family, FAMILIES
+    import textwrap
+    metadata=metadata or {}
+    host=cpu_name(metadata.get('environment',{}))
+    pages=[]
+    for key,title in FAMILIES.items():
+        items=[x for x in groups if family(x[0])==key]
+        for first in range(0,len(items),6): pages.append((title,items[first:first+6]))
+    with PdfPages(dest/'latency.pdf') as pdf:
+        for page,(family_title,items) in enumerate(pages):
+            fig,axes=plt.subplots(3,2,figsize=(11.7,8.3),layout='constrained',squeeze=False)
+            fig.suptitle(f'{family_title} · page {page+1}/{len(pages)}',fontsize=14,weight='bold')
+            for axis,(workload,values) in zip(axes.flat,items):
+                title,shape,dtype=label(workload);base=micros(values['kernix']) if 'kernix' in values else 0
+                axis.set_title('\n'.join(textwrap.wrap(f'{title} · {shape} · {dtype}',52)),loc='left',fontsize=9,weight='bold')
+                if len(values)<2 or base<=0:
+                    axis.text(.05,.5,'Previous-version comparison only; no peers measured',transform=axis.transAxes,fontsize=9,wrap=True);axis.axis('off');continue
+                libs=[x for x in LIBRARIES if x in values]+sorted(set(values)-set(LIBRARIES))
+                ratios=[micros(values[x])/base for x in libs]
+                axis.barh(range(len(libs)),ratios,color=[COLORS.get(x,'#626b80') for x in libs])
+                axis.set_yticks(range(len(libs)),[NAMES.get(x,x) for x in libs],fontsize=7)
+                axis.invert_yaxis();axis.axvline(1,color='#666',lw=.8,ls='--')
+                axis.set_xlim(0,max(ratios)*1.5)
+                for i,(lib,r) in enumerate(zip(libs,ratios)):axis.text(r+max(ratios)*.02,i,f'{micros(values[lib]):.3g} µs / {r:.2f}×',va='center',fontsize=7)
+                axis.set_xlabel('Time / portable Kernix · local panel scale',fontsize=7)
+                axis.tick_params(labelsize=7);axis.spines[['top','right','left']].set_visible(False)
+            for axis in list(axes.flat)[len(items):]:axis.set_visible(False)
+            fig.text(.02,.005,f'{host} · allocating APIs unless marked reused · actual source {metadata.get("revision","unrecorded")[:12]}',fontsize=6)
+            pdf.savefig(fig)
+            if page==0:fig.savefig(dest/'latency.png',dpi=160)
+            plt.close(fig)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory', type=Path, help='directory containing raw.json; only presentation files are rewritten')
     parser.add_argument('--baseline', type=Path, help='directory containing an exact previous-version raw.json')
+    parser.add_argument('--paired', type=Path, help='directory containing matching paired.json')
     args = parser.parse_args()
     data = json.loads((args.directory/'raw.json').read_text(encoding='utf-8'))
     baseline = json.loads((args.baseline/'raw.json').read_text(encoding='utf-8')) if args.baseline else None
     from evidence import render_details
     render_details(args.directory, data)
-    render_report(args.directory, data, baseline)
+    render_report(args.directory, data, baseline, json.loads((args.paired/'paired.json').read_text(encoding='utf-8')) if args.paired else None)
 
 
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.10.0"
+kernix = "0.11.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -40,12 +40,12 @@ Linux x86_64 is verified locally. Release 0.6.0 CI passed on Windows, macOS and 
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
-Optional future backends must not prevent use of the portable CPU path.
+Optional backends preserve access to the portable CPU path.
 
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.10.0", default-features = false }
+kernix = { version = "0.11.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -388,6 +388,21 @@ for boundaries and commands. Official reports are retained in
 [`benchmarks/results`](benchmarks/results); `benchmarks/run.py` reproduces the older
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
+
+## Explicit Apple Accelerate execution
+
+On macOS 15+ with a suitable Apple SDK, enable the optional `accelerate` feature:
+
+```toml
+kernix = { version = "0.11.0", features = ["accelerate"] }
+```
+
+Use `kernix::accelerate::AccelerateExecutor::new()?`, then `cpu.matmul(&a, &b)?`.
+The context accepts C-contiguous rank-two f32/f64 tensors, allocates output fallibly,
+and requests one BLAS thread while restoring the caller's prior thread-local policy.
+Unsupported systems/layouts return errors. The optional bridge needs an Apple C
+compiler; the portable default remains pure Rust. Vendor workspace is opaque.
+This explicit backend currently has no Tape recording integration.
 
 ## License
 

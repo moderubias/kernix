@@ -28,6 +28,7 @@ portable-math = ["kernix-ops/portable-math"]
 std = ["kernix-core/std", "kernix-ops/std", "thiserror/std"]
 serde = ["kernix-core/serde", "kernix-ops/serde"]
 parallel = ["std", "kernix-ops/parallel"]
+accelerate = ["std", "kernix-ops/accelerate"]
 
 config = ["std", "dep:serde", "dep:toml"]
 

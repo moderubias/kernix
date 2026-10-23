@@ -13,6 +13,8 @@ mod manipulate;
 mod math;
 mod math_extra;
 mod matmul_element;
+#[cfg(all(feature = "std", target_arch = "aarch64", not(miri)))]
+mod neon;
 mod numeric;
 mod ordering;
 mod reduce;

@@ -25,7 +25,9 @@ use kernix_core::{
 pub trait MatmulDevice<T>: Device<T> {
     /// Checked kernel, layout, ownership, allocation or synchronization failure.
     type KernelError: core::error::Error;
-    /// Multiply device tensors using NumPy matmul rank/batch semantics.
+    /// Successful products follow NumPy matmul shape semantics. A backend may
+    /// reject unsupported ranks/layouts with its KernelError; it must not silently
+    /// change devices, layouts or execution policies to manufacture support.
     fn matmul(
         &self,
         left: &Tensor<T, Kahen, Self::Buffer>,
@@ -189,14 +191,26 @@ impl CpuExecutor {
             let rows_per_chunk = m.clamp(1, 32);
             // Keep large-dense tasks eligible for the selected GEMM engine.
             // Small/skinny, ordered and portable work retains its previous split.
-            #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+            #[cfg(all(
+                feature = "std",
+                any(target_arch = "x86_64", target_arch = "aarch64"),
+                not(miri)
+            ))]
             let rows_per_chunk = if !self.ordered_matmul
                 && T::HAS_NATIVE_MATMUL
                 && m >= 128
                 && k >= 64
                 && n >= 64
-                && gemm_common::simd::V3::try_new().is_some()
-            {
+                && {
+                    #[cfg(target_arch = "x86_64")]
+                    {
+                        gemm_common::simd::V3::try_new().is_some()
+                    }
+                    #[cfg(target_arch = "aarch64")]
+                    {
+                        std::arch::is_aarch64_feature_detected!("neon")
+                    }
+                } {
                 (m / pool.current_num_threads() / 64).max(1) * 64
             } else {
                 rows_per_chunk

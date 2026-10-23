@@ -234,3 +234,23 @@ Shared-variable backward computes sum(X*X) on a prepared real tensor graph in
 Kernix and Candle and returns fresh gradient stores. Coalesced tensordot uses the
 actual Kernix/NumPy arbitrary-axis APIs on matching contiguous tensors; reshapes
 and preparation are outside timing only when they are fixture construction.
+
+
+## Readable comparisons and explicit vendor observations (0.11)
+
+Version comparisons use matching frozen process pairs when attached; sequential
+single-run deltas remain descriptive in Markdown. No paired interval is inferred
+from calls in one process. A lone Kernix result receives no peer-winner emphasis.
+The standalone HTML separates versions/libraries, filters all workload views, reports
+empty results and preserves semantic row/column headers. It keeps losses and actual
+per-row worker/output contracts visible. PDF charts have at most six family panels
+per page; HTML charts keep readable text on narrow displays. presentation.json
+records renderer/source fingerprints separately from the measured revision.
+
+New independent-operand128 cases use dyadic f32/f64 matrices and coordinate oracles;
+the historical serial fixtures still use A*A. Cholesky512 exercises the blocked path.
+On supported macOS current builds, four serial GEMM rows additionally measure the
+explicit AccelerateExecutor, with output allocation and thread-policy save/restore
+included. Native vendor allocations are opaque. This is a distinct optional backend;
+registry0.10 has no substitute entry for that API. Hardware runs measure registry0.10
+on the same host and interleave frozen processes before interpreting version changes.

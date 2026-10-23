@@ -3,15 +3,15 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 edition = "2024"
 rust-version = "1.86"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/moderubias/kernix"
 
 [workspace.dependencies]
-kernix-core = { version = "0.10.0", path = "crates/kernix-core", default-features = false }
-kernix-ops = { version = "0.10.0", path = "crates/kernix-ops", default-features = false }
+kernix-core = { version = "0.11.0", path = "crates/kernix-core", default-features = false }
+kernix-ops = { version = "0.11.0", path = "crates/kernix-ops", default-features = false }
 
 thiserror = { version = "2.0.21", default-features = false }
 

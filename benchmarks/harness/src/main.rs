@@ -119,6 +119,16 @@ fn gemm(mode: &str, library: &str, n: usize) -> Value {
                 |out| gemm_error(n, &values, |i, j| *out.get(&[i, j]).unwrap()),
             )
         }
+        #[cfg(feature = "accelerate")]
+        "kernix-accelerate" => {
+            let a = Tensor::from_values([n, n], values.clone()).unwrap();
+            let cpu = kernix::accelerate::AccelerateExecutor::new().unwrap();
+            measure(
+                mode,
+                || cpu.matmul(&a, &a).unwrap(),
+                |out| gemm_error(n, &values, |i, j| *out.get(&[i, j]).unwrap()),
+            )
+        }
         "ndarray" => {
             let a = ndarray::Array2::from_shape_vec((n, n), values.clone()).unwrap();
             measure(
@@ -181,6 +191,16 @@ fn gemm_f32(mode: &str, library: &str, n: usize) -> Value {
             measure(
                 mode,
                 || kernix::matmul(&a, &a).unwrap(),
+                |out| gemm_f32_error(n, &values, |i, j| *out.get(&[i, j]).unwrap()),
+            )
+        }
+        #[cfg(feature = "accelerate")]
+        "kernix-accelerate" => {
+            let a = Tensor::from_values([n, n], values.clone()).unwrap();
+            let cpu = kernix::accelerate::AccelerateExecutor::new().unwrap();
+            measure(
+                mode,
+                || cpu.matmul(&a, &a).unwrap(),
                 |out| gemm_f32_error(n, &values, |i, j| *out.get(&[i, j]).unwrap()),
             )
         }
@@ -655,6 +675,9 @@ fn main() {
         "cholesky_factor_64_f64" => cholesky(mode, library, 64),
         "cholesky_factor_128_f64" => cholesky(mode, library, 128),
         "cholesky_factor_256_f64" => cholesky(mode, library, 256),
+        "cholesky_factor_512_f64" => cholesky(mode, library, 512),
+        "matmul_ab_128_f64" => reuse::independent(mode, library, false),
+        "matmul_ab_128_f32" => reuse::independent(mode, library, true),
         "softmax_256x64_f64" => softmax(mode, library),
         "matmul_sum_backward_32x16x8_f64" => backward(mode, library),
         _ => panic!("unknown workload"),

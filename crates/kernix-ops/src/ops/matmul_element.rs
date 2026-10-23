@@ -47,7 +47,7 @@ integer!(
     u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
 );
 macro_rules! floating {
-    ($ty:ty,$kernel:ident,$native:path) => {
+    ($ty:ident,$kernel:ident,$native:path) => {
         impl MatmulElement for $ty {
             const HAS_NATIVE_MATMUL: bool = true;
             fn try_strided_matmul(
@@ -149,6 +149,16 @@ macro_rules! floating {
                             false,
                             gemm_common::Parallelism::None,
                         );
+                    }
+                    return true;
+                }
+                #[cfg(all(feature = "std", target_arch = "aarch64", not(miri)))]
+                if m >= 64 && k >= 64 && n >= 64 && std::arch::is_aarch64_feature_detected!("neon")
+                {
+                    // SAFETY: validated extents/strides above, disjoint output,
+                    // and runtime NEON support. Explicit table avoids AMX feature unification.
+                    unsafe {
+                        super::neon::$ty(a, b, out, m, k, n);
                     }
                     return true;
                 }

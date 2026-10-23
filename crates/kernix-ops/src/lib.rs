@@ -22,6 +22,8 @@ pub mod prelude {
     };
 }
 
+#[cfg(feature = "accelerate")]
+pub mod accelerate;
 pub mod execution;
 
 pub mod neural;

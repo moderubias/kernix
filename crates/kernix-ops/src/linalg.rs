@@ -25,6 +25,7 @@ use thiserror::Error;
 
 mod pivoted_qr;
 pub use pivoted_qr::PivotedQr;
+mod blocked_cholesky;
 mod rz;
 
 mod diagnostics;
@@ -398,11 +399,13 @@ impl<T: LinalgFloat> Cholesky<T> {
                 }
             }
         }
-        // Reuse the checked input copy as output. Small matrices use a contiguous
-        // O(n) column workspace for right-looking rank-one updates; larger matrices
-        // use independent-lane row products with an ordered range fallback.
+        // Reuse the checked input copy as output. Large native-capable matrices
+        // use bounded left-looking block updates; smaller matrices retain their
+        // column/row kernels. Every range retry retains the original current entry.
         let data = a.storage_slice_mut();
-        if n <= 96 && n != 0 {
+        if n >= 192 && T::HAS_NATIVE_MATMUL {
+            blocked_cholesky::factor(data, n)?;
+        } else if n <= 96 && n != 0 {
             let mut workspace = Tensor::<T>::zeros([n])?;
             let column = workspace.storage_slice_mut();
             for k in 0..n {

@@ -197,3 +197,29 @@ gemm engine instead of always splitting them below its row threshold. Small,
 skinny, ordered, portable and unavailable-feature work retains the 32-row split.
 No CPU affinity is forced; performance depends on actual topology and scheduling.
 Native worker threads may retain their own packed scratch after first use.
+
+
+## Blocked Cholesky and explicit execution (0.11)
+
+Cholesky keeps its full finite/symmetry validation and lower-authoritative policy.
+Native-capable scalars use a left-looking blocked factorization for n>=192, with
+16-column panels and a fixed 64x16-element fallible Schur workspace. Borrowed
+signed-stride matrix panels avoid full transposes and additional n-by-n input copies.
+Diagonal/nonfinite cancellation retries use the original entry and ordered products.
+Smaller/custom portable-capability work retains the existing factorization paths.
+Rounding can differ; positive-definiteness has the same finite-dtype limitations.
+
+AArch64 std dense eligible products use the gemm-rs NEON table directly, bypassing
+its optional AMX selector even when downstream Cargo features unify. Small, strided
+and no_std products retain their existing paths. Explicit parallel chunk eligibility
+is matched to this engine; the caller still chooses worker count.
+
+The optional accelerate feature exposes kernix::accelerate::AccelerateExecutor.
+It requires macOS15+, SDK thread-control declarations and C-contiguous rank-two
+f32/f64 host tensors. Construction fails on unsupported targets. It uses the SDK's
+new LAPACK/BLAS interface, requests one BLAS thread for each call and restores the
+caller's previous thread-local policy. Output is allocated fallibly; no input copy,
+device transfer, hidden CPU fallback or autodiff integration is provided. Vendor
+workspace is opaque and not included in Rust allocation probes. The portable CPU
+remains the default. Dimensions passed to the SDK fit signed32-bit integers; empty
+products are handled without BLAS. The optional SDK bridge needs an Apple C toolchain.
