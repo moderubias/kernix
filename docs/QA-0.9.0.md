@@ -76,6 +76,9 @@ or forward-error guarantee. Neither decomposition has an autodiff VJP.
   and fourteen benchmark/report tests, including actual CPU affinity, algorithm disclosures and working HTML links.
   Template placeholders use reserved delimiters so DETAILS.md remains a valid link;
   literal marker text in source metadata is preserved. Rendering changes no measurements.
+  An actual headless Firefox session checks matmul/minimum/f32/backward filtering,
+  a missing query, clearing the filter and all three footer links. The advertised
+  matmul query now searches workload identifiers as well as human-readable labels.
 - Fresh library line coverage: 7,556/8,811 = 85.76%, retaining the 85% floor. Stale instrumented
   objects initially duplicated old linalg mappings; `cargo llvm-cov clean` removed those
   mappings before this measurement. CI now cleans first. Coverage is not a mathematical

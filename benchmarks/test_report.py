@@ -69,12 +69,15 @@ class ReportTests(unittest.TestCase):
                 super().__init__()
                 self.hrefs = []
                 self.details = 0
+                self.workloads = []
 
             def handle_starttag(self, tag, attrs):
                 if tag == 'a':
                     self.hrefs.append(dict(attrs).get('href'))
                 if tag == 'details':
                     self.details += 1
+                if tag == 'tr' and 'data-workload' in dict(attrs):
+                    self.workloads.append(dict(attrs)['data-workload'])
 
         data = dict(metadata=dict(revision='abc', run_id='DETAILS.md {{VERSION}}'),
                     results={'matmul_128_f64/kernix': result(100)})
@@ -86,6 +89,7 @@ class ReportTests(unittest.TestCase):
         links.feed(text)
         self.assertEqual(links.hrefs, ['DETAILS.md', 'raw.json', 'latency.pdf'])
         self.assertEqual(links.details, 1)
+        self.assertEqual(links.workloads, ['matmul_128_f64'])
         self.assertIn('run DETAILS.md {{VERSION}}.', text)
 
     def test_affinity_and_solver_contract_follow_actual_observations(self):
