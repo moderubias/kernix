@@ -165,3 +165,11 @@ The finite RHS is borrowed, and the final permutation/scaling writes directly to
 owned C-order output. Intermediates must remain representable; scaling does not
 provide arbitrary-exponent guarantees. Existing unpivoted Qr/least_squares still
 reject deficient and underdetermined inputs. Neither decomposition records a VJP.
+
+
+For norms so small that epsilon*norm underflows, QR now constructs dimensionless
+Householder vectors from separate scale and unit-norm components. This prevents
+subnormal norm rounding from destroying Q orthogonality (f32/f64 regression).
+R stays in the input dtype; subnormal R and RHS projections can still lose
+information. Relative solve accuracy at those limits requires explicit problem
+rescaling; no automatic promotion or arbitrary-exponent guarantee is provided.

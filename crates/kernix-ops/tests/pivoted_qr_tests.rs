@@ -368,3 +368,27 @@ fn cancellation_in_partial_norms_recomputes_tiny_remaining_columns() {
         assert!((v - expected).abs() < 1e-12);
     }
 }
+
+#[test]
+fn subnormal_column_norm_rounding_must_not_destroy_orthogonality() {
+    let tiny = f64::from_bits(2);
+    let a = Tensor::from_values([2, 1], vec![tiny, tiny]).unwrap();
+    let ordinary = Qr::factor(&a).unwrap();
+    let pivoted = PivotedQr::factor(&a).unwrap();
+    for (name, q) in [("ordinary", ordinary.q()), ("pivoted", pivoted.q())] {
+        let norm = q.storage_slice().iter().map(|x| x * x).sum::<f64>();
+        assert!((norm - 1.).abs() < 1e-14, "{name}: ||q||²={norm}");
+    }
+    let tiny = f32::from_bits(2);
+    let a = Tensor::from_values([2, 1], vec![tiny, tiny]).unwrap();
+    let ordinary = Qr::factor(&a).unwrap();
+    let pivoted = PivotedQr::factor(&a).unwrap();
+    for (name, q) in [("ordinary", ordinary.q()), ("pivoted", pivoted.q())] {
+        let norm = q
+            .storage_slice()
+            .iter()
+            .map(|&x| f64::from(x) * f64::from(x))
+            .sum::<f64>();
+        assert!((norm - 1.).abs() < 1e-6, "{name}: ||q||²={norm}");
+    }
+}

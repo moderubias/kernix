@@ -7,7 +7,9 @@
 - Solve rank-deficient and underdetermined least-squares systems with minimum norm
   through an additional scaled right QR, without normal equations or dtype changes.
   A separate basic solve sets free coefficients to zero and avoids that extra work.
-- Preserve existing unpivoted Qr/least_squares behavior and pure Rust/no_std boundaries.
+- Fix loss of Q orthogonality when a subnormal physical norm cannot retain
+  relative precision, for both ordinary and pivoted Householder QR.
+- Preserve existing unpivoted Qr/least_squares shape/rank behavior and pure Rust/no_std boundaries.
   Add analytic null-space, SVD oracle, scale/range, resource and downstream regressions.
 
 ## 0.8.0

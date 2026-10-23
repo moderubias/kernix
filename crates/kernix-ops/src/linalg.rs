@@ -571,17 +571,30 @@ impl<T: LinalgFloat> Qr<T> {
             if s == T::zero() {
                 continue;
             }
-            let norm = s * FloatMath::sqrt(ssq);
+            let unit_norm = FloatMath::sqrt(ssq);
+            let norm = s * unit_norm;
             if !FloatMath::is_finite(norm) {
                 return Err(LinalgError::NonFinite);
             }
             let a0 = packed[k * m + k];
             let sign = if a0 >= T::zero() { T::one() } else { -T::one() };
-            let ratio = a0 / norm;
+            // A rounded subnormal norm can corrupt a dimensionless reflector.
+            let weak_norm = norm * T::EPSILON == T::zero();
+            let ratio = if weak_norm {
+                (a0 / s) / unit_norm
+            } else {
+                a0 / norm
+            };
             let denom = ratio + sign;
             tau[k] = T::one() + sign * ratio;
-            for value in &mut packed[k * m + k + 1..(k + 1) * m] {
-                *value = (*value / norm) / denom;
+            if weak_norm {
+                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+                    *value = ((*value / s) / unit_norm) / denom;
+                }
+            } else {
+                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+                    *value = (*value / norm) / denom;
+                }
             }
             packed[k * m + k] = -sign * norm;
             let (done, remaining) = packed.split_at_mut((k + 1) * m);

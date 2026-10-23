@@ -31,10 +31,10 @@ pub struct PivotedQr<T: LinalgFloat> {
 }
 
 // Scaled sum of squares avoids overflow/underflow of unscaled squares.
-fn column_norm<T: LinalgFloat>(column: &[T]) -> Result<T, LinalgError> {
+fn norm_parts<T: LinalgFloat>(column: &[T]) -> (T, T) {
     let scale = max_abs(column);
     if scale == T::zero() {
-        return Ok(T::zero());
+        return (T::zero(), T::zero());
     }
     let mut lanes = [T::zero(); 4];
     let mut chunks = column.chunks_exact(4);
@@ -49,7 +49,11 @@ fn column_norm<T: LinalgFloat>(column: &[T]) -> Result<T, LinalgError> {
         let ratio = value / scale;
         sum += ratio * ratio;
     }
-    let norm = scale * FloatMath::sqrt(sum);
+    (scale, FloatMath::sqrt(sum))
+}
+fn column_norm<T: LinalgFloat>(column: &[T]) -> Result<T, LinalgError> {
+    let (scale, unit) = norm_parts(column);
+    let norm = scale * unit;
     if !FloatMath::is_finite(norm) {
         return Err(LinalgError::NonFinite);
     }
@@ -167,11 +171,27 @@ impl<T: LinalgFloat> PivotedQr<T> {
             }
             let a0 = packed[k * m + k];
             let sign = if a0 >= T::zero() { T::one() } else { -T::one() };
-            let ratio = a0 / norm;
+            let weak_norm = norm * T::EPSILON == T::zero();
+            let parts = if weak_norm {
+                Some(norm_parts(&packed[k * m + k..(k + 1) * m]))
+            } else {
+                None
+            };
+            let ratio = if let Some((scale, unit)) = parts {
+                (a0 / scale) / unit
+            } else {
+                a0 / norm
+            };
             let denom = ratio + sign;
             tau[k] = T::one() + sign * ratio;
-            for value in &mut packed[k * m + k + 1..(k + 1) * m] {
-                *value = (*value / norm) / denom;
+            if let Some((scale, unit)) = parts {
+                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+                    *value = ((*value / scale) / unit) / denom;
+                }
+            } else {
+                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+                    *value = (*value / norm) / denom;
+                }
             }
             packed[k * m + k] = -sign * norm;
             let (done, remaining) = packed.split_at_mut((k + 1) * m);
