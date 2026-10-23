@@ -1,5 +1,6 @@
 import copy
 import importlib.util
+from html.parser import HTMLParser
 from pathlib import Path
 import tempfile
 import unittest
@@ -61,6 +62,31 @@ class ReportTests(unittest.TestCase):
         self.assertIn('Different cpu model.', warnings)
         self.assertIn('Different governor.', warnings)
         self.assertEqual(report.baseline_warnings(a, None), [])
+
+    def test_html_links_are_valid_and_literal_template_text_is_preserved(self):
+        class Links(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.hrefs = []
+                self.details = 0
+
+            def handle_starttag(self, tag, attrs):
+                if tag == 'a':
+                    self.hrefs.append(dict(attrs).get('href'))
+                if tag == 'details':
+                    self.details += 1
+
+        data = dict(metadata=dict(revision='abc', run_id='DETAILS.md {{VERSION}}'),
+                    results={'matmul_128_f64/kernix': result(100)})
+        with tempfile.TemporaryDirectory() as temporary, patch.object(report, 'render_chart'):
+            root = Path(temporary)
+            report.render_report(root, data)
+            text = (root/'report.html').read_text()
+        links = Links()
+        links.feed(text)
+        self.assertEqual(links.hrefs, ['DETAILS.md', 'raw.json', 'latency.pdf'])
+        self.assertEqual(links.details, 1)
+        self.assertIn('run DETAILS.md {{VERSION}}.', text)
 
     def test_affinity_and_solver_contract_follow_actual_observations(self):
         data = dict(metadata=dict(revision='abc', run_id='host', environment=dict(cpu_model='AMD', affinity_cpu=None)),

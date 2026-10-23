@@ -73,7 +73,9 @@ or forward-error guarantee. Neither decomposition has an autodiff VJP.
   explicitly have no VJP. API compatibility against v0.8.0 passes for all three crates
   with all features and without defaults.
 - Development harness: eight normal / five allocator tests. Python: seven assurance-tool
-  and thirteen benchmark/report tests, including actual CPU affinity and algorithm disclosures.
+  and fourteen benchmark/report tests, including actual CPU affinity, algorithm disclosures and working HTML links.
+  Template placeholders use reserved delimiters so DETAILS.md remains a valid link;
+  literal marker text in source metadata is preserved. Rendering changes no measurements.
 - Fresh library line coverage: 7,556/8,811 = 85.76%, retaining the 85% floor. Stale instrumented
   objects initially duplicated old linalg mappings; `cargo llvm-cov clean` removed those
   mappings before this measurement. CI now cleans first. Coverage is not a mathematical
