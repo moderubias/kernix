@@ -186,6 +186,9 @@ impl CFixture {
     }
 }
 pub(super) fn run(workload: &str, library: &str, mode: &str) -> Value {
+    if workload == "training_shared_backward_64x32_f64" {
+        return shared_backward(mode, library);
+    }
     let f = Fixture::new();
     let expected_loss = f.loss(&f.w, &f.b);
     let expected_gradients = f.gradients();
@@ -284,10 +287,62 @@ pub(super) fn run(workload: &str, library: &str, mode: &str) -> Value {
     }
 }
 
+fn shared_backward(mode: &str, library: &str) -> Value {
+    let values: Vec<f64> = (0..64 * 32).map(|i| (i % 23) as f64 / 16. - 0.5).collect();
+    let check = |gradient: &[f64]| {
+        assert_eq!(gradient.len(), values.len());
+        let error = gradient
+            .iter()
+            .zip(&values)
+            .map(|(g, x)| (g - 2. * x).abs())
+            .fold(0., f64::max);
+        assert!(error < 1e-14);
+        json!({"analytic_gradient_max_absolute_error":error,"budget":1e-14,"prepared_graph":true})
+    };
+    match library {
+        "kernix" => {
+            let mut tape = Tape::new();
+            let x = tape
+                .variable(Tensor::from_values([64, 32], values.clone()).unwrap())
+                .unwrap();
+            let square = tape.mul(&x, &x).unwrap();
+            let loss = tape.sum(&square).unwrap();
+            measure(
+                mode,
+                || tape.backward(&loss).unwrap(),
+                |g| check(g.get(&x).unwrap().unwrap().storage_slice()),
+            )
+        }
+        "candle" => {
+            let x = Var::from_vec(values.clone(), (64, 32), &Device::Cpu).unwrap();
+            let square = x.as_tensor().mul(x.as_tensor()).unwrap();
+            let loss = square.sum_all().unwrap();
+            measure(
+                mode,
+                || loss.backward().unwrap(),
+                |g| {
+                    check(
+                        &g.get(&x)
+                            .unwrap()
+                            .flatten_all()
+                            .unwrap()
+                            .to_vec1::<f64>()
+                            .unwrap(),
+                    )
+                },
+            )
+        }
+        _ => panic!("shared backward requires a real autodiff framework"),
+    }
+}
+
 #[cfg(all(test, not(feature = "allocation-counting")))]
 mod tests {
     #[test]
     fn every_training_stage_validates_against_the_scalar_oracle() {
+        for library in ["kernix", "candle"] {
+            super::run("training_shared_backward_64x32_f64", library, "first");
+        }
         for stage in ["forward", "record", "backward", "sgd"] {
             for library in ["kernix", "candle"] {
                 if stage == "sgd" && library == "candle" {

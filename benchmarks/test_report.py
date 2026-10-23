@@ -62,6 +62,8 @@ class ReportTests(unittest.TestCase):
         self.assertIn('Different cpu model.', warnings)
         self.assertIn('Different governor.', warnings)
         self.assertEqual(report.baseline_warnings(a, None), [])
+        a['metadata']['explicit_execution']={'work':{'workers':2,'affinity_cpus':[0,2]}}
+        self.assertIn('Different explicit executor or affinity policies.',report.baseline_warnings(a,b))
 
     def test_html_links_are_valid_and_literal_template_text_is_preserved(self):
         class Links(HTMLParser):
@@ -108,6 +110,11 @@ class ReportTests(unittest.TestCase):
             data['metadata']['environment']['affinity_cpu'] = 0
             report.render_report(root, data)
             self.assertIn('CPU affinity pinned to logical CPU 0.', (root/'README.md').read_text())
+            data['metadata']['minimum_norm_algorithm'] = 'pivoted QR plus scaled implicit RZ'
+            report.render_report(root, data)
+            for name in ['README.md', 'report.html']:
+                self.assertIn('scaled implicit RZ', (root/name).read_text())
+            del data['metadata']['minimum_norm_algorithm']
         data['metadata']['environment']['affinity_cpu'] = None
         self.assertEqual(data, original)
 

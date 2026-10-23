@@ -13,8 +13,8 @@ python benchmarks/evidence.py unique-baseline --registry-baseline 0.5.0 --requir
 
 The selected Python needs NumPy and Matplotlib. PNG/PDF charts and the standalone HTML report are rendered locally. `--require-openblas` rejects a different NumPy BLAS build rather
 than silently substituting it. Use an environment with an optimized NumPy wheel
-or a documented vendor build. MKL/Accelerate and GPU baselines are not provided by
-this harness. Candle CPU supplies the equivalent automatic-differentiation case;
+or a documented vendor build. The NumPy build supplies its recorded BLAS backend; macOS Accelerate is supported
+with verified same-worker-thread control. GPU baselines are not provided. Candle CPU supplies the equivalent automatic-differentiation case;
 Burn and other frameworks remain future comparator work.
 
 Commit source and lockfile changes first. The runner refuses tracked or untracked
@@ -205,7 +205,8 @@ comparator algorithms/workspace and validation policies may differ.
 The 64×32 rank-16 and 32×64 rank-32 cases solve for four RHS columns, including
 factorization on every timed call. A is built from an independently full-rank U
 and exactly representable dependent columns `U[:,j] + 0.5*U[:,j+1]`. Kernix uses
-pivoted QR plus a scaled right QR, nalgebra uses its native SVD/solve, and NumPy
+pivoted QR plus a scaled right QR in 0.9 (structured implicit RZ from 0.10),
+nalgebra uses its native SVD/solve, and NumPy
 uses native lstsq. Thus the mathematical minimum-norm problem agrees, but the
 factorization algorithms are different. Null-space orthogonality and normal
 residuals are checked independently. Kernix/NumPy use relative cutoff 1e-12;
@@ -217,3 +218,19 @@ Exact registry versions before 0.9 omit the new Kernix workloads altogether;
 `legacy-pivoted` prevents unavailable APIs from being compiled. Missing historical
 results are documented, not filled with a substitute implementation. Existing
 88-case observations and measurement boundaries remain independently comparable.
+
+
+## Explicit execution cases (0.10)
+
+The four parallel_matmul_into cases use a two-worker private Kernix executor,
+reusing output storage allocated before the first operation. They compare versions
+of Kernix, with no single-thread peer ranking. The safe RefCell wrapper cost is
+included; private pool construction is outside timing. Linux selects up to two
+allowed logical CPUs, preferring distinct reported physical cores, and records
+the exact mask per workload. It does not infer P/E classes. Windows/macOS affinity
+is unavailable. Ordinary rows keep their one-thread and single-CPU Linux policy.
+
+Shared-variable backward computes sum(X*X) on a prepared real tensor graph in
+Kernix and Candle and returns fresh gradient stores. Coalesced tensordot uses the
+actual Kernix/NumPy arbitrary-axis APIs on matching contiguous tensors; reshapes
+and preparation are outside timing only when they are fixture construction.

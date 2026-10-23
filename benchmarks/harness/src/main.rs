@@ -5,6 +5,7 @@ mod gradient_checks;
 #[cfg(not(feature = "legacy-pivoted"))]
 mod pivoted;
 mod profile;
+mod reuse;
 #[cfg(not(feature = "legacy-autograd"))]
 mod training;
 use kernix::{
@@ -601,8 +602,16 @@ fn main() {
     );
     let (workload, library, mode) = (&*args[1], &*args[2], &*args[3]);
     assert!(["time", "resources", "first"].contains(&mode));
+    if workload.starts_with("parallel_matmul_into_") || workload.starts_with("tensordot_") {
+        assert_eq!(library, "kernix", "this Rust worker only measures Kernix");
+    }
     faer::set_global_parallelism(faer::Par::Seq);
     let result = match workload {
+        "parallel_matmul_into_64_f64" => reuse::parallel(mode, 64, false),
+        "parallel_matmul_into_128_f64" => reuse::parallel(mode, 128, false),
+        "parallel_matmul_into_256_f64" => reuse::parallel(mode, 256, false),
+        "parallel_matmul_into_128_f32" => reuse::parallel(mode, 128, true),
+        "tensordot_16x32x8_32x8x16_f64" => reuse::contraction(mode),
         name if name.starts_with("pivoted_qr_") || name.starts_with("min_norm_") => {
             #[cfg(not(feature = "legacy-pivoted"))]
             {

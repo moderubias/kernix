@@ -892,6 +892,22 @@ fn accumulate<T: TrainFloat>(
         reshape_owned(crate::sum_axes(&gradient, &axes, true)?, dims)?
     };
     finite(&gradient, index)?;
+    // These buffers belong exclusively to this backward invocation. Mutating one
+    // cannot alter a primal, a retained Gradients value, or a later backward call.
+    // On error the entire local result is discarded. Keep the strided fallback.
+    if let Some(old) = &mut gradients[index] {
+        if let (Ok(left), Ok(right)) = (
+            old.as_contiguous_mut_slice(Order::C),
+            gradient.as_contiguous_slice(Order::C),
+        ) {
+            for (old, &value) in left.iter_mut().zip(right) {
+                // Preserve Add semantics for custom scalars (AddAssign can differ).
+                *old = core::ops::Add::add(*old, value);
+            }
+            finite(old, index)?;
+            return Ok(());
+        }
+    }
     let combined = if let Some(old) = &gradients[index] {
         crate::add(old, &gradient)?
     } else {

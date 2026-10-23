@@ -153,6 +153,28 @@ fn matmul_shared_dag_repeated_backward_and_seeded_dot() {
         &[4.0, 8.0, 12.0]
     );
 }
+
+#[test]
+fn failed_shared_gradient_accumulation_does_not_mutate_primal_or_retained_results() {
+    let mut tape = Tape::new();
+    let x = tape
+        .variable(Tensor::<f64>::zeros([2, 3]).unwrap())
+        .unwrap();
+    let large = tape
+        .constant(Tensor::<f64>::full([2, 3], f64::MAX * 0.75).unwrap())
+        .unwrap();
+    let a = tape.mul(&x, &large).unwrap();
+    let b = tape.mul(&x, &large).unwrap();
+    let y = tape.add(&a, &b).unwrap();
+    let bad = tape.sum(&y).unwrap();
+    let safe = tape.sum(&x).unwrap();
+    let retained = tape.backward(&safe).unwrap();
+    assert!(tape.backward(&bad).is_err());
+    assert_eq!(tape.value(&x).unwrap().storage_slice(), &[0.; 6]);
+    assert_eq!(retained.get(&x).unwrap().unwrap().storage_slice(), &[1.; 6]);
+    let fresh = tape.backward(&safe).unwrap();
+    assert_eq!(fresh.get(&x).unwrap().unwrap().storage_slice(), &[1.; 6]);
+}
 #[test]
 fn matmul_transposed_reversed_inputs_and_constants() {
     let mut a = values(&[2, 2, 3], 1);

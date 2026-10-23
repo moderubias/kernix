@@ -187,6 +187,20 @@ impl CpuExecutor {
         if let Some(pool) = &self.pool {
             use rayon::prelude::*;
             let rows_per_chunk = m.clamp(1, 32);
+            // Keep large-dense tasks eligible for the selected GEMM engine.
+            // Small/skinny, ordered and portable work retains its previous split.
+            #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+            let rows_per_chunk = if !self.ordered_matmul
+                && T::HAS_NATIVE_MATMUL
+                && m >= 128
+                && k >= 64
+                && n >= 64
+                && gemm_common::simd::V3::try_new().is_some()
+            {
+                (m / pool.current_num_threads() / 64).max(1) * 64
+            } else {
+                rows_per_chunk
+            };
             let chunk_size = n * rows_per_chunk;
             pool.install(|| {
                 values

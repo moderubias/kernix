@@ -9,6 +9,12 @@ evidence=importlib.util.module_from_spec(spec);spec.loader.exec_module(evidence)
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_parallel_affinity_never_invents_unavailable_cpus(self):
+        self.assertIsNone(evidence.parallel_affinity(None))
+        self.assertEqual(evidence.parallel_affinity({7}),[7])
+        selected=evidence.parallel_affinity({1,3,5})
+        self.assertEqual(len(selected),2)
+        self.assertLessEqual(set(selected),{1,3,5})
     def test_true_p95_is_not_the_maximum_and_samples_keep_order(self):
         samples=list(range(100,0,-1));result=evidence.distribution(samples)
         self.assertEqual(result['p50_ns'],50)

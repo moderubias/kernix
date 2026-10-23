@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.9",
+  "series": "0.10",
   "operations": [
     {
       "operation": "Tensor::permute",

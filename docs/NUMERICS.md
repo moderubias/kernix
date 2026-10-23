@@ -158,9 +158,11 @@ a certified strong rank-revealing factorization, or optimal low-rank approximati
 Both solvers operate on the selected rank-truncated matrix, not discarded original
 directions. `solve_basic_least_squares` sets free permuted coefficients to zero.
 `solve_least_squares` instead returns the minimum Euclidean-norm solution using a
-right orthogonal basis from QR of scaled leading R transpose; no normal equations
+scaled RZ reduction of leading R with implicit right reflectors; no normal equations
 or inverse are formed. For full column rank it uses the cheaper triangular path.
-For deficient/wide matrices the extra O(n*r²) right factorization occurs per call.
+For deficient/wide matrices the extra O((n-r)*r²) RZ factorization occurs per call,
+with O(n*r) factor storage. It exploits the triangular/trapezoidal structure and
+avoids an explicit right basis; rank policy and late RHS scaling are preserved.
 The finite RHS is borrowed, and the final permutation/scaling writes directly to
 owned C-order output. Intermediates must remain representable; scaling does not
 provide arbitrary-exponent guarantees. Existing unpivoted Qr/least_squares still
@@ -173,3 +175,25 @@ subnormal norm rounding from destroying Q orthogonality (f32/f64 regression).
 R stays in the input dtype; subnormal R and RHS projections can still lose
 information. Relative solve accuracy at those limits requires explicit problem
 rescaling; no automatic promotion or arbitrary-exponent guarantee is provided.
+
+
+## Coalesced contractions, private gradients and parallel tasks (0.10)
+
+C-contiguous tensordot inputs with contracted left suffix and right prefix axes
+are read through flat slices, without packing or transposing tensors. The exact
+increasing-contraction scalar order and Clone count are retained, with the same
+weak scalar bounds. Other axis/layout combinations keep the indexed fallback;
+this is a coalesced subset, not a general packed TBLIS implementation.
+
+Backward accumulation reuses C-contiguous buffers owned exclusively by the current
+backward invocation. Public retained gradients and primals cannot alias those buffers;
+a nonfinite sum discards the local result. Strided accumulation retains its previous
+fallback. Repeated backward still returns fresh gradients.
+
+Explicit parallel x86-64/std native dense products with m>=128 and k,n>=64 use
+row chunks in multiples of 64, balanced against the private worker count, when
+the complete V3 feature check succeeds. This keeps tasks eligible for the native
+gemm engine instead of always splitting them below its row threshold. Small,
+skinny, ordered, portable and unavailable-feature work retains the 32-row split.
+No CPU affinity is forced; performance depends on actual topology and scheduling.
+Native worker threads may retain their own packed scratch after first use.

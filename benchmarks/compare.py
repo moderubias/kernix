@@ -71,6 +71,11 @@ def main():
             rng.shuffle(schedule)
             measurements={}
             for workload,version in schedule:
+                if affinity is not None:
+                    policy=current['metadata'].get('explicit_execution',{}).get(workload,{})
+                    cpus=set(policy.get('affinity_cpus') or [cpu])
+                    if not cpus<=affinity:raise ValueError('recorded workload CPUs unavailable')
+                    os.sched_setaffinity(0,cpus)
                 binary=current_binary if version=='current' else baseline_binary
                 value=json.loads(subprocess.check_output([str(binary),workload,'kernix','time'],text=True,env=env))
                 measurements[workload+'/'+version]=value

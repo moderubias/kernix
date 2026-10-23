@@ -8,7 +8,7 @@ reports as artifacts. Hosted runner labels do not guarantee Intel versus AMD;
 dedicated machines and repeatable ARM tuning remain work to do.
 
 `python tools/check_api.py` compares all three packages against the immutable
-v0.8.0 source, both with all features and without default features. The explicit
+v0.9.0 source, both with all features and without default features. The explicit
 minor policy permits additions and rejects removals/signature incompatibilities
 independently of the next 0.x version. Its JSON report records baseline/current
 revisions, tool version, commands, exit status and complete diagnostics. The
@@ -30,7 +30,8 @@ remove exceptions when a compatible release uses patched zip. Do not alter a
 comparator's numerical source or silently substitute a framework version.
 
 AddressSanitizer exercises native checked wrappers, decomposition regressions, pivoted minimum-norm solves and
-condition/refinement diagnostics on nightly. The scheduled/manual fuzz workflow
+condition/refinement diagnostics, contiguous contractions, explicit parallel execution and
+owned gradient accumulation on nightly. The scheduled/manual fuzz workflow
 uses two bounded libFuzzer targets: shape/layout round trips and QR/Cholesky
 reconstruction, orthogonality and refinement monotonicity. Checked-in seeds are
 separate from the evolving cached corpus; failures retain reproducing inputs.

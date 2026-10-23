@@ -82,6 +82,43 @@ fn private_pool_keeps_output_bits_and_arbitrary_layout_fallback() {
     );
 }
 
+#[cfg(feature = "parallel")]
+#[test]
+fn parallel_native_chunk_boundaries_and_reused_outputs_match_coordinate_oracles() {
+    for threads in [2, 4] {
+        let cpu = CpuExecutor::new(threads).unwrap();
+        for (m, k, n) in [
+            (64, 64, 64),
+            (96, 128, 65),
+            (127, 64, 67),
+            (128, 128, 128),
+            (129, 65, 67),
+            (193, 64, 65),
+            (256, 128, 64),
+            (0, 3, 4),
+            (4, 0, 5),
+        ] {
+            let a: Vec<f64> = (0..m * k).map(|i| (i % 23) as f64 / 16. - 0.5).collect();
+            let b: Vec<f64> = (0..k * n).map(|i| (i % 13) as f64 / 8. - 0.5).collect();
+            let at = Tensor::from_values([m, k], a.clone()).unwrap();
+            let bt = Tensor::from_values([k, n], b.clone()).unwrap();
+            let mut out = Tensor::<f64>::full([m, n], f64::NAN).unwrap();
+            cpu.matmul_into(&at, &bt, &mut out).unwrap();
+            let af = Tensor::from_values([m, k], a.iter().map(|&v| v as f32).collect()).unwrap();
+            let bf = Tensor::from_values([k, n], b.iter().map(|&v| v as f32).collect()).unwrap();
+            let f = cpu.matmul(&af, &bf).unwrap();
+            for i in 0..m {
+                for j in 0..n {
+                    let expected: f64 = (0..k).map(|p| a[i * k + p] * b[p * n + j]).sum();
+                    assert_eq!(out.storage_slice()[i * n + j], expected);
+                    assert_eq!(f64::from(f.storage_slice()[i * n + j]), expected);
+                }
+            }
+            cpu.matmul_into(&at, &bt, &mut out).unwrap();
+        }
+    }
+}
+
 #[test]
 fn reusable_output_keeps_allocation_and_errors_do_not_write() {
     let cpu = CpuExecutor::default();

@@ -48,8 +48,15 @@ jobs:
       - name: Exercise native wrappers and decompositions
         run: >-
           cargo test -p kernix-ops --target x86_64-unknown-linux-gnu
+          --features parallel
           --test native_kernel_tests --test factorization_regressions --test diagnostics_tests --test pivoted_qr_tests
+          --test contraction_paths --test execution_tests
           --locked
+        env:
+          RUSTFLAGS: -Zsanitizer=address
+          ASAN_OPTIONS: detect_leaks=1
+      - name: Exercise owned gradient accumulation and retained results
+        run: cargo test -p kernix --test autograd_tensor_tests --target x86_64-unknown-linux-gnu --locked
         env:
           RUSTFLAGS: -Zsanitizer=address
           ASAN_OPTIONS: detect_leaks=1

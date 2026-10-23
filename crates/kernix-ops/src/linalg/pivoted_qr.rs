@@ -1,5 +1,5 @@
 //! Column-pivoted QR and minimum-norm solves without normal equations.
-use super::{LinalgError, LinalgFloat, Qr, apply_reflector, check_finite, max_abs};
+use super::{LinalgError, LinalgFloat, apply_reflector, check_finite, max_abs, rz::Rz};
 use crate::{FloatMath, TensorInput};
 use alloc::vec::Vec;
 use kernix_core::{shape::Kahen, tensor::Tensor};
@@ -357,9 +357,10 @@ impl<T: LinalgFloat> PivotedQr<T> {
     /// Minimum Euclidean-norm least-squares solution of the rank-truncated matrix.
     ///
     /// For full column rank this reuses the triangular solve directly. Otherwise
-    /// a second QR of scaled `R[:rank,:]^T` supplies the right orthogonal basis;
-    /// no normal equations or explicit inverse are formed. This extra factorization
-    /// is performed per call: O(n*r^2) time/O(n*r) memory, plus
+    /// a scaled RZ reduction of `R[:rank,:]` supplies implicit right reflectors;
+    /// no normal equations, explicit inverse or right orthogonal matrix are formed.
+    /// This extra factorization is performed per call: O((n-r)*r^2) time/O(n*r)
+    /// memory, plus O(r^2*k) triangular work and
     /// O((m+n)*r*k + (m+n)*k) validation/projection/output work.
     /// Rank zero returns zeros after validating the finite RHS. All arithmetic
     /// remains in T. Nonfinite intermediates return NonFinite even when another
@@ -376,38 +377,14 @@ impl<T: LinalgFloat> PivotedQr<T> {
         let mut values = self.solution_buffer(b.dims())?;
         if self.rank != 0 && columns != 0 {
             let scale = max_abs(&self.r.storage_slice()[..self.rank * n]);
-            let mut transpose = Tensor::<T>::zeros([n, self.rank])?;
-            for j in 0..n {
-                for i in 0..self.rank {
-                    transpose.storage_slice_mut()[j * self.rank + i] =
-                        self.r.storage_slice()[i * n + j] / scale;
-                }
-            }
-            let right = Qr::factor(&transpose)?;
-            let triangular = right.r().storage_slice();
-            for row in 0..self.rank {
-                let diagonal = triangular[row * self.rank + row];
-                if diagonal == T::zero() {
-                    return Err(LinalgError::Singular { pivot: row });
-                }
-                for j in 0..columns {
-                    let mut v = projected.storage_slice()[row * columns + j];
-                    for k in 0..row {
-                        v = v - triangular[k * self.rank + row]
-                            * projected.storage_slice()[k * columns + j];
-                    }
-                    projected.storage_slice_mut()[row * columns + j] = v / diagonal;
-                }
-            }
-            check_finite(projected.storage_slice())?;
-            let product = crate::matmul(right.q(), &projected)?;
-            for (row, &original) in self.permutation.iter().enumerate() {
-                for j in 0..columns {
-                    values.storage_slice_mut()[original * columns + j] =
-                        product.storage_slice()[row * columns + j] / scale;
-                }
-            }
-            check_finite(values.storage_slice())?;
+            let right = Rz::factor(self.r.storage_slice(), self.rank, n, scale)?;
+            right.solve(
+                projected.storage_slice_mut(),
+                columns,
+                &self.permutation,
+                values.storage_slice_mut(),
+                scale,
+            )?;
         }
         Ok(values)
     }

@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.9 API; the linked rustdoc contains
+foundation. This guide follows the public 0.10 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -94,7 +94,7 @@ not singular values or a condition estimate. An explicit finite nonnegative
 cutoff is available through `factor_with_tolerance`; zero rejects only exact zero
 diagonals. Solves use the rank-truncated matrix; discarded directions are not fitted.
 `solve_least_squares` returns its minimum Euclidean-norm solution. For rank below
-the column count it performs an additional scaled QR per call, avoiding normal
+the column count it performs an additional scaled implicit RZ reduction per call, avoiding normal
 equations; its O(n*r²) cost is documented. `solve_basic_least_squares` skips that
 factorization and sets permuted free coefficients to zero, which generally gives
 a larger-norm solution. Both borrow the finite RHS and return an owned C-order

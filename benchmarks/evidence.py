@@ -17,6 +17,12 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'parallel_matmul_into_64_f64':['kernix'],
+    'parallel_matmul_into_128_f64':['kernix'],
+    'parallel_matmul_into_256_f64':['kernix'],
+    'parallel_matmul_into_128_f32':['kernix'],
+    'tensordot_16x32x8_32x8x16_f64':['kernix','numpy'],
+    'training_shared_backward_64x32_f64':['kernix','candle'],
     'matmul_batched_4x16x32x16_f64':['kernix','candle','numpy'],
     'training_forward_2x4x8x4_f64':['kernix','candle'],
     'training_record_2x4x8x4_f64':['kernix','candle'],
@@ -72,6 +78,24 @@ def distribution(samples):
                 p95_ns=values[math.ceil(len(values)*0.95)-1],p99_ns=values[math.ceil(len(values)*0.99)-1],max_ns=values[-1],samples_ns=samples)
 
 
+def parallel_affinity(allowed):
+    """Prefer two distinct reported physical cores; never infer P/E class."""
+    if not allowed:
+        return None
+    cores={}
+    for cpu in sorted(allowed):
+        topology=Path('/sys/devices/system/cpu')/f'cpu{cpu}'/'topology'
+        try:
+            key=tuple((topology/name).read_text().strip() for name in ['physical_package_id','core_id'])
+        except OSError:
+            key=('unknown',cpu)
+        cores.setdefault(key,cpu)
+    candidates=list(cores.values())
+    if len(candidates)<2:
+        candidates=sorted(allowed)
+    return candidates[:2]
+
+
 def peak_rss():
     try:
         for line in Path('/proc/self/status').read_text(encoding='utf-8').splitlines():
@@ -117,6 +141,15 @@ def numpy_case(workload,mode):
         def check(out):
             assert out.shape==(64,64) and out.dtype==np.float32 and np.all(out==value)
             return dict(max_absolute_error=0.0,budget=0.0)
+    elif workload=='tensordot_16x32x8_32x8x16_f64':
+        a=((np.arange(16*32*8)%23).astype(np.float64)/16-.5).reshape(16,32,8)
+        b=((np.arange(32*8*16)%13).astype(np.float64)/8-.5).reshape(32,8,16)
+        operation=lambda:np.tensordot(a,b,axes=([1,2],[0,1]))
+        def check(out):
+            av=a.reshape(16,256);bv=b.reshape(256,16)
+            expected=np.array([[sum(float(av[i,k])*float(bv[k,j]) for k in range(256)) for j in range(16)] for i in range(16)])
+            error=float(np.max(np.abs(out-expected)));assert error==0. and out.shape==(16,16)
+            return dict(coordinate_max_absolute_error=error,budget=0.)
     elif workload=='matmul_batched_4x16x32x16_f64':
         a=((np.arange(4*16*32)%13).astype(np.float64)/13).reshape(4,16,32)
         b=((np.arange(32*16)%17).astype(np.float64)/17).reshape(1,32,16)
@@ -257,13 +290,15 @@ def render_details(dest,data):
         rss=resources['process_peak_rss_bytes'];rss=f'{rss/1048576:.2f}' if rss is not None else 'unavailable'
         lines.append(f"| {key} | {call['p50_ns']/1000:.3f} / {call['p95_ns']/1000:.3f} | {batch['p50_ns']/1000:.3f} / {batch['p95_ns']/1000:.3f} | {alloc['allocation_calls'] if alloc else 'unavailable'} | {alloc['peak_live_requested_bytes'] if alloc else 'unavailable'} | {rss} |")
     lines += ['', '## Method and limits', '',
+        '- Rows explicitly marked two workers use a private Kernix executor with two workers and reusable output allocated before the first call. RefCell borrowing is included; pool construction is excluded. These rows compare Kernix versions, with no single-thread peer score. Linux uses up to two allowed CPUs, preferring distinct reported physical cores; Windows/macOS affinity is not pinned. Exact per-workload CPU sets are in explicit_execution metadata. Ordinary cases retain one BLAS/Rayon thread and the original single-CPU Linux policy.',
+        '- Coalesced tensordot contracts [16,32,8] with [32,8,16] over two adjacent axes using the actual Kernix/NumPy tensor APIs. Shared-variable backward uses a prepared real graph of sum(X*X), 64x32 f64, and fresh gradient stores; recording and input construction are excluded in both frameworks.',
         '- Per-call quantiles use nearest ranks over 256 individual warmed calls; batch quantiles use 15 means over separate 10-ms batches. They are separate distributions. Raw samples remain in raw.json.',
-        '- Eight warmup calls follow validation. Timing includes allocation, dispatch, computation and output destruction. The first call field excludes output destruction. Inputs and library/runtime imports are prepared outside timing.',
+        '- Eight warmup calls follow validation. Ordinary timing includes allocation, dispatch, computation and output destruction; explicitly marked reusable-output cases reuse their fixture buffer. The first call field excludes output destruction. Inputs and library/runtime imports are prepared outside timing.',
         '- Three extra processes record their first operation calls. These are first-use observations, not cache-flushed or device-startup latency. Timer-pair overhead is reported without subtraction; tiny calls are clock-sensitive.',
         '- ndarray and Candle softmax are explicit stable compositions, not claims about a native softmax API.',
         '- Constructor cases allocate owned 64x64 f32 tensors. Pre-0.6 registry baselines use full(value), explicitly marked in metadata; current workspace runs use zeros/ones. No nested literal reinterpretation is involved.',
         '- All GEMM inputs are C-order and match elementwise. Native output layout differs by library. QR materializes thin Q and R in every implementation. Cholesky returns reusable factors (or NumPy L); no extra factor materialization is timed.',
-        '- Pivoted QR materializes thin Q/R and an owned permutation in Kernix, nalgebra and faer. Minimum-norm cases include factorization and four RHS: Kernix uses pivoted QR plus right QR with relative cutoff 1e-12, NumPy uses native lstsq with rcond=1e-12, and nalgebra uses native SVD plus solve with absolute cutoff 1e-10. These algorithms have different costs and truncation policies. Fixtures have a wide rank gap; independent null-space orthogonality and normal-residual checks must both pass 2e-10 before timing. Results do not establish equivalence near a rank threshold or general SVD performance.',
+        f"- Pivoted QR materializes thin Q/R and an owned permutation in Kernix, nalgebra and faer. Minimum-norm cases include factorization and four RHS: Kernix uses {meta.get('minimum_norm_algorithm', 'pivoted QR plus scaled right QR')} with relative cutoff 1e-12, NumPy uses native lstsq with rcond=1e-12, and nalgebra uses native SVD plus solve with absolute cutoff 1e-10. These algorithms have different costs and truncation policies. Fixtures have a wide rank gap; independent null-space orthogonality and normal-residual checks must both pass 2e-10 before timing. Results do not establish equivalence near a rank threshold or general SVD performance.",
         '- Kernix checks finite values/symmetry. Some competitors validate a narrower contract. No finite-data precondition check was removed to improve timing. Accuracy results and budgets are retained per worker.',
         '- The backward case uses an actual reverse-mode graph in Kernix and Candle for sum(A @ W), with A constant and W trainable. Both copy input/weight data and returned gradients; no manual derivative is used as a framework ranking.',
         '- Allocations are measured in a separately compiled instrumented binary after warmup, outside all timing loops. Counts cover Rust global-allocator requests, not native allocator internals, stack memory or all NumPy allocations. NumPy allocation counts are unavailable, not zero.',
@@ -300,7 +335,7 @@ def main():
         import re
         if not re.fullmatch(r'\d+\.\d+\.\d+',args.registry_baseline):raise ValueError('invalid baseline version')
         driver=ROOT/'web/drivers'/args.run_id;shutil.copytree(ROOT/'benchmarks/harness/src',driver/'src')
-        text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std"] }}',text)
+        text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std", "parallel"] }}',text)
         text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
         manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
         shutil.copyfile(ROOT/'benchmarks/harness/Cargo.lock',manifest.with_name('Cargo.lock'))
@@ -322,6 +357,7 @@ def main():
         shutil.copy2(built,builds[mode])
     original_affinity=os.sched_getaffinity(0) if hasattr(os,'sched_getaffinity') else None
     cpu=min(original_affinity) if original_affinity else None
+    parallel_cpus=parallel_affinity(original_affinity)
     if cpu is not None:os.sched_setaffinity(0,{cpu})
     fingerprints=[]
     for file in (ROOT/'benchmarks/harness/target/release/.fingerprint').glob('kernix-benchmark-harness-*/bin-kernix-benchmark-harness.json'):
@@ -334,7 +370,9 @@ def main():
             vcs_file=Path(package['manifest_path']).with_name('.cargo_vcs_info.json')
             library_packages.append(dict(name=package['name'],version=package['version'],source=package['source'],
                 vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
-    metadata=dict(schema_version=2,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
+    kernix_version=next(p['version'] for p in library_packages if p['name']=='kernix')
+    minimum_norm_algorithm=('pivoted QR plus scaled implicit RZ' if tuple(map(int,kernix_version.split('.'))) >= (0,10,0) else 'pivoted QR plus scaled right QR')
+    metadata=dict(schema_version=2,minimum_norm_algorithm=minimum_norm_algorithm,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
         unavailable_workloads=[w for w in CASES if (legacy_autograd and w.startswith('training_')) or (legacy_pivoted and w.startswith(('pivoted_qr_','min_norm_')))],
@@ -342,6 +380,7 @@ def main():
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
         library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
         environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,numpy_thread_policy=numpy_threads,
+        explicit_execution={w:dict(workers=2,affinity_cpus=parallel_cpus,output='reused; allocated before first call',wrapper='RefCell borrow included; pool construction excluded') for w in CASES if w.startswith('parallel_matmul_into_')},
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
     schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted)
@@ -350,6 +389,8 @@ def main():
     results={}
     try:
         for workload,library in schedule:
+            if original_affinity is not None:
+                os.sched_setaffinity(0,set(parallel_cpus) if workload.startswith('parallel_matmul_into_') else {cpu})
             def worker(mode):
                 if library=='numpy':return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode))
                 binary=builds['resources' if mode=='resources' else 'time']

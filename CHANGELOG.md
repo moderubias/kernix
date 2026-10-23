@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.0
+
+- Reduce deficient/wide minimum-norm solves with structured RZ and implicit right
+  reflectors, retaining the existing rank policy and delayed RHS scaling.
+- Coalesce adjacent C-order contraction axes without transposes, added scalar
+  bounds, reordered scalar accumulation or additional element copies.
+- Reuse private contiguous gradient accumulation buffers while preserving fresh
+  backward results and failure isolation.
+- Keep eligible explicit parallel x86 dense tasks above the native engine row
+  threshold; preserve small/skinny/ordered/portable scheduling.
+- Add shared-gradient, coalesced contraction and explicitly labelled two-worker
+  reusable-output evidence, with per-workload affinity metadata.
+
 ## 0.9.0
 
 - Add column-pivoted Householder QR with explicit permutation and relative diagonal

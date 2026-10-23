@@ -10,6 +10,12 @@ LIBRARIES = ('kernix', 'ndarray', 'nalgebra', 'faer', 'candle', 'numpy')
 NAMES = dict(zip(LIBRARIES, ('Kernix', 'ndarray', 'nalgebra', 'faer', 'Candle', 'NumPy')))
 COLORS = dict(zip(LIBRARIES, ('#5b47d6', '#2c8c99', '#bf8742', '#60884a', '#ca627f', '#577da8')))
 WORKLOADS = {
+    'parallel_matmul_into_64_f64': ('Reuse output · 2 workers', '64 × 64 · 64 × 64', 'f64'),
+    'parallel_matmul_into_128_f64': ('Reuse output · 2 workers', '128 × 128 · 128 × 128', 'f64'),
+    'parallel_matmul_into_256_f64': ('Reuse output · 2 workers', '256 × 256 · 256 × 256', 'f64'),
+    'parallel_matmul_into_128_f32': ('Reuse output · 2 workers', '128 × 128 · 128 × 128', 'f32'),
+    'tensordot_16x32x8_32x8x16_f64': ('Coalesced tensor contraction', '16 × 32 × 8 · 32 × 8 × 16', 'f64'),
+    'training_shared_backward_64x32_f64': ('Shared-variable backward', 'sum(X * X), 64 × 32; prepared graph', 'f64'),
     'matmul_32_f64': ('Matrix multiplication', '32 × 32 · 32 × 32', 'f64'),
     'matmul_64_f64': ('Matrix multiplication', '64 × 64 · 64 × 64', 'f64'),
     'matmul_128_f64': ('Matrix multiplication', '128 × 128 · 128 × 128', 'f64'),
@@ -98,6 +104,8 @@ def baseline_warnings(data, baseline):
         warnings.append('Different NumPy backend configuration.')
     if a.get('numpy_thread_policy') != b.get('numpy_thread_policy'):
         warnings.append('Different NumPy thread-policy verification.')
+    if a.get('explicit_execution') != b.get('explicit_execution'):
+        warnings.append('Different explicit executor or affinity policies.')
     return warnings
 
 
@@ -113,11 +121,14 @@ def render_report(dest, data, baseline=None):
     names = lambda lib: NAMES.get(lib, lib)
     version = next((p['version'] for p in meta.get('library_packages', []) if p['name'] == 'kernix'), 'workspace')
     env = meta.get('environment', {})
-    description = f"{cpu_name(env)} · one BLAS/Rayon thread · allocation-inclusive · warmed individual calls"
+    description = f"{cpu_name(env)} · one BLAS/Rayon thread · allocating APIs unless marked reused · warmed individual calls"
     affinity = env.get('affinity_cpu')
     host_note = ('One measured host and one BLAS/Rayon thread. '
                  + (f'CPU affinity pinned to logical CPU {affinity}. ' if affinity is not None else 'CPU affinity was not pinned. ')
                  + 'Frequency and background load are uncontrolled; these observations establish no universal ranking.')
+    if meta.get('explicit_execution'):
+        host_note += ' Rows marked 2 workers use a private two-thread executor and reusable output; their recorded CPU affinity can differ. They compare Kernix versions, not single-thread competitors.'
+        description += ' · explicit 2-worker rows labelled'
     warnings = baseline_warnings(data, baseline)
     summary = []
     table = []
@@ -146,7 +157,8 @@ def render_report(dest, data, baseline=None):
         summary.append('| ' + ' · '.join(filter(None, (title, shape, dtype))) + ' | ' + ' | '.join(md) + ' |')
     columns = [names(lib) for lib in libraries] + (['Kernix Δ vs baseline'] if baseline else [])
     baseline_note = f"Baseline: {baseline['metadata']['run_id']}. Δ is latency change; negative is faster. Runs are sequential, not randomized/interleaved." if baseline else 'No previous-version baseline is paired with this view.'
-    numerical_note = ('Minimum-norm rows include factorization and four RHS. Kernix uses pivoted/right QR; '
+    solver = meta.get('minimum_norm_algorithm', 'pivoted QR plus scaled right QR')
+    numerical_note = (f'Minimum-norm rows include factorization and four RHS. Kernix uses {solver}; '
                       'NumPy uses native lstsq; nalgebra uses native SVD/solve. Fixtures have a wide rank gap; '
                       'null-space orthogonality and normal residual are validated independently. Algorithm costs '
                       'and rank policies differ; see DETAILS.md for thresholds. These are not general SVD comparisons.'
@@ -159,7 +171,7 @@ def render_report(dest, data, baseline=None):
           'Each panel has its own scale. Ratios are library / Kernix median; below 1 means the comparator was faster.', '',
           '## Reading these results', '',
           '- ' + host_note,
-          '- Timing includes output allocation and destruction. Inputs and imports are prepared outside timing. GEMM inputs are row-major; output layout and validation contracts can differ by library.',
+          '- Timing includes output allocation and destruction except rows explicitly marked reused. Inputs and imports are prepared outside timing. GEMM inputs are row-major; output layout and validation contracts can differ by library.',
           '- Per-call p95 describes 256 individual warmed calls. The 15 batch means form a separate distribution; neither is a confidence interval.',
           '- Rust allocation probes use a separate instrumented binary. Native engines may retain packing buffers; warmed probes exclude their first-use allocation and retention. NumPy native allocations are unavailable, never zero.', '',
           '[Interactive report](report.html) · [Detailed measurements and method](DETAILS.md) · [Raw samples and provenance](raw.json) · [Printable chart](latency.pdf)', '',

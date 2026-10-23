@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.9.0"
+kernix = "0.10.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.9.0", default-features = false }
+kernix = { version = "0.10.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -392,9 +392,9 @@ for boundaries and commands. Official reports are retained in
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
 
-Start with the [0.9.0 readable comparison](benchmarks/results/0.9.0-final/README.md)
-and [paired comparison against 0.8.0](benchmarks/results/0.9.0-paired-final/README.md).
-The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.9.0)
+Start with the [0.10.0 readable comparison](benchmarks/results/0.10.0-final/README.md)
+and [paired comparison against 0.9.0](benchmarks/results/0.10.0-paired-final/README.md).
+The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.10.0)
 include the standalone HTML reports and complete measurement evidence.
 
 ## License

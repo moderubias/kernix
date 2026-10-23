@@ -28,6 +28,56 @@ fn family(m: usize, n: usize, rank: usize) -> Tensor<f64> {
     )
     .unwrap()
 }
+
+#[test]
+fn minimum_norm_many_rhs_and_narrow_free_tails_preserve_null_orthogonality() {
+    for (m, n, rank) in [(6, 7, 5), (17, 33, 16), (33, 32, 31), (4, 48, 1)] {
+        let a = family(m, n, rank);
+        let qr = PivotedQr::factor_with_tolerance(&a, 1e-12).unwrap();
+        assert_eq!(qr.rank(), rank);
+        for columns in [1, 4, 64] {
+            let b = Tensor::from_values(
+                [m, columns],
+                (0..m * columns)
+                    .map(|i| (i % 29) as f64 / 8. - 1.)
+                    .collect(),
+            )
+            .unwrap();
+            let x = qr.solve_least_squares(&b).unwrap();
+            let saved = x.storage_slice().to_vec();
+            let again = qr.solve_least_squares(&b).unwrap();
+            assert_eq!(again.storage_slice(), saved);
+            for c in 0..columns {
+                for free in rank..n {
+                    let k = (free - rank) % rank;
+                    let dot = x.storage_slice()[free * columns + c]
+                        - x.storage_slice()[k * columns + c]
+                        - 0.5 * x.storage_slice()[((k + 1) % rank) * columns + c];
+                    assert!(dot.abs() < 3e-12, "shape={m},{n},{rank}, null={dot}");
+                }
+                let residual: Vec<f64> = (0..m)
+                    .map(|i| {
+                        (0..n)
+                            .map(|j| {
+                                a.storage_slice()[i * n + j] * x.storage_slice()[j * columns + c]
+                            })
+                            .sum::<f64>()
+                            - b.storage_slice()[i * columns + c]
+                    })
+                    .collect();
+                for j in 0..n {
+                    let normal: f64 = (0..m)
+                        .map(|i| a.storage_slice()[i * n + j] * residual[i])
+                        .sum();
+                    assert!(
+                        normal.abs() < 5e-11,
+                        "shape={m},{n},{rank}, normal={normal}"
+                    );
+                }
+            }
+        }
+    }
+}
 fn reconstruct<A: TensorInput<f64>>(a: &A, qr: &PivotedQr<f64>) {
     let (m, n) = (a.dims()[0], a.dims()[1]);
     let thin = m.min(n);
@@ -56,6 +106,61 @@ fn reconstruct<A: TensorInput<f64>>(a: &A, qr: &PivotedQr<f64>) {
     for i in 0..thin {
         for j in 0..i.min(n) {
             assert_eq!(qr.r().storage_slice()[i * n + j], 0.);
+        }
+    }
+}
+
+#[test]
+fn single_precision_right_reflectors_preserve_scaled_minimum_norm_conditions() {
+    for (m, n, rank) in [(6, 7, 5), (17, 33, 16)] {
+        let base = family(m, n, rank);
+        for scale in [1e-20f32, 1., 1e20] {
+            let a = Tensor::from_values(
+                [m, n],
+                base.storage_slice()
+                    .iter()
+                    .map(|&x| x as f32 * scale)
+                    .collect(),
+            )
+            .unwrap();
+            let b = Tensor::from_values(
+                [m, 3],
+                (0..m * 3)
+                    .map(|i| ((i % 13) as f32 / 8. - 0.5) * scale)
+                    .collect(),
+            )
+            .unwrap();
+            let qr = PivotedQr::factor_with_tolerance(&a, 1e-5).unwrap();
+            assert_eq!(qr.rank(), rank);
+            let x = qr.solve_least_squares(&b).unwrap();
+            for c in 0..3 {
+                for free in rank..n {
+                    let k = (free - rank) % rank;
+                    let null = f64::from(x.storage_slice()[free * 3 + c])
+                        - f64::from(x.storage_slice()[k * 3 + c])
+                        - 0.5 * f64::from(x.storage_slice()[((k + 1) % rank) * 3 + c]);
+                    assert!(null.abs() < 1e-5, "null={null}, scale={scale}");
+                }
+                let residual: Vec<f64> = (0..m)
+                    .map(|i| {
+                        (0..n)
+                            .map(|j| {
+                                f64::from(a.storage_slice()[i * n + j]) / f64::from(scale)
+                                    * f64::from(x.storage_slice()[j * 3 + c])
+                            })
+                            .sum::<f64>()
+                            - f64::from(b.storage_slice()[i * 3 + c]) / f64::from(scale)
+                    })
+                    .collect();
+                for j in 0..n {
+                    let normal: f64 = (0..m)
+                        .map(|i| {
+                            f64::from(a.storage_slice()[i * n + j]) / f64::from(scale) * residual[i]
+                        })
+                        .sum();
+                    assert!(normal.abs() < 1e-4, "normal={normal}, scale={scale}");
+                }
+            }
         }
     }
 }

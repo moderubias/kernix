@@ -14,7 +14,7 @@ legacy-autograd = []
 legacy-pivoted = []
 
 [dependencies]
-kernix = { path = "../../crates/kernix", default-features = false, features = ["std"] }
+kernix = { path = "../../crates/kernix", default-features = false, features = ["std", "parallel"] }
 ndarray = "0.17.2"
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
 faer = { version = "=0.24.4", default-features = false, features = ["std", "linalg"] }

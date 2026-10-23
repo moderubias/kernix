@@ -215,6 +215,39 @@ where
         return Ok(Tensor::from_vec(Vec::new(), result_shape, Order::C)?);
     }
     let contraction = Kahen::new(&contract_dims)?;
+    // Coalesce already adjacent contraction axes. Borrowing flat slices avoids
+    // both tensor transposition/packing and repeated multi-index validation.
+    // Keep the exact increasing-contraction order, Clone count and scalar bounds.
+    if axes_l.iter().copied().eq(left_free.len()..la.len())
+        && axes_r.iter().copied().eq(0..axes_r.len())
+    {
+        if let (Some(a), Some(b)) = (left.as_c_contiguous_slice(), right.as_c_contiguous_slice()) {
+            let m: usize = result_shape.dims()[..left_free.len()].iter().product();
+            let n: usize = result_shape.dims()[left_free.len()..].iter().product();
+            let k = contraction.numel();
+            if m.checked_mul(k) != Some(a.len()) || k.checked_mul(n) != Some(b.len()) {
+                return Err(OpsError::InvalidParameter {
+                    operation: "tensordot",
+                    parameter: "contiguous capability length mismatch",
+                });
+            }
+            let mut linear = 0;
+            return Ok(Tensor::from_fn(
+                result_shape,
+                Order::C,
+                align_of::<T>(),
+                |_| {
+                    let (row, col) = (linear / n, linear % n);
+                    linear += 1;
+                    let mut sum = T::zero();
+                    for inner in 0..k {
+                        sum += a[row * k + inner].clone() * b[inner * n + col].clone();
+                    }
+                    sum
+                },
+            )?);
+        }
+    }
     let mut ai = vec![0; la.len()];
     let mut bi = vec![0; rb.len()];
     let mut inner = vec![0; contract_dims.len()];

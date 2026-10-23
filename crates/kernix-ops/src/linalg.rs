@@ -25,6 +25,7 @@ use thiserror::Error;
 
 mod pivoted_qr;
 pub use pivoted_qr::PivotedQr;
+mod rz;
 
 mod diagnostics;
 pub use diagnostics::{
