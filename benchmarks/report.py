@@ -10,10 +10,10 @@ LIBRARIES = ('kernix', 'ndarray', 'nalgebra', 'faer', 'candle', 'numpy')
 NAMES = dict(zip(LIBRARIES, ('Kernix', 'ndarray', 'nalgebra', 'faer', 'Candle', 'NumPy')))
 COLORS = dict(zip(LIBRARIES, ('#5b47d6', '#2c8c99', '#bf8742', '#60884a', '#ca627f', '#577da8')))
 WORKLOADS = {
-    'parallel_matmul_into_64_f64': ('Reuse output · 2 workers', '64 × 64 · 64 × 64', 'f64'),
-    'parallel_matmul_into_128_f64': ('Reuse output · 2 workers', '128 × 128 · 128 × 128', 'f64'),
-    'parallel_matmul_into_256_f64': ('Reuse output · 2 workers', '256 × 256 · 256 × 256', 'f64'),
-    'parallel_matmul_into_128_f32': ('Reuse output · 2 workers', '128 × 128 · 128 × 128', 'f32'),
+    'parallel_matmul_into_64_f64': ('Matmul · 2 workers · reused output', '64 × 64 · 64 × 64', 'f64'),
+    'parallel_matmul_into_128_f64': ('Matmul · 2 workers · reused output', '128 × 128 · 128 × 128', 'f64'),
+    'parallel_matmul_into_256_f64': ('Matmul · 2 workers · reused output', '256 × 256 · 256 × 256', 'f64'),
+    'parallel_matmul_into_128_f32': ('Matmul · 2 workers · reused output', '128 × 128 · 128 × 128', 'f32'),
     'tensordot_16x32x8_32x8x16_f64': ('Coalesced tensor contraction', '16 × 32 × 8 · 32 × 8 × 16', 'f64'),
     'training_shared_backward_64x32_f64': ('Shared-variable backward', 'sum(X * X), 64 × 32; prepared graph', 'f64'),
     'matmul_32_f64': ('Matrix multiplication', '32 × 32 · 32 × 32', 'f64'),
