@@ -31,6 +31,10 @@ CASES = {
     'matmul_64_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_128_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
     'matmul_256_f32': ['kernix','ndarray','nalgebra','faer','candle','numpy'],
+    'pivoted_qr_96x32_f64':['kernix','nalgebra','faer'],
+    'pivoted_qr_256x64_f64':['kernix','nalgebra','faer'],
+    'min_norm_64x32_rank16_f64':['kernix','nalgebra','numpy'],
+    'min_norm_32x64_rank32_f64':['kernix','nalgebra','numpy'],
     'qr_96x32_f64': ['kernix','nalgebra','faer','numpy'],
     'qr_256x64_f64': ['kernix','nalgebra','faer','numpy'],
     'cholesky_factor_64_f64': ['kernix','nalgebra','faer','numpy'],
@@ -51,9 +55,10 @@ def clean_revision(root=ROOT):
     return command('git','rev-parse','HEAD',cwd=root)
 
 
-def measurement_schedule(seed, legacy_autograd=False):
+def measurement_schedule(seed, legacy_autograd=False, legacy_pivoted=False):
     schedule=[(workload,library) for workload,libraries in CASES.items()
               if not (legacy_autograd and workload.startswith('training_'))
+              and not (legacy_pivoted and workload.startswith(('pivoted_qr_','min_norm_')))
               for library in libraries]
     random.Random(seed).shuffle(schedule)
     return schedule
@@ -132,6 +137,19 @@ def numpy_case(workload,mode):
             assert np.all(error<=budget*(1+np.abs(expected)))
             assert out.dtype==dtype
             return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=budget)
+    elif workload.startswith('min_norm_'):
+        m,n=map(int,workload.split('_')[2].split('x'));rank=int(workload.split('_')[3][4:])
+        i,k=np.indices((m,rank));u=(i==k)*3+((i*7+k*3)%11).astype(np.float64)/16-5/16
+        a=np.empty((m,n),dtype=np.float64);a[:,:rank]=u
+        for j in range(rank,n):
+            k=(j-rank)%rank;a[:,j]=u[:,k]+.5*u[:,(k+1)%rank]
+        b=((np.arange(m*4)*11%29).astype(np.float64)-14).reshape(m,4)/8
+        operation=lambda:np.linalg.lstsq(a,b,rcond=1e-12)[0]
+        def check(out):
+            normal=float(np.max(np.abs(a.T@(a@out-b))))
+            null=max(float(np.max(np.abs(out[j]-out[(j-rank)%rank]-.5*out[((j-rank)%rank+1)%rank]))) for j in range(rank,n))
+            assert normal<2e-10 and null<2e-10
+            return dict(normal_residual_max_absolute_error=normal,null_space_orthogonality_max_absolute_error=null,budget=2e-10)
     elif workload.startswith('qr_'):
         m,n=map(int,workload.split('_')[1].split('x'));i=np.arange(m*n).reshape(m,n)
         a=((i*13%47).astype(np.float64)-23)/47+(i//n==i%n)*3
@@ -233,7 +251,7 @@ def render_details(dest,data):
         '', '| Workload / library | Per-call p50 / p95 (us) | Batch-mean p50 / p95 (us) | Rust allocations | Peak additional requested bytes | Process peak RSS (MiB) |',
         '|---|---:|---:|---:|---:|---:|']
     if meta.get('unavailable_workloads'):
-        lines[5:5]=['Unavailable historical Tape stages: '+', '.join(meta['unavailable_workloads'])+'. '+meta['unavailable_reason']+'.', '']
+        lines[5:5]=['Unavailable historical Kernix workloads: '+', '.join(meta['unavailable_workloads'])+'. '+meta['unavailable_reason']+'.', '']
     for key,value in sorted(data['results'].items()):
         call=value['timing']['per_call'];batch=value['timing']['batch_means'];resources=value['resources'];alloc=resources['rust_allocator']
         rss=resources['process_peak_rss_bytes'];rss=f'{rss/1048576:.2f}' if rss is not None else 'unavailable'
@@ -292,8 +310,9 @@ def main():
     numpy_threads=configure_numpy_threads(configuration,binaries)
     legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
     legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
+    legacy_pivoted=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,9,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
-        enabled=(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])
+        enabled=(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])
         features=['--features',','.join(enabled)] if enabled else []
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
@@ -317,14 +336,14 @@ def main():
     metadata=dict(schema_version=2,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
-        unavailable_workloads=([w for w in CASES if w.startswith('training_')] if legacy_autograd else []),
-        unavailable_reason=('registry Tape lacks batched matmul/layer_norm; no substitute derivatives used' if legacy_autograd else None),
+        unavailable_workloads=[w for w in CASES if (legacy_autograd and w.startswith('training_')) or (legacy_pivoted and w.startswith(('pivoted_qr_','min_norm_')))],
+        unavailable_reason=('registry lacks the corresponding Tape or pivoted/minimum-norm APIs; no substitute algorithms used as historical Kernix' if legacy_autograd or legacy_pivoted else None),
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
         library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
         environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,numpy_thread_policy=numpy_threads,
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
-    schedule=measurement_schedule(args.seed,legacy_autograd)
+    schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted)
     metadata['measurement_order_seed']=args.seed
     metadata['measurement_order']=[w+'/'+lib for w,lib in schedule]
     results={}

@@ -2,6 +2,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #[cfg(all(test, not(feature = "legacy-autograd")))]
 mod gradient_checks;
+#[cfg(not(feature = "legacy-pivoted"))]
+mod pivoted;
 mod profile;
 #[cfg(not(feature = "legacy-autograd"))]
 mod training;
@@ -601,6 +603,23 @@ fn main() {
     assert!(["time", "resources", "first"].contains(&mode));
     faer::set_global_parallelism(faer::Par::Seq);
     let result = match workload {
+        name if name.starts_with("pivoted_qr_") || name.starts_with("min_norm_") => {
+            #[cfg(not(feature = "legacy-pivoted"))]
+            {
+                match name {
+                    "pivoted_qr_96x32_f64" => pivoted::factor(mode, library, 96, 32),
+                    "pivoted_qr_256x64_f64" => pivoted::factor(mode, library, 256, 64),
+                    "min_norm_64x32_rank16_f64" => pivoted::minimum_norm(mode, library, 64, 32, 16),
+                    "min_norm_32x64_rank32_f64" => pivoted::minimum_norm(mode, library, 32, 64, 32),
+                    _ => panic!("unknown pivoted workload"),
+                }
+            }
+            #[cfg(feature = "legacy-pivoted")]
+            {
+                let _ = name;
+                panic!("registry baseline lacks pivoted QR/minimum-norm solving");
+            }
+        }
         name if name.starts_with("training_") => {
             #[cfg(not(feature = "legacy-autograd"))]
             {

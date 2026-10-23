@@ -1,7 +1,7 @@
 #![no_main]
 use kernix::{
     Tensor,
-    linalg::{Cholesky, Qr, reciprocal_condition_number_one, solve_refined},
+    linalg::{Cholesky, PivotedQr, Qr, reciprocal_condition_number_one, solve_refined},
 };
 use libfuzzer_sys::fuzz_target;
 fuzz_target!(|bytes: &[u8]| {
@@ -28,6 +28,23 @@ fuzz_target!(|bytes: &[u8]| {
             assert!((product - if i == j { 1. } else { 0. }).abs() < 1e-10);
         }
     }
+    let pivoted = PivotedQr::factor_with_tolerance(&a, 1e-10).unwrap();
+    for i in 0..m {
+        for j in 0..n {
+            let product: f64 = (0..rank)
+                .map(|k| {
+                    pivoted.q().storage_slice()[i * rank + k]
+                        * pivoted.r().storage_slice()[k * n + j]
+                })
+                .sum();
+            assert!((product - values[i * n + pivoted.permutation()[j]]).abs() < 1e-9);
+        }
+    }
+    let b = Tensor::<f64>::ones([m]).unwrap();
+    let minimum = pivoted.solve_least_squares(&b).unwrap();
+    let basic = pivoted.solve_basic_least_squares(&b).unwrap();
+    let norm = |x: &Tensor<f64>| x.storage_slice().iter().map(|x| x * x).sum::<f64>();
+    assert!(norm(&minimum) <= norm(&basic) * (1. + 1e-6) + 1e-20);
     // B B^T + I is positive definite, independent of rectangular B's rank.
     let mut spd = vec![0.; m * m];
     for i in 0..m {

@@ -48,7 +48,7 @@ jobs:
       - name: Exercise native wrappers and decompositions
         run: >-
           cargo test -p kernix-ops --target x86_64-unknown-linux-gnu
-          --test native_kernel_tests --test factorization_regressions --test diagnostics_tests
+          --test native_kernel_tests --test factorization_regressions --test diagnostics_tests --test pivoted_qr_tests
           --locked
         env:
           RUSTFLAGS: -Zsanitizer=address
@@ -63,6 +63,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov@0.9.1
+      - name: Remove stale workspace coverage objects
+        run: cargo llvm-cov clean
       - name: Require the measured library line-coverage floor
         run: >-
           cargo llvm-cov --workspace --all-features --locked

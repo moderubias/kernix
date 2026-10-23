@@ -1,4 +1,4 @@
-# Forward and reverse-mode coverage (0.8 series)
+# Forward and reverse-mode coverage (0.9 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 
@@ -78,6 +78,15 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `linalg::Lu::permutation` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
 | `linalg::Lu::slogdet` | unsupported | — | No Tape recording API. |
 | `linalg::Lu::solve` | unsupported | — | No Tape recording API. |
+| `linalg::PivotedQr::factor` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
+| `linalg::PivotedQr::factor_with_tolerance` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
+| `linalg::PivotedQr::permutation` | not_applicable | — | Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee. |
+| `linalg::PivotedQr::q` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
+| `linalg::PivotedQr::r` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
+| `linalg::PivotedQr::rank` | not_applicable | — | Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee. |
+| `linalg::PivotedQr::relative_tolerance` | not_applicable | — | Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee. |
+| `linalg::PivotedQr::solve_basic_least_squares` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
+| `linalg::PivotedQr::solve_least_squares` | unsupported | — | Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP. |
 | `linalg::Qr::factor` | unsupported | — | No Tape recording API. |
 | `linalg::Qr::q` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
 | `linalg::Qr::r` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |

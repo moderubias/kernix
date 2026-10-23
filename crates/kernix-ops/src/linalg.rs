@@ -23,6 +23,9 @@ use kernix_core::{
 };
 use thiserror::Error;
 
+mod pivoted_qr;
+pub use pivoted_qr::PivotedQr;
+
 mod diagnostics;
 pub use diagnostics::{
     RefinedSolution, RefinementTermination, condition_number_one, reciprocal_condition_number_one,
@@ -630,7 +633,7 @@ impl<T: LinalgFloat> Qr<T> {
         &self.r
     }
     /// Solve a full-column-rank least-squares system with m>=n. Under-determined or
-    /// rank-deficient systems fail explicitly; minimum-norm/SVD solving is future work.
+    /// rank-deficient systems fail explicitly; use PivotedQr for minimum-norm solving.
     /// RHS shapes are `[m]` or `[m,k]`; output is `[n]` or `[n,k]`.
     pub fn solve_least_squares<B: TensorInput<T>>(&self, b: &B) -> Result<Tensor<T>, LinalgError> {
         let (m, n) = (self.q.shape().dims()[0], self.r.shape().dims()[1]);

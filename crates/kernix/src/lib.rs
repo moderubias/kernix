@@ -44,7 +44,9 @@ pub use kernix_ops::linalg;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub mod prelude {
-    pub use crate::linalg::{Cholesky, LinalgError, Lu, Qr, least_squares, residual_norm, solve};
+    pub use crate::linalg::{
+        Cholesky, LinalgError, Lu, PivotedQr, Qr, least_squares, residual_norm, solve,
+    };
     pub use crate::{
         Kahen, Kotei, Order, Shape, Tensor, TensorError, TensorInput, TensorView, TensorViewMut,
         add, div, full, matmul, matrix, mul, shape, sub, tensor,

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0
+
+- Add column-pivoted Householder QR with explicit permutation and relative diagonal
+  rank policy, preserving reconstruction independently of numerical-rank selection.
+- Solve rank-deficient and underdetermined least-squares systems with minimum norm
+  through an additional scaled right QR, without normal equations or dtype changes.
+  A separate basic solve sets free coefficients to zero and avoids that extra work.
+- Preserve existing unpivoted Qr/least_squares behavior and pure Rust/no_std boundaries.
+  Add analytic null-space, SVD oracle, scale/range, resource and downstream regressions.
+
 ## 0.8.0
 
 - Add one-norm condition/reciprocal-condition diagnostics and working-precision LU

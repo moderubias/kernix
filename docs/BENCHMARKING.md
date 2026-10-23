@@ -192,3 +192,28 @@ control fails the run. Metadata retains verification and the controller hash.
 First-call operation timing excludes this explicit control initialization.
 The initial macOS run39719312815 lacked this check and must not establish a
 single-thread comparison; its original samples are not rewritten.
+
+## Pivoted factors and minimum norm (0.9)
+
+Four new workloads bring candidate runs to 100 workload/library pairs. The two
+column-pivoted QR cases materialize thin Q/R and an owned permutation in Kernix,
+nalgebra and faer. Each result must reconstruct the permuted original and have
+orthogonal Q. Pivot ties/order may differ; the validator follows each library's
+actual permutation. Kernix uses partial norm estimates with cancellation-triggered recomputation;
+comparator algorithms/workspace and validation policies may differ.
+
+The 64×32 rank-16 and 32×64 rank-32 cases solve for four RHS columns, including
+factorization on every timed call. A is built from an independently full-rank U
+and exactly representable dependent columns `U[:,j] + 0.5*U[:,j+1]`. Kernix uses
+pivoted QR plus a scaled right QR, nalgebra uses its native SVD/solve, and NumPy
+uses native lstsq. Thus the mathematical minimum-norm problem agrees, but the
+factorization algorithms are different. Null-space orthogonality and normal
+residuals are checked independently. Kernix/NumPy use relative cutoff 1e-12;
+nalgebra solve uses absolute singular cutoff 1e-10. These fixtures have a wide
+gap between retained and zero singular values, not an ambiguous threshold boundary.
+No comparison asserts identical rank policies for arbitrary matrices.
+
+Exact registry versions before 0.9 omit the new Kernix workloads altogether;
+`legacy-pivoted` prevents unavailable APIs from being compiled. Missing historical
+results are documented, not filled with a substitute implementation. Existing
+88-case observations and measurement boundaries remain independently comparable.

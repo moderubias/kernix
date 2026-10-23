@@ -25,6 +25,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(len(schedule),len(expected))
         self.assertEqual(schedule,evidence.measurement_schedule(123))
         self.assertNotEqual(schedule,evidence.measurement_schedule(124))
+        self.assertFalse(any(w.startswith(('pivoted_qr_','min_norm_')) for w,_ in evidence.measurement_schedule(123,False,True)))
         self.assertFalse(any(w.startswith('training_') for w,_ in evidence.measurement_schedule(123,True)))
 
     def test_dirty_and_untracked_sources_are_refused_but_ignored_notes_are_allowed(self):

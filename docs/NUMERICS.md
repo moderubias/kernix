@@ -142,3 +142,26 @@ portable native path; native instructions require execution tests on actual hard
 
 No internal dtype promotion is introduced. f32 accuracy checks use a wider f64
 scalar oracle constructed from the actual f32 inputs, independently of timing loops.
+
+
+## Column-pivoted QR and rank-truncated solving (0.9)
+
+`PivotedQr` returns `A[:, permutation] = Q*R` with thin orthogonal Q and upper
+trapezoidal R. Partial pivot-norm estimates are updated after each reflector; scaled norms are
+recomputed when cancellation/cumulative loss reaches sqrt(epsilon), or an update
+underflows to zero. Every selected reflector uses a fresh scaled norm. The leading rank cutoff is relative to the largest R
+diagonal. Its default is epsilon times max(m,n,1); any finite nonnegative explicit
+tolerance is accepted. Ratios avoid overflowing a cutoff product; zero tolerance
+only drops exact-zero diagonals. This is not an SVD rank, a condition estimator,
+a certified strong rank-revealing factorization, or optimal low-rank approximation.
+
+Both solvers operate on the selected rank-truncated matrix, not discarded original
+directions. `solve_basic_least_squares` sets free permuted coefficients to zero.
+`solve_least_squares` instead returns the minimum Euclidean-norm solution using a
+right orthogonal basis from QR of scaled leading R transpose; no normal equations
+or inverse are formed. For full column rank it uses the cheaper triangular path.
+For deficient/wide matrices the extra O(n*r²) right factorization occurs per call.
+The finite RHS is borrowed, and the final permutation/scaling writes directly to
+owned C-order output. Intermediates must remain representable; scaling does not
+provide arbitrary-exponent guarantees. Existing unpivoted Qr/least_squares still
+reject deficient and underdetermined inputs. Neither decomposition records a VJP.

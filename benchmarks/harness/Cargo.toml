@@ -11,6 +11,7 @@ resolver = "3"
 allocation-counting = []
 legacy-constructors = []
 legacy-autograd = []
+legacy-pivoted = []
 
 [dependencies]
 kernix = { path = "../../crates/kernix", default-features = false, features = ["std"] }

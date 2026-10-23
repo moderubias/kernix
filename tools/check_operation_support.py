@@ -59,6 +59,8 @@ def discover(root=ROOT):
     diagnostics = (ops / 'linalg/diagnostics.rs').read_text(encoding='utf-8')
     names.update('linalg::' + n for n in re.findall(r'^pub fn\s+(\w+)', code_only(diagnostics), re.M))
     names.update('linalg::RefinedSolution::' + n for n in methods(diagnostics, 'RefinedSolution'))
+    pivoted=(ops / 'linalg/pivoted_qr.rs').read_text(encoding='utf-8')
+    names.update('linalg::PivotedQr::'+n for n in methods(pivoted,'PivotedQr'))
     for typename in ['Lu', 'Cholesky', 'Qr']:
         names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(encoding='utf-8'), typename))
     names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(encoding='utf-8'), 'RgbFrame'))

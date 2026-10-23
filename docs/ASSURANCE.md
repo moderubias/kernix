@@ -8,7 +8,7 @@ reports as artifacts. Hosted runner labels do not guarantee Intel versus AMD;
 dedicated machines and repeatable ARM tuning remain work to do.
 
 `python tools/check_api.py` compares all three packages against the immutable
-v0.7.3 source, both with all features and without default features. The explicit
+v0.8.0 source, both with all features and without default features. The explicit
 minor policy permits additions and rejects removals/signature incompatibilities
 independently of the next 0.x version. Its JSON report records baseline/current
 revisions, tool version, commands, exit status and complete diagnostics. The
@@ -29,7 +29,7 @@ runtime occurrences and expiry fail the gate. Track the [upstream release issue]
 remove exceptions when a compatible release uses patched zip. Do not alter a
 comparator's numerical source or silently substitute a framework version.
 
-AddressSanitizer exercises native checked wrappers, decomposition regressions and
+AddressSanitizer exercises native checked wrappers, decomposition regressions, pivoted minimum-norm solves and
 condition/refinement diagnostics on nightly. The scheduled/manual fuzz workflow
 uses two bounded libFuzzer targets: shape/layout round trips and QR/Cholesky
 reconstruction, orthogonality and refinement monotonicity. Checked-in seeds are
@@ -46,7 +46,8 @@ The coverage job pins Rust 1.99.0 / cargo-llvm-cov 0.9.1 and requires at least
 integration-test and example source. The measured initial baseline is 85.44%
 (7,263 / 8,501 lines); the floor rounds this down and prevents material regressions.
 This development-tool version does not raise the library's Rust 1.86 MSRV.
-Raw per-file summaries remain artifacts. Lines, generic instantiations, branches,
+The job cleans coverage artifacts before measurement so obsolete source maps do
+not inflate the denominator after edits. Raw per-file summaries remain artifacts. Lines, generic instantiations, branches,
 assembly and numerical-domain coverage are different quantities: this is not a
 branch/MC/DC gate or proof that every mathematical case is tested. Error formatting,
 configuration, fixed-rank forwarding and neural module wrappers have remaining gaps.

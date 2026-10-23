@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.8 API; the linked rustdoc contains
+foundation. This guide follows the public 0.9 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -57,8 +57,8 @@ estimate. Inspect residuals and the scale of the problem.
 Cholesky requires symmetric positive-definite input, checks both triangles and
 adds no diagonal regularization. QR uses stable-sign Householder reflectors,
 returns thin Q/R, and solves full-column-rank overdetermined least squares.
-Rank-deficient and underdetermined solving need a different algorithm and currently
-return errors. Empty matrices have explicit valid algebraic identities. All input
+The existing Qr and least_squares still reject rank-deficient and underdetermined
+systems. Use PivotedQr when these cases are intended. Empty matrices have explicit valid algebraic identities. All input
 values and required decomposition results must be finite. f32 and f64 are supported.
 
 For an explicit conditioning diagnostic, `linalg::condition_number_one(&a)` computes
@@ -73,6 +73,33 @@ and `backward_error()` before using the result: an iteration limit or rejected
 stagnating step does not imply convergence. It reports componentwise backward
 error, not a certified forward-error bound; it cannot rescue every ill-conditioned
 system. No hidden precision conversion occurs.
+
+## Rank-deficient and underdetermined fitting
+
+```rust
+use kernix::prelude::*;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let a=matrix![1.0f64,0.0,1.0;0.0,1.0,1.0]?;
+    let b=tensor![1.0,1.0]?;
+    let qr=PivotedQr::factor(&a)?;
+    assert_eq!(qr.rank(),2);
+    let x=qr.solve_least_squares(&b)?;
+    assert!((x.storage_slice()[2]-2.0/3.0).abs()<1e-14);
+    Ok(())
+}
+```
+
+The selected leading rank uses a relative cutoff on the pivoted R diagonal,
+not singular values or a condition estimate. An explicit finite nonnegative
+cutoff is available through `factor_with_tolerance`; zero rejects only exact zero
+diagonals. Solves use the rank-truncated matrix; discarded directions are not fitted.
+`solve_least_squares` returns its minimum Euclidean-norm solution. For rank below
+the column count it performs an additional scaled QR per call, avoiding normal
+equations; its O(n*r²) cost is documented. `solve_basic_least_squares` skips that
+factorization and sets permuted free coefficients to zero, which generally gives
+a larger-norm solution. Both borrow the finite RHS and return an owned C-order
+solution. Extreme required intermediates can still fail; no hidden dtype promotion
+or optimal SVD truncation is promised.
 
 ## Execution and resource policy
 

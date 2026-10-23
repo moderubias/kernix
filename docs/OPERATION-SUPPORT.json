@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.8",
+  "series": "0.9",
   "operations": [
     {
       "operation": "Tensor::permute",
@@ -460,6 +460,87 @@
       "tape": [],
       "contract": "No Tape recording API.",
       "tests": []
+    },
+    {
+      "operation": "linalg::PivotedQr::factor",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::factor_with_tolerance",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::permutation",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::q",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::r",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::rank",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::relative_tolerance",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Inspect QR column permutation/diagonal rank policy; no SVD rank guarantee.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::rectangular_reconstruction_rank_order_layouts_and_pivot_orientation"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::solve_basic_least_squares",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::ranked_multi_rhs_agree_with_svd_residual_stationarity_and_null_space"
+      ]
+    },
+    {
+      "operation": "linalg::PivotedQr::solve_least_squares",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Pivoted real QR; rank-truncated minimum-norm/basic least squares; no decomposition VJP.",
+      "tests": [
+        "crates/kernix-ops/tests/pivoted_qr_tests.rs::ranked_multi_rhs_agree_with_svd_residual_stationarity_and_null_space"
+      ]
     },
     {
       "operation": "linalg::Qr::factor",

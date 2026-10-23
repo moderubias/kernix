@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.8.0"
+kernix = "0.9.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional future backends must not prevent use of the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.8.0", default-features = false }
+kernix = { version = "0.9.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -124,7 +124,7 @@ for adapters and programmatic dimensions. For column-major data, explicit alignm
 fixed rank or device storage, use the existing constructors and capability traits.
 The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
 
-See the [0.8 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.8.md)
+See the [0.9 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.9.md)
 and [forward/VJP coverage](https://github.com/moderubias/kernix/blob/main/docs/AUTOGRAD-COVERAGE.md)
 for available APIs and their exact limits.
 

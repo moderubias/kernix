@@ -49,3 +49,21 @@ mod batched_tests {
         assert_eq!(dx.storage_slice(), &[8.0, 24.0, 10.0, 30.0]);
     }
 }
+
+
+/// Pivoted minimum-norm solving also works without std or an external backend.
+pub fn minimum_norm() -> Result<Tensor<f32>,kernix::LinalgError> {
+    let a=matrix![1.0f32,0.0,1.0;0.0,1.0,1.0]?;
+    let b=tensor![1.0f32,1.0]?;
+    PivotedQr::factor(&a)?.solve_least_squares(&b)
+}
+#[cfg(test)]
+mod minimum_norm_tests {
+    #[test]
+    fn minimum_norm_is_available_without_std() {
+        let x=super::minimum_norm().unwrap();
+        for (&value,expected) in x.storage_slice().iter().zip([1./3.,1./3.,2./3.]) {
+            assert!((value-expected).abs()<1e-6);
+        }
+    }
+}
