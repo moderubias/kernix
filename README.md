@@ -396,6 +396,8 @@ Start with the [0.10.0 readable comparison](benchmarks/results/0.10.0-final/READ
 and [paired comparison against 0.9.0](benchmarks/results/0.10.0-paired-final/README.md).
 The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.10.0)
 include the standalone HTML reports and complete measurement evidence.
+The [0.10.0 verification record](docs/QA-0.10.0.md) documents numerical contracts,
+package provenance, checks and remaining performance gaps.
 
 ## License
 
