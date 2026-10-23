@@ -142,6 +142,11 @@ def render_report(dest, data, baseline=None):
         summary.append('| ' + ' · '.join(filter(None, (title, shape, dtype))) + ' | ' + ' | '.join(md) + ' |')
     columns = [names(lib) for lib in libraries] + (['Kernix Δ vs baseline'] if baseline else [])
     baseline_note = f"Baseline: {baseline['metadata']['run_id']}. Δ is latency change; negative is faster. Runs are sequential, not randomized/interleaved." if baseline else 'No previous-version baseline is paired with this view.'
+    numerical_note = ('Minimum-norm rows include factorization and four RHS. Kernix uses pivoted/right QR; '
+                      'NumPy uses native lstsq; nalgebra uses native SVD/solve. Fixtures have a wide rank gap; '
+                      'null-space orthogonality and normal residual are validated independently. Algorithm costs '
+                      'and rank policies differ; see DETAILS.md for thresholds. These are not general SVD comparisons.'
+                      if any(w.startswith('min_norm_') for w, _ in groups) else '')
     md = [f'# Kernix {version} · CPU benchmarks', '', description, '',
           '**Microseconds per call, median. Lower is faster; bold marks the lowest observed median in each row.**', '',
           baseline_note, '', '| Workload | ' + ' | '.join(columns) + ' |',
@@ -157,6 +162,8 @@ def render_report(dest, data, baseline=None):
           f"Measured source `{meta['revision']}`. Run `{meta['run_id']}`. Rendering does not remeasure or modify raw evidence.", '']
     if warnings:
         md[4:4] = ['**Baseline caveats:** ' + ' '.join(warnings), '']
+    if numerical_note:
+        md[md.index('## Reading these results') + 2:md.index('## Reading these results') + 2] = [numerical_note, '']
     (dest / 'README.md').write_text('\n'.join(md), encoding='utf-8')
     details = []
     for workload, values in groups:
@@ -181,11 +188,11 @@ def render_report(dest, data, baseline=None):
 <section class="card"><h2>At a glance</h2><p>Microseconds per call · median · lower is faster. Shaded cells mark the lowest observed median.</p><p class="note">BASELINE</p>WARNINGS<label for="search" class="note">Filter workloads</label><br><input id="search" type="search" placeholder="Try matmul, backward or f32" autocomplete="off"><div class="scroll"><table id="comparison"><thead><tr><th>Workload</th>COLUMNS</tr></thead><tbody>ROWS</tbody></table></div><p class="note">Hover over a timing for its per-call p95. Expand a workload for p99 and nominal GEMM throughput (2n³ divided by allocating API latency). A missing cell means unmeasured, not unsupported.</p></section>
 <section class="card"><h2>The relative picture</h2><p>Each workload uses its own scale. Library / Kernix median: below 1 means the comparator was faster.</p><img src="latency.png" alt="Per-workload relative latency panels, with comparator wins and losses"><p class="note">One shared laptop; uncontrolled frequency and background load. Sequential runs establish no universal ranking. GEMM inputs are row-major; output layout and validation contracts may differ. Timings include output allocation and destruction.</p></section>
 <section class="card"><h2>Distributions &amp; resources</h2><p>256 individual warmed calls and 15 separate 10-ms batch means. Resource probes use a separate instrumented binary; NumPy native allocations are unavailable. Requested bytes include output and are not scratch-only memory or RSS. Native engines may retain thread-local packing memory; warmed probes exclude its first-use allocation and retention.</p>DETAILS</section>
-<footer><p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable chart</a></p>PROVENANCE</footer></main><script>document.getElementById('search').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#comparison tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)})})</script></html>'''
+<footer>NUMERICAL_NOTE<p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable chart</a></p>PROVENANCE</footer></main><script>document.getElementById('search').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#comparison tbody tr').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(q)})})</script></html>'''
     replacements = dict(VERSION=escape('Kernix ' + version), DESCRIPTION=escape(description), BASELINE=escape(baseline_note),
                         WARNINGS='<p class="warning">' + escape(' '.join(warnings)) + '</p>' if warnings else '',
                         COLUMNS=''.join(f'<th class="{"kernix" if col == "Kernix" else ""}">{escape(col)}</th>' for col in columns),
-                        ROWS=''.join(table), DETAILS=''.join(details),
+                        ROWS=''.join(table), DETAILS=''.join(details), NUMERICAL_NOTE='<p>'+escape(numerical_note)+'</p>' if numerical_note else '',
                         PROVENANCE=escape(f"Measured source {meta['revision']} · run {meta['run_id']}. Rendering does not change or remeasure raw evidence."))
     # Single pass: replacement text containing another placeholder stays literal.
     import re
