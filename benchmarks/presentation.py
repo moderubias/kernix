@@ -430,6 +430,8 @@ def render(dest, data, baseline, paired, h):
         "",
         "[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)",
         "",
+        "[![Performance brief preview](latency.png)](latency.pdf)",
+        "",
         "| Workload | "
         + " | ".join(names(x) for x in libs)
         + (" | Sequential run change" if baseline else "")
@@ -667,6 +669,8 @@ def render_pair(dest, paired, h):
         f"{paired['rounds']} fresh-process pairs per workload. Ratios below 1 mean less time.",
         "",
         "[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)",
+        "",
+        "[![Paired process comparison preview](latency.png)](latency.pdf)",
         "",
         "| Workload | Current / baseline [95% interval] | Interpretation |",
         "|---|---:|---|",

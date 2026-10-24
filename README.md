@@ -384,6 +384,8 @@ process-paired version comparisons and vector PDF charts. Original measurements,
 method notes and build identities remain unchanged. Chart labels explicitly mark
 rounding; exact tables retain every recorded digit.
 
+[![Kernix performance brief](benchmarks/results/0.11.0-final/latency.png)](https://github.com/moderubias/kernix/releases/tag/v0.11.0)
+
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and
 batch-mean distributions, first-use observations, allocation counts outside timing
