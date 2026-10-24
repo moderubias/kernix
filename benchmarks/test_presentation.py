@@ -37,6 +37,18 @@ class PrecisionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             p.us(Decimal("NaN"))
 
+    def test_numpy_backend_uses_recorded_configuration_in_each_schema(self):
+        configuration = {"Build Dependencies": {"blas": {"name": "scipy-openblas"}}}
+        self.assertEqual(
+            p.backend({"numpy_configuration": configuration}), "scipy-openblas"
+        )
+        self.assertEqual(
+            p.backend({"numpy_configuration": repr(configuration)}), "scipy-openblas"
+        )
+        self.assertEqual(
+            p.backend({"numpy_configuration": "not a configuration"}), "unrecorded"
+        )
+
     def test_loading_never_rounds_json_numbers_through_a_binary_float(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "data.json"

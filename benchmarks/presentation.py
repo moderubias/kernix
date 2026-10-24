@@ -1,6 +1,7 @@
 """Precise, accessible views of immutable CPU benchmark evidence."""
 
 import base64
+import ast
 from decimal import Decimal, localcontext
 import hashlib
 import html
@@ -140,6 +141,22 @@ def normalize(data):
 def median(v):
     t = v["timing"]
     return t.get("per_call", t.get("batch_means", {}))["p50_ns"]
+
+
+def backend(meta):
+    configuration = meta.get("numpy_configuration", {})
+    if isinstance(configuration, str):
+        try:
+            configuration = ast.literal_eval(configuration)
+        except (SyntaxError, ValueError):
+            configuration = {}
+    if not isinstance(configuration, dict):
+        return "unrecorded"
+    return str(
+        configuration.get("Build Dependencies", {})
+        .get("blas", {})
+        .get("name", "unrecorded")
+    )
 
 
 def metric(meta):
@@ -608,7 +625,9 @@ def render(dest, data, baseline, paired, h):
         PLOTS="".join(plots),
         DETAILS="".join(details),
         INTERVALS=intervals,
-        NUMERICAL=esc(numerical),
+        NUMERICAL=esc(
+            (numerical + " NumPy BLAS backend: " + backend(meta) + ".").strip()
+        ),
         WARNINGS=esc(" ".join(warnings)),
         HAS_PAIRED=str(bool(ratios)).lower(),
         LIMITS=(
@@ -766,7 +785,7 @@ def static_report(dest, data, h, paired=None):
         heading(
             scene,
             f"Kernix {version} / {family_title}",
-            cpu + " · " + metric(meta) + " · all values in µs · lower is faster",
+            cpu + " · " + metric(meta) + " · µs · NumPy BLAS: " + backend(meta),
             index + 1,
             len(specs) + pair_count + appendix_count,
             str(meta.get("run_id")) + " · source " + str(meta.get("revision"))[:12],
