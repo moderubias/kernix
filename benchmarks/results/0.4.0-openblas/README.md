@@ -1,51 +1,65 @@
-# Kernix benchmark report: 0.4.0-openblas
+# Kernix 0.4.0-openblas · performance brief
 
-Measured 2026-10-19T15:36:51Z on 12th Gen Intel(R) Core(TM) i3-1215U.
+12th Gen Intel(R) Core(TM) i3-1215U / Linux
 
-Rust: rustc 1.99.0 (b940084d7 2026-09-28); NumPy: 2.5.4; one CPU thread; dtype in workload name.
+**Batch-mean median, microseconds per operation. Lower is faster. All recorded digits retained.**
 
-Source: `4402cdb8d904c8987ebc95e83d87ccfd8086c5c1`; working tree dirty: True.
+13 workloads · 38 observations
 
-## Comparative CPU results
+No previous-version baseline attached. Sequential run changes are descriptive; paired process evidence is shown separately.
 
-![Median comparison; API and measurement limits apply.](comparison.png)
+[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
 
-| Workload | Kernix p50 / p95 (us) | ndarray p50 / p95 (us) | nalgebra p50 / p95 (us) | NumPy p50 / p95 (us) |
+[![Performance brief preview](latency.png)](latency.pdf)
+
+| Workload | Kernix | ndarray | nalgebra | NumPy |
 |---|---:|---:|---:|---:|
-| add_65536_f64 | 22.351 / 28.415 | 22.864 / 33.791 | not measured | 22.851 / 25.158 |
-| cholesky_64_f64 | 23.499 / 27.150 | not measured | 10.375 / 10.933 | 10.574 / 11.259 |
-| conv_1x3x32x32_8x3x3x3_f32 | 10.949 / 13.967 | 56.183 / 59.737 | not measured | 45.027 / 53.652 |
-| dense_sgd_step_32x16x8_f64 | 11.624 / 12.115 | 0.980 / 1.021 | not measured | not measured |
-| matmul_128_f64 | 84.936 / 90.912 | 82.527 / 86.046 | not measured | 78.261 / 90.052 |
-| matmul_32_f64 | 1.565 / 1.590 | 1.417 / 1.448 | not measured | 2.707 / 2.958 |
-| matmul_reuse_128_f64 | 82.358 / 88.533 | 82.586 / 94.910 | not measured | 76.895 / 83.264 |
-| matmul_reuse_32_f64 | 1.465 / 1.506 | 1.402 / 1.477 | not measured | 2.480 / 2.573 |
-| qr_96x32_f64 | 89.340 / 90.946 | not measured | 32.176 / 33.876 | 39.819 / 49.330 |
-| rgb1080_to224_f32 | 443.533 / 517.043 | 692.877 / 774.473 | not measured | 4099.167 / 5105.179 |
-| softmax_256x64_f64 | 77.494 / 82.663 | 70.038 / 73.538 | not measured | 97.789 / 105.044 |
-| solve_64_f64 | 26.843 / 28.653 | not measured | 17.542 / 18.087 | 19.421 / 21.781 |
-| sum_65536_f64 | 5.537 / 5.902 | 5.616 / 5.847 | not measured | 10.547 / 11.074 |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 1.564825937284847 | **1.4172448979591836** | — | 2.7071532965248457 |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 84.93596271186441 | 82.52684488448846 | — | **78.2614625** |
+| Matrix multiplication · reused output · 32 × 32 · 32 × 32 · f64 | 1.4654065412343941 | **1.401565814553201** | — | 2.479748859353303 |
+| Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64 | 82.35834539473684 | 82.58573597359736 | — | **76.89455214723926** |
+| Cholesky factorization · 64 × 64 · f64 | 23.499029135338347 | — | **10.375264315352697** | 10.574162790697674 |
+| Linear system solve · 64 × 64 · f64 | 26.84285729613734 | — | **17.542236325385693** | 19.42051940993789 |
+| Thin QR · 96 × 32 · f64 | 89.34021428571429 | — | **32.17587644787645** | 39.81875318471337 |
+| Dense training step · 32 × 16 × 8 · f64 | 11.62384658298466 | **0.9804473116592808** | — | — |
+| Elementwise addition · 65,536 elements · f64 | **22.35119928507596** | 22.863823583180987 | — | 22.85056803652968 |
+| Sum reduction · 65,536 elements · f64 | **5.537106288751107** | 5.6158618598382745 | — | 10.547035428089413 |
+| Row softmax · 256 × 64 · f64 | 77.49405263157895 | **70.03828851540617** | — | 97.78942578125 |
+| RGB resize & normalization · 1920 × 1080 → 1 × 3 × 224 × 224 · u8 → f32 | **443.5329298245614** | 692.8767297297297 | — | 4099.1665714285714 |
+| 2D convolution · 1 × 3 × 32 × 32 · 8 × 3 × 3 × 3 · f32 | **10.948694833625219** | 56.18325168539326 | — | 45.02747122302158 |
 
-## Method and limits
+## Version comparison
 
-Operations allocate outputs except scalar sums and explicitly named matmul_reuse cases.
-Reuse cases time preallocated output writes in all libraries. Inputs are preallocated and
-contiguous. Kernix and ndarray share the matrixmultiply GEMM engine (no external BLAS); NumPy
-uses the build recorded in raw.json. BLAS/OMP thread counts are fixed to one.
-CPU affinity: 0. Warmed sequential samples on a shared laptop; CPU frequency
-and other system load are uncontrolled. p95 is the maximum of 15 batch means,
-not a per-request tail-latency guarantee. Different sum orders may round differently.
-The ndarray softmax is an explicitly coded stable rowwise comparison, not a native
-ndarray softmax API. NumPy timings include Python call overhead. No GPU comparison.
-Vision workloads, when present: ndarray uses explicit bilinear/conv loops, while
-NumPy uses vectorized bilinear interpolation and sliding-window einsum. No native
-convolution/resize API is implied for ndarray. RGB input is 1920x1080 packed u8;
-output is 1x3x224x224 f32 (602112 bytes), with no full-resolution float tensor.
-No claim that a complete Full HD model reaches 120 FPS follows from these measurements.
-The dense SGD case compares a validated reverse-mode Kernix graph against explicit
-analytical ndarray derivatives, including weight reset/copy in both. Graph lifetime,
-finite validation and parameter safety have costs; these are different API levels.
-LU solve includes factorization; QR materializes thin Q and R in all measured libraries.
-Historical reports were not pinned and lack source archives; their trends are indicative.
-source.tar.gz preserves the exact current source; SHA-256 is recorded in raw.json.
-raw.json contains all measurements, dependencies and environment metadata.
+0 of 13 workloads have paired evidence. Exploratory 95% intervals resample process pairs, not calls. No multiple-comparison adjustment.
+
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Matrix multiplication · reused output · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Cholesky factorization · 64 × 64 · f64 | — | No paired comparison |
+| Linear system solve · 64 × 64 · f64 | — | No paired comparison |
+| Thin QR · 96 × 32 · f64 | — | No paired comparison |
+| Dense training step · 32 × 16 × 8 · f64 | — | No paired comparison |
+| Elementwise addition · 65,536 elements · f64 | — | No paired comparison |
+| Sum reduction · 65,536 elements · f64 | — | No paired comparison |
+| Row softmax · 256 × 64 · f64 | — | No paired comparison |
+| RGB resize & normalization · 1920 × 1080 → 1 × 3 × 224 × 224 · u8 → f32 | — | No paired comparison |
+| 2D convolution · 1 × 3 × 32 × 32 · 8 × 3 × 3 × 3 · f32 | — | No paired comparison |
+
+## Historical statistic
+
+These are medians of 15 warmed batch means, not per-call medians. The original p95 field is the maximum of those 15 batch means. No per-call p95/p99, accuracy or allocation probes are inferred.
+
+## Method and provenance
+
+CPU affinity pinned to logical CPU 0. Frequency and background load are uncontrolled.
+
+
+
+Numbers retain source precision; recorded digits do not imply equivalent physical measurement accuracy. Lowest observed medians are bold only when peers were measured. No aggregate winner or universal ranking is inferred.
+
+[Original report and commentary](original-report.txt) · [Raw measurements](raw.json)
+
+Measured source `4402cdb8d904c8987ebc95e83d87ccfd8086c5c1`. Run `0.4.0-openblas`. Rendering does not change measurements.

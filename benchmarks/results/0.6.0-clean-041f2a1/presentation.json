@@ -1,0 +1,26 @@
+{
+  "design_version": 2,
+  "measured_revision": "041f2a158c3e51340b5b9e6df6886fa52584f9b5",
+  "renderer_revision": "4d7f867a4c6204b5b1afb7ad93529a80fd921e78",
+  "renderer_sha256": {
+    "report.py": "b6c0c02a18fb0fe203a60df444a9a095182ae4511f2c2eb4c4114077bee2e96c",
+    "presentation.py": "28a4c5822a8a6e2e6be977ea5e0276cbf8d92d8070400c6b6fe49ccd3b683456",
+    "visuals.py": "9cbc783d93cd5b2eb6d4b09fd30a0ba946304b4a24cc4ae77f6493db1c52f583",
+    "report_frontend.html": "ee26dcc330f5280d1252d63b248f37c024a7f95b9409d9406c4e41afc0717ff0",
+    "report_style.css": "7d5a034470d51a6a7f0a9558a5c53e01b5dc3b865bbdb4a9d61ed788c01e3744",
+    "archive.py": "02b02e70bc13d71a1828e3293c0b0c4bf23b6ef3c7202f0ce3681ac43d42dcf7",
+    "assets/fonts.json": "a4252c87455974e53c1e6252747869a984303512f6ada9a2deea6be6c0228a87",
+    "assets/OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "assets/IBMPlexSans-Regular.ttf": "975dcda37d80f038dcd143c22e33ca2d97a0cc5a929aace1c749153b0fe1afa5",
+    "assets/IBMPlexSans-SemiBold.ttf": "a20caf8286023a6a7a85e40b1d2a4ae9fc3e3b1f9eda8f4c542dd4986af67bb1",
+    "assets/IBMPlexSans-Regular.woff2": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a",
+    "assets/IBMPlexSans-SemiBold.woff2": "f78048030eab62e860efa39a0df79e2e5581bf122eb95b9bc42c0b8a4988d205"
+  },
+  "source_files_sha256": {
+    "raw.json": "b6169087fe8046bac6d6f8a486010c27bff3f634ad0978169b8bf87e25059488",
+    "original-report.txt": "ff71e0cff964025182ec463949614bee636a807ea0ecc2c0eb6246a2660bacb3"
+  },
+  "paired_evidence_attached": false,
+  "raw_modified": false,
+  "number_policy": "Decimal source digits; exact decimal nanoseconds to microseconds; chart geometry only uses floats"
+}

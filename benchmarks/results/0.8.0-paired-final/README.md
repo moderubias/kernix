@@ -1,19 +1,23 @@
-# Kernix 0.8.0 vs 0.7.3 · paired processes
+# Kernix 0.8.0 · paired process comparison
 
-Current: `0.8.0-clean-18b91c6`. Baseline: `0.7.3-registry-fix080`.
+9 fresh-process pairs per workload. Ratios below 1 mean less time.
 
-9 fresh-process pairs per workload. Lower ratio is faster.
-95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
-Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
 
-| Workload | Current / baseline latency | 95% interval |
-|---|---:|---:|
-| Cholesky factorization 64 × 64 f64 | 0.868× | [0.827, 0.941] |
-| Cholesky factorization 128 × 128 f64 | 0.674× | [0.659, 0.683] |
-| Cholesky factorization 256 × 256 f64 | 0.493× | [0.481, 0.503] |
-| Thin QR 96 × 32 f64 | 1.043× | [1.036, 1.084] |
-| Thin QR 256 × 64 f64 | 0.958× | [0.937, 0.988] |
-| Matrix multiplication 128 × 128 · 128 × 128 f64 | 1.015× | [1.006, 1.032] |
-| Matrix multiplication 128 × 128 · 128 × 128 f32 | 0.994× | [0.925, 1.003] |
+[![Paired process comparison preview](latency.png)](latency.pdf)
 
-Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Cholesky factorization · 64 × 64 · f64 | 0.8677118475888073× [0.826547772693496, 0.9410034528326016] | Observed time reduction |
+| Cholesky factorization · 128 × 128 · f64 | 0.6737598467695953× [0.6587561862739252, 0.6826653795859267] | Observed time reduction |
+| Cholesky factorization · 256 × 256 · f64 | 0.49316287663357755× [0.4813219013084302, 0.5031802131103422] | Observed time reduction |
+| Thin QR · 96 × 32 · f64 | 1.0433176701999782× [1.036087431693989, 1.0842891742448475] | Observed time increase |
+| Thin QR · 256 × 64 · f64 | 0.9581048304614215× [0.9368562130504658, 0.9876960858970454] | Observed time reduction |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 1.0148811150587593× [1.0060131963811985, 1.0317538528920642] | Observed time increase |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 0.9939454550368949× [0.9249689243870831, 1.0027472527472527] | Timing direction unclear |
+
+## Method
+
+95% percentile bootstrap over paired process blocks; 10000 resamples; exploratory, no multiple-comparison adjustment
+
+Current `0.8.0-clean-18b91c6`; baseline `0.7.3-registry-fix080`. All source ratio digits, paired observations and process ordering are preserved. No absolute peer latencies are inferred.

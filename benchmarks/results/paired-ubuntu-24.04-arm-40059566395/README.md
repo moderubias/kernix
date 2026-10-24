@@ -1,24 +1,28 @@
-# Kernix 0.11.0 vs 0.10.0 · paired processes
+# Kernix 0.11.0 · paired process comparison
 
-Current: `runner-ubuntu-24.04-arm-40059566395`. Baseline: `baseline-ubuntu-24.04-arm-40059566395`.
+9 fresh-process pairs per workload. Ratios below 1 mean less time.
 
-9 fresh-process pairs per workload. Lower ratio is faster.
-95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
-Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
 
-| Workload | Current / baseline latency | 95% interval |
-|---|---:|---:|
-| Matrix multiplication 128 × 128 · 128 × 128 f64 | 0.804× | [0.796, 0.808] |
-| Matrix multiplication 128 × 128 · 128 × 128 f32 | 0.910× | [0.908, 0.912] |
-| Matrix multiplication 256 × 256 · 256 × 256 f64 | 0.994× | [0.993, 0.997] |
-| Matrix multiplication 256 × 256 · 256 × 256 f32 | 0.862× | [0.860, 0.864] |
-| Independent matrix operands 128 × 128 · 128 × 128 f64 | 0.797× | [0.785, 0.801] |
-| Independent matrix operands 128 × 128 · 128 × 128 f32 | 0.906× | [0.901, 0.910] |
-| Cholesky factorization 128 × 128 f64 | 1.004× | [1.001, 1.005] |
-| Cholesky factorization 256 × 256 f64 | 0.387× | [0.385, 0.389] |
-| Cholesky factorization 512 × 512 f64 | 0.285× | [0.285, 0.286] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f64 | 0.945× | [0.928, 0.975] |
-| Matmul · 2 workers · reused output 256 × 256 · 256 × 256 f64 | 0.835× | [0.827, 0.841] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f32 | 0.986× | [0.981, 0.994] |
+[![Paired process comparison preview](latency.png)](latency.pdf)
 
-Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 0.8039757672973089× [0.7961028439858441, 0.8075187028214404] | Observed time reduction |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 0.9104404550339998× [0.9083013425523341, 0.9116032637490727] | Observed time reduction |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 0.9937348734791259× [0.9925390619170559, 0.9968513537905461] | Observed time reduction |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 0.8616485177090156× [0.8596499666554435, 0.8637385121301779] | Observed time reduction |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f64 | 0.7968843618933493× [0.7850777114855892, 0.8007173985605017] | Observed time reduction |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f32 | 0.9059853428794695× [0.9014599690978463, 0.9103167103740432] | Observed time reduction |
+| Cholesky factorization · 128 × 128 · f64 | 1.00357375150991× [1.0008964317729707, 1.0050536592369261] | Observed time increase |
+| Cholesky factorization · 256 × 256 · f64 | 0.3869933969656744× [0.3851419972722835, 0.38939434067885376] | Observed time reduction |
+| Cholesky factorization · 512 × 512 · f64 | 0.2852289637520951× [0.2845246063012664, 0.2860102284176894] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 0.9447061485610845× [0.9284550919482365, 0.9752992394224139] | Observed time reduction |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 0.8347739732517124× [0.8272963184491992, 0.8406043323345531] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 0.9857735743644997× [0.981228974660111, 0.9936317176395433] | Observed time reduction |
+
+## Method
+
+95% percentile bootstrap over paired process blocks; 10000 resamples; exploratory, no multiple-comparison adjustment
+
+Current `runner-ubuntu-24.04-arm-40059566395`; baseline `baseline-ubuntu-24.04-arm-40059566395`. All source ratio digits, paired observations and process ordering are preserved. No absolute peer latencies are inferred.

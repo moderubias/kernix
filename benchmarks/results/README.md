@@ -1,49 +1,61 @@
-# CPU benchmark reports
+# Kernix performance archive
 
-Start with the [0.7.3 comparison](0.7.3-clean-bc459f4/README.md): one workload per
-row, library columns, colored per-workload charts and a standalone
-[HTML report](0.7.3-clean-bc459f4/report.html) with filtering and expandable details.
-Download the run directory to open HTML locally with its adjacent chart. Raw
-samples, complete methods, source hashes and actual locks remain adjacent. Missing
-measurements mean unmeasured, not unsupported.
+[Open the visual archive](index.html) to search every retained run, machine and measurement type.
 
-The paired [registry 0.7.2 baseline](0.7.2-registry-bc459f4/README.md) uses the same
-80 cases and comparator versions. f32 GEMM128 measured 34.749 us versus 49.181 us
-in 0.7.2; current NumPy/OpenBLAS is 39.432 us. Current f64 GEMM128 is 73.624 us
-versus NumPy 78.457 us. These allocation-inclusive one-CPU observations on a shared
-laptop are not a universal ranking. The mixed f32 64 result and every other
-win/loss remain visible. See [release QA](../../docs/QA-0.7.3.md).
+All raw measurements, process pairs, source archives, locks and original methods are preserved. Chart labels use six significant digits with ≈ for rounding. Exact tables preserve all source digits through Decimal unit conversion.
 
-## Previous clean evidence
-
-- [0.7.2](0.7.2-clean-5067333/README.md) and [registry 0.7.1](0.7.1-registry-5067333/README.md): dense f64 engine, 62 cases each; GEMM128 120.337→68.456 us in that paired run. See [0.7.2 QA](../../docs/QA-0.7.2.md) for conditions.
-
-- [0.7.1](0.7.1-clean-4f60380/README.md) and [registry 0.7.0](0.7.0-registry-4f60380/README.md): fused layer normalization, 50 cases each.
-- [0.7.0](0.7.0-clean-aa7347a/README.md) and [registry 0.6.0](0.6.0-registry-aa7347a/README.md): batched/vector autodiff and normalized training stages.
-
-## Earlier batch-only history
-
-All values below are median batch time in microseconds. See each report for the
-competitors, exact workload, allocation boundaries and numerical API differences.
-Earlier runs were unpinned and lacked source snapshots; 0.4 pins one CPU and includes
-an exact source archive. Frequency and other laptop activity are uncontrolled.
-These trends cannot establish a controlled speedup or any complete-model FPS.
-
-| Version | GEMM 128 f64 | Sum 65536 f64 | Softmax 256x64 f64 | Conv f32 | RGB 1080p to 224 f32 |
-|---|---:|---:|---:|---:|---:|
-| [0.1.1](0.1.1/README.md) | 3311.847 | 37.352 | 765.891 | — | — |
-| [0.2.0](0.2.0/README.md) | 382.258 | 33.711 | 221.617 | — | — |
-| [0.3.0](0.3.0/README.md) | 384.712 | 31.040 | 201.896 | 1202.783 | 1105.560 |
-| [0.4.0](0.4.0/README.md) | 86.102 | 5.538 | 77.015 | 11.361 | 438.953 |
-| [baseline-0.1.0](baseline-0.1.0/README.md) | 3029.011 | 31.027 | 397.788 | — | — |
-
-Kernix and ndarray now share matrixmultiply for native GEMM. Native FMA/order can
-change last bits; ordered matmul, reference convolution and compensated sums are
-explicit choices. QR/Cholesky and reverse-mode graph overhead remain optimization
-work; the current report preserves these unfavorable comparisons too.
-
-The [additional OpenBLAS run](0.4.0-openblas/README.md) uses the same NumPy version
-with an optimized bundled BLAS, in an isolated environment. Prefer it when assessing
-the NumPy comparison: GEMM128 is Kernix 84.936 us vs NumPy 78.261 us. The original
-0.4 report uses system CBLAS 3.12 and remains available unchanged. Both show current
-QR/Cholesky gaps, rather than implying general superiority from the reference build.
+| Report | Hardware | Measure | Workloads |
+|---|---|---|---:|
+| [runner-windows-latest-40059566395](runner-windows-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 34 |
+| [runner-ubuntu-latest-40059566395](runner-ubuntu-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 34 |
+| [runner-ubuntu-24.04-arm-40059566395](runner-ubuntu-24.04-arm-40059566395/report.html) | Neoverse-N2 / Linux | Individual-call medians | 34 |
+| [runner-macos-latest-40059566395](runner-macos-latest-40059566395/report.html) | Apple M1 (Virtual) / macOS | Individual-call medians | 34 |
+| [paired-windows-latest-40059566395](paired-windows-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Windows | Paired process ratios | 12 |
+| [paired-ubuntu-latest-40059566395](paired-ubuntu-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Paired process ratios | 12 |
+| [paired-ubuntu-24.04-arm-40059566395](paired-ubuntu-24.04-arm-40059566395/report.html) | Neoverse-N2 / Linux | Paired process ratios | 12 |
+| [paired-macos-latest-40059566395](paired-macos-latest-40059566395/report.html) | Apple M1 (Virtual) / macOS | Paired process ratios | 12 |
+| [0.11.0-paired-final](0.11.0-paired-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 12 |
+| [0.11.0-final](0.11.0-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 34 |
+| [runner-windows-latest-40000558153](runner-windows-latest-40000558153/report.html) | INTEL(R) XEON(R) PLATINUM 8573C / Windows | Individual-call medians | 31 |
+| [runner-ubuntu-latest-40000558153](runner-ubuntu-latest-40000558153/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 31 |
+| [runner-ubuntu-24.04-arm-40000558153](runner-ubuntu-24.04-arm-40000558153/report.html) | Neoverse-N2 / Linux | Individual-call medians | 31 |
+| [runner-macos-latest-40000558153](runner-macos-latest-40000558153/report.html) | Apple M1 (Virtual) / macOS | Individual-call medians | 31 |
+| [baseline-windows-latest-40059566395](baseline-windows-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 34 |
+| [baseline-ubuntu-latest-40059566395](baseline-ubuntu-latest-40059566395/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 34 |
+| [baseline-ubuntu-24.04-arm-40059566395](baseline-ubuntu-24.04-arm-40059566395/report.html) | Neoverse-N2 / Linux | Individual-call medians | 34 |
+| [baseline-macos-latest-40059566395](baseline-macos-latest-40059566395/report.html) | Apple M1 (Virtual) / macOS | Individual-call medians | 34 |
+| [0.10.0-registry-011](0.10.0-registry-011/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 34 |
+| [0.10.0-paired-final](0.10.0-paired-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 13 |
+| [0.10.0-final](0.10.0-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 31 |
+| [runner-windows-latest-39980084433](runner-windows-latest-39980084433/report.html) | AMD EPYC 9V74 80-Core Processor / Windows | Individual-call medians | 25 |
+| [runner-ubuntu-latest-39980084433](runner-ubuntu-latest-39980084433/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 25 |
+| [runner-ubuntu-24.04-arm-39980084433](runner-ubuntu-24.04-arm-39980084433/report.html) | Neoverse-N2 / Linux | Individual-call medians | 25 |
+| [runner-macos-latest-39980084433](runner-macos-latest-39980084433/report.html) | Apple M1 (Virtual) / macOS | Individual-call medians | 25 |
+| [0.9.0-registry-010](0.9.0-registry-010/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 31 |
+| [0.9.0-paired-final](0.9.0-paired-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 7 |
+| [0.9.0-final](0.9.0-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 25 |
+| [runner-windows-latest-39719312815](runner-windows-latest-39719312815/report.html) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 21 |
+| [runner-ubuntu-latest-39719312815](runner-ubuntu-latest-39719312815/report.html) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 21 |
+| [runner-ubuntu-24.04-arm-39719312815](runner-ubuntu-24.04-arm-39719312815/report.html) | Neoverse-N2 / Linux | Individual-call medians | 21 |
+| [runner-macos-latest-39720416210](runner-macos-latest-39720416210/report.html) | Apple M1 (Virtual) / macOS | Individual-call medians | 21 |
+| [0.8.0-registry-090](0.8.0-registry-090/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 21 |
+| [0.8.0-paired-final](0.8.0-paired-final/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 7 |
+| [0.8.0-clean-18b91c6](0.8.0-clean-18b91c6/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 21 |
+| [0.7.3-registry-fix080](0.7.3-registry-fix080/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 21 |
+| [0.7.3-clean-bc459f4](0.7.3-clean-bc459f4/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 19 |
+| [0.7.2-registry-bc459f4](0.7.2-registry-bc459f4/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 19 |
+| [0.7.2-clean-5067333](0.7.2-clean-5067333/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 16 |
+| [0.7.1-registry-5067333](0.7.1-registry-5067333/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 16 |
+| [0.7.1-clean-4f60380](0.7.1-clean-4f60380/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 14 |
+| [0.7.0-registry-4f60380](0.7.0-registry-4f60380/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 14 |
+| [0.7.0-clean-aa7347a](0.7.0-clean-aa7347a/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 14 |
+| [0.6.0-registry-aa7347a](0.6.0-registry-aa7347a/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 10 |
+| [0.6.0-clean-041f2a1](0.6.0-clean-041f2a1/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 9 |
+| [0.5.0-registry-041f2a1](0.5.0-registry-041f2a1/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 9 |
+| [0.5.0](0.5.0/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 18 |
+| [0.4.0-openblas](0.4.0-openblas/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 13 |
+| [0.4.0](0.4.0/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 13 |
+| [0.3.0](0.3.0/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 9 |
+| [0.2.0](0.2.0/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 7 |
+| [0.1.1](0.1.1/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 5 |
+| [baseline-0.1.0](baseline-0.1.0/report.html) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Batch-mean medians | 5 |

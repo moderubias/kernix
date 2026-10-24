@@ -1,33 +1,53 @@
-# Kernix benchmark report: 0.2.0
+# Kernix 0.2.0 · performance brief
 
-Measured 2026-10-19T14:33:41Z on 12th Gen Intel(R) Core(TM) i3-1215U.
+12th Gen Intel(R) Core(TM) i3-1215U / Linux
 
-Rust: rustc 1.99.0 (b940084d7 2026-09-28); NumPy: 2.5.4; one CPU thread; float64.
+**Batch-mean median, microseconds per operation. Lower is faster. All recorded digits retained.**
 
-Source: `815518001653562c8881f986a439f65464eebeea`; working tree dirty: True.
+7 workloads · 21 observations
 
-## Comparative CPU results
+No previous-version baseline attached. Sequential run changes are descriptive; paired process evidence is shown separately.
 
-| Workload | Kernix p50 / p95 (us) | ndarray p50 / p95 (us) | NumPy p50 / p95 (us) |
+[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
+
+[![Performance brief preview](latency.png)](latency.pdf)
+
+| Workload | Kernix | ndarray | NumPy |
 |---|---:|---:|---:|
-| add_65536_f64 | 26.131 / 38.754 | 24.535 / 32.052 | 22.794 / 24.893 |
-| matmul_128_f64 | 382.258 / 490.539 | 88.789 / 151.150 | 697.070 / 760.648 |
-| matmul_32_f64 | 5.921 / 7.797 | 1.551 / 2.836 | 10.537 / 13.784 |
-| matmul_reuse_128_f64 | 418.931 / 500.082 | 87.281 / 102.776 | 701.066 / 706.400 |
-| matmul_reuse_32_f64 | 5.529 / 5.798 | 1.500 / 1.671 | 11.144 / 11.545 |
-| softmax_256x64_f64 | 221.617 / 326.208 | 67.251 / 85.186 | 92.273 / 137.054 |
-| sum_65536_f64 | 33.711 / 35.444 | 8.789 / 8.895 | 10.351 / 10.768 |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 5.9207331281079805 | **1.5510405732365532** | 10.537275600505689 |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 382.25798484848486 | **88.7894219858156** | 697.0703333333334 |
+| Matrix multiplication · reused output · 32 × 32 · 32 × 32 · f64 | 5.52918597965502 | **1.4996237178333633** | 11.143829768270945 |
+| Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64 | 418.93075 | **87.28080139372822** | 701.0661111111111 |
+| Elementwise addition · 65,536 elements · f64 | 26.130575757575756 | 24.53514019607843 | **22.793959890610757** |
+| Sum reduction · 65,536 elements · f64 | 33.71090026954178 | **8.789467135325132** | 10.351081953642384 |
+| Row softmax · 256 × 64 · f64 | 221.61737168141594 | **67.2507345844504** | 92.27262361623616 |
 
-## Method and limits
+## Version comparison
 
-Operations allocate outputs except scalar sums and explicitly named matmul_reuse cases.
-Reuse cases time preallocated output writes in all libraries. Inputs are preallocated and
-contiguous. ndarray uses its default matrixmultiply engine (no BLAS feature); NumPy
-uses the build recorded in raw.json. BLAS/OMP thread counts are fixed to one.
-These are warmed, sequential wall-clock samples on a shared laptop; CPU frequency
-and other system load are uncontrolled. p95 is the maximum of 15 batch means,
-not a per-request tail-latency guarantee. Different sum orders may round differently.
-The ndarray softmax is an explicitly coded stable rowwise comparison, not a native
-ndarray softmax API. NumPy timings include Python call overhead. No GPU comparison.
-No claim that a complete Full HD model reaches 120 FPS follows from these measurements.
-raw.json contains all measurements, dependencies and environment metadata.
+0 of 7 workloads have paired evidence. Exploratory 95% intervals resample process pairs, not calls. No multiple-comparison adjustment.
+
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Matrix multiplication · reused output · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Elementwise addition · 65,536 elements · f64 | — | No paired comparison |
+| Sum reduction · 65,536 elements · f64 | — | No paired comparison |
+| Row softmax · 256 × 64 · f64 | — | No paired comparison |
+
+## Historical statistic
+
+These are medians of 15 warmed batch means, not per-call medians. The original p95 field is the maximum of those 15 batch means. No per-call p95/p99, accuracy or allocation probes are inferred.
+
+## Method and provenance
+
+CPU affinity was not pinned. Frequency and background load are uncontrolled.
+
+
+
+Numbers retain source precision; recorded digits do not imply equivalent physical measurement accuracy. Lowest observed medians are bold only when peers were measured. No aggregate winner or universal ranking is inferred.
+
+[Original report and commentary](original-report.txt) · [Raw measurements](raw.json)
+
+Measured source `815518001653562c8881f986a439f65464eebeea`. Run `0.2.0`. Rendering does not change measurements.

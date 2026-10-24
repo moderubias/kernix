@@ -1,58 +1,97 @@
-# Kernix 0.10.0 · CPU benchmarks
+# Kernix 0.10.0 · performance brief
 
-INTEL(R) XEON(R) PLATINUM 8573C · one BLAS/Rayon thread · allocating APIs unless marked reused · warmed individual calls · explicit 2-worker rows labelled
+INTEL(R) XEON(R) PLATINUM 8573C / Windows
 
-**Microseconds per call, median. Lower is faster; bold marks the lowest observed median in each row.**
+**Per-call median, microseconds per operation. Lower is faster. All recorded digits retained.**
 
-No previous-version baseline is paired with this view.
+31 workloads · 108 observations
+
+No previous-version baseline attached. Sequential run changes are descriptive; paired process evidence is shown separately.
+
+[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
+
+[![Performance brief preview](latency.png)](latency.pdf)
 
 | Workload | Kernix | ndarray | nalgebra | faer | Candle | NumPy |
 |---|---:|---:|---:|---:|---:|---:|
-| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | **106.900** | — | — | — | — | — |
-| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | **114.900** | — | — | — | — | — |
-| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | **504.100** | — | — | — | — | — |
-| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | **77.800** | — | — | — | — | — |
-| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | 48.500 | — | — | — | — | **8.100** |
-| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | **10.600** | — | — | — | 73.400 | — |
-| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 1.800 | **1.400** | **1.400** | 1.900 | 2.700 | 2.400 |
-| Matrix multiplication · 64 × 64 · 64 × 64 · f64 | 14.900 | 74.700 | 72.100 | 9.600 | 15.600 | **8.200** |
-| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 106.900 | 66.900 | 66.100 | **60.600** | 178.000 | 72.200 |
-| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 827.700 | 1056.900 | 524.200 | 511.300 | 833.200 | **485.700** |
-| Matrix multiplication · 64 × 64 · 64 × 64 · f32 | 7.500 | 35.900 | 4.800 | **4.700** | 8.100 | **4.700** |
-| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 54.200 | 132.000 | **31.200** | 31.800 | 98.800 | 38.200 |
-| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 403.900 | **224.500** | 229.200 | 232.200 | 403.600 | 240.900 |
-| Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64 | **2.400** | — | — | — | 4.500 | 2.900 |
-| Column-pivoted QR · 96 × 32 · f64 | **134.500** | — | 142.400 | 147.800 | — | — |
-| Column-pivoted QR · 256 × 64 · f64 | 1042.100 | — | 1347.400 | **758.700** | — | — |
-| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | 102.000 | — | 164.100 | — | — | **99.400** |
-| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | **114.600** | — | 164.400 | — | — | 177.600 |
-| Thin QR · 96 × 32 · f64 | 131.200 | — | 81.900 | 130.800 | — | **65.000** |
-| Thin QR · 256 × 64 · f64 | 841.700 | — | 734.200 | 644.000 | — | **535.100** |
-| Cholesky factorization · 64 × 64 · f64 | 29.300 | — | 19.400 | **17.200** | — | 19.300 |
-| Cholesky factorization · 128 × 128 · f64 | 166.600 | — | 122.600 | **54.000** | — | 121.900 |
-| Cholesky factorization · 256 × 256 · f64 | 928.100 | — | 919.200 | **235.600** | — | 1008.200 |
-| Row softmax · 256 × 64 · f64 | 118.000 | **101.400** | — | — | 205.500 | 129.200 |
-| Create zeros · 64 × 64 · f32 | 0.300 | **0.200** | — | 0.500 | 0.500 | 0.700 |
-| Create ones · 64 × 64 · f32 | 0.500 | **0.400** | — | **0.400** | 0.700 | 1.700 |
-| Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64 | **4.200** | — | — | — | 10.300 | — |
-| Model inference · batched normalized/sliced MLP · f64 | **3.400** | — | — | — | 8.800 | — |
-| Model recording + forward · batched normalized/sliced MLP · f64 | **4.700** | — | — | — | 11.500 | — |
-| Model backward · prepared graph → fresh gradients · f64 | **5.600** | — | — | — | 35.300 | — |
-| Parameter update · transactional SGD, fixed gradients · f64 | **0.900** | — | — | — | — | — |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 1.8 | **1.4** | **1.4** | 1.9 | 2.7 | 2.4 |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f64 | 14.9 | 74.7 | 72.1 | 9.6 | 15.6 | **8.2** |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 106.9 | 66.9 | 66.1 | **60.6** | 178 | 72.2 |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 827.7 | 1056.9 | 524.19999999999994 | 511.3 | 833.2 | **485.7** |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f32 | 7.5 | 35.9 | 4.8 | **4.7** | 8.1 | **4.7** |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 54.2 | 132 | **31.2** | 31.8 | 98.8 | 38.2 |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 403.9 | **224.5** | 229.2 | 232.2 | 403.6 | 240.9 |
+| Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64 | **2.4** | — | — | — | 4.5 | 2.9 |
+| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | 106.9 | — | — | — | — | — |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 114.9 | — | — | — | — | — |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 504.09999999999994 | — | — | — | — | — |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 77.8 | — | — | — | — | — |
+| Column-pivoted QR · 96 × 32 · f64 | **134.5** | — | 142.4 | 147.8 | — | — |
+| Column-pivoted QR · 256 × 64 · f64 | 1042.1 | — | 1347.4 | **758.7** | — | — |
+| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | 102 | — | 164.1 | — | — | **99.4** |
+| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | **114.6** | — | 164.4 | — | — | 177.6 |
+| Thin QR · 96 × 32 · f64 | 131.2 | — | 81.9 | 130.80000000000001 | — | **65** |
+| Thin QR · 256 × 64 · f64 | 841.7 | — | 734.2 | 644 | — | **535.1** |
+| Cholesky factorization · 64 × 64 · f64 | 29.3 | — | 19.4 | **17.2** | — | 19.3 |
+| Cholesky factorization · 128 × 128 · f64 | 166.6 | — | 122.6 | **54** | — | 121.9 |
+| Cholesky factorization · 256 × 256 · f64 | 928.1 | — | 919.2 | **235.6** | — | 1008.2 |
+| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | **10.6** | — | — | — | 73.4 | — |
+| Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64 | **4.2** | — | — | — | 10.3 | — |
+| Model inference · batched normalized/sliced MLP · f64 | **3.4** | — | — | — | 8.8 | — |
+| Model recording + forward · batched normalized/sliced MLP · f64 | **4.7** | — | — | — | 11.5 | — |
+| Model backward · prepared graph → fresh gradients · f64 | **5.6** | — | — | — | 35.3 | — |
+| Parameter update · transactional SGD, fixed gradients · f64 | 0.9 | — | — | — | — | — |
+| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | 48.5 | — | — | — | — | **8.1** |
+| Row softmax · 256 × 64 · f64 | 118 | **101.4** | — | — | 205.5 | 129.2 |
+| Create zeros · 64 × 64 · f32 | 0.3 | **0.2** | — | 0.5 | 0.5 | 0.7 |
+| Create ones · 64 × 64 · f32 | 0.5 | **0.4** | — | **0.4** | 0.7 | 1.7 |
 
-![Relative latency by workload](latency.png)
+## Version comparison
 
-Each panel has its own scale. Ratios are library / Kernix median; below 1 means the comparator was faster.
+0 of 31 workloads have paired evidence. Exploratory 95% intervals resample process pairs, not calls. No multiple-comparison adjustment.
 
-## Reading these results
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f64 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | — | No paired comparison |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f32 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | — | No paired comparison |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | — | No paired comparison |
+| Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | — | No paired comparison |
+| Column-pivoted QR · 96 × 32 · f64 | — | No paired comparison |
+| Column-pivoted QR · 256 × 64 · f64 | — | No paired comparison |
+| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | — | No paired comparison |
+| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | — | No paired comparison |
+| Thin QR · 96 × 32 · f64 | — | No paired comparison |
+| Thin QR · 256 × 64 · f64 | — | No paired comparison |
+| Cholesky factorization · 64 × 64 · f64 | — | No paired comparison |
+| Cholesky factorization · 128 × 128 · f64 | — | No paired comparison |
+| Cholesky factorization · 256 × 256 · f64 | — | No paired comparison |
+| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | — | No paired comparison |
+| Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64 | — | No paired comparison |
+| Model inference · batched normalized/sliced MLP · f64 | — | No paired comparison |
+| Model recording + forward · batched normalized/sliced MLP · f64 | — | No paired comparison |
+| Model backward · prepared graph → fresh gradients · f64 | — | No paired comparison |
+| Parameter update · transactional SGD, fixed gradients · f64 | — | No paired comparison |
+| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | — | No paired comparison |
+| Row softmax · 256 × 64 · f64 | — | No paired comparison |
+| Create zeros · 64 × 64 · f32 | — | No paired comparison |
+| Create ones · 64 × 64 · f32 | — | No paired comparison |
 
-Minimum-norm rows include factorization and four RHS. Kernix uses pivoted QR plus scaled implicit RZ; NumPy uses native lstsq; nalgebra uses native SVD/solve. Fixtures have a wide rank gap; null-space orthogonality and normal residual are validated independently. Algorithm costs and rank policies differ; see DETAILS.md for thresholds. These are not general SVD comparisons.
+## Method and provenance
 
-- One measured host and one BLAS/Rayon thread. CPU affinity was not pinned. Frequency and background load are uncontrolled; these observations establish no universal ranking. Rows marked 2 workers use a private two-thread executor and reusable output; their recorded CPU affinity can differ. They compare Kernix versions, not single-thread competitors.
-- Timing includes output allocation and destruction except rows explicitly marked reused. Inputs and imports are prepared outside timing. GEMM inputs are row-major; output layout and validation contracts can differ by library.
-- Per-call p95 describes 256 individual warmed calls. The 15 batch means form a separate distribution; neither is a confidence interval.
-- Rust allocation probes use a separate instrumented binary. Native engines may retain packing buffers; warmed probes exclude their first-use allocation and retention. NumPy native allocations are unavailable, never zero.
+CPU affinity was not pinned. Frequency and background load are uncontrolled.
 
-[Interactive report](report.html) · [Detailed measurements and method](DETAILS.md) · [Raw samples and provenance](raw.json) · [Printable chart](latency.pdf)
+Minimum-norm rows use pivoted QR plus scaled implicit RZ in Kernix; NumPy native lstsq; nalgebra native SVD/solve. Algorithm costs and rank policies differ. See original method for thresholds.
 
-Measured source `1c53d4663a48de5a588809c2b69c3a6a5bdad7b2`. Run `runner-windows-latest-40000558153`. Rendering does not remeasure or modify raw evidence.
+Numbers retain source precision; recorded digits do not imply equivalent physical measurement accuracy. Lowest observed medians are bold only when peers were measured. No aggregate winner or universal ranking is inferred.
+
+[Original report and commentary](original-report.txt) · [Raw measurements](raw.json)
+
+Measured source `1c53d4663a48de5a588809c2b69c3a6a5bdad7b2`. Run `runner-windows-latest-40000558153`. Rendering does not change measurements.

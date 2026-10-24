@@ -1,24 +1,28 @@
-# Kernix 0.11.0 vs 0.10.0 · paired processes
+# Kernix 0.11.0 · paired process comparison
 
-Current: `runner-macos-latest-40059566395`. Baseline: `baseline-macos-latest-40059566395`.
+9 fresh-process pairs per workload. Ratios below 1 mean less time.
 
-9 fresh-process pairs per workload. Lower ratio is faster.
-95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
-Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
 
-| Workload | Current / baseline latency | 95% interval |
-|---|---:|---:|
-| Matrix multiplication 128 × 128 · 128 × 128 f64 | 0.981× | [0.964, 1.032] |
-| Matrix multiplication 128 × 128 · 128 × 128 f32 | 1.018× | [0.980, 1.057] |
-| Matrix multiplication 256 × 256 · 256 × 256 f64 | 1.006× | [0.917, 1.012] |
-| Matrix multiplication 256 × 256 · 256 × 256 f32 | 0.981× | [0.913, 1.001] |
-| Independent matrix operands 128 × 128 · 128 × 128 f64 | 0.981× | [0.960, 1.000] |
-| Independent matrix operands 128 × 128 · 128 × 128 f32 | 1.000× | [0.983, 1.036] |
-| Cholesky factorization 128 × 128 f64 | 1.001× | [1.000, 1.062] |
-| Cholesky factorization 256 × 256 f64 | 0.520× | [0.510, 0.522] |
-| Cholesky factorization 512 × 512 f64 | 0.372× | [0.368, 0.398] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f64 | 0.910× | [0.894, 0.968] |
-| Matmul · 2 workers · reused output 256 × 256 · 256 × 256 f64 | 0.889× | [0.876, 0.927] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f32 | 0.796× | [0.768, 0.829] |
+[![Paired process comparison preview](latency.png)](latency.pdf)
 
-Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 0.9811495292521482× [0.9640939796747162, 1.0317623762376238] | Timing direction unclear |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 1.0179028132992327× [0.9799530431641683, 1.057152803374698] | Timing direction unclear |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 1.0055372096965587× [0.9167619146578, 1.0116898335997095] | Timing direction unclear |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 0.9812478690760313× [0.9126053787548315, 1.0005781117979278] | Timing direction unclear |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f64 | 0.9812× [0.9602777248236628, 1.0004283818658641] | Timing direction unclear |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f32 | 1× [0.9825582554268742, 1.0363957812595257] | Timing direction unclear |
+| Cholesky factorization · 128 × 128 · f64 | 1.0010035092779541× [0.9997475582268971, 1.0615615615615615] | Timing direction unclear |
+| Cholesky factorization · 256 × 256 · f64 | 0.520454357259916× [0.5096753203342619, 0.521812129502964] | Observed time reduction |
+| Cholesky factorization · 512 × 512 · f64 | 0.3718924151845818× [0.3676295604130526, 0.39798777381558836] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 0.9097270142703359× [0.8939063004846527, 0.9683136560953355] | Observed time reduction |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 0.8891034482758621× [0.8764368128463624, 0.9266004415011038] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 0.7962008346079043× [0.7679718133772803, 0.8294814814814815] | Observed time reduction |
+
+## Method
+
+95% percentile bootstrap over paired process blocks; 10000 resamples; exploratory, no multiple-comparison adjustment
+
+Current `runner-macos-latest-40059566395`; baseline `baseline-macos-latest-40059566395`. All source ratio digits, paired observations and process ordering are preserved. No absolute peer latencies are inferred.

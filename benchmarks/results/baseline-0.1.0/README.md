@@ -1,30 +1,49 @@
-# Kernix benchmark report: baseline-0.1.0
+# Kernix baseline-0.1.0 · performance brief
 
-Measured 2026-10-19T14:20:36Z on 12th Gen Intel(R) Core(TM) i3-1215U.
+12th Gen Intel(R) Core(TM) i3-1215U / Linux
 
-Rust: rustc 1.99.0 (b940084d7 2026-09-28); NumPy: 2.5.4; one CPU thread; float64.
+**Batch-mean median, microseconds per operation. Lower is faster. All recorded digits retained.**
 
-Source: `b208e4231d00635eb4abb5c1647222f5779c43a9`; working tree dirty: True.
+5 workloads · 15 observations
 
-## Comparative CPU results
+No previous-version baseline attached. Sequential run changes are descriptive; paired process evidence is shown separately.
 
-| Workload | Kernix p50 / p95 (us) | ndarray p50 / p95 (us) | NumPy p50 / p95 (us) |
+[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
+
+[![Performance brief preview](latency.png)](latency.pdf)
+
+| Workload | Kernix | ndarray | NumPy |
 |---|---:|---:|---:|
-| add_65536_f64 | 23.402 / 31.312 | 21.199 / 21.410 | 23.481 / 24.788 |
-| matmul_128_f64 | 3029.011 / 4304.708 | 83.317 / 88.888 | 705.774 / 910.168 |
-| matmul_32_f64 | 32.013 / 36.372 | 1.502 / 1.595 | 11.044 / 13.884 |
-| softmax_256x64_f64 | 397.788 / 424.374 | 67.230 / 69.091 | 94.602 / 108.892 |
-| sum_65536_f64 | 31.027 / 51.026 | 5.698 / 6.087 | 10.184 / 10.514 |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 32.012596670934698 | **1.502201405996515** | 11.043529801324503 |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 3029.011111111111 | **83.31696677740864** | 705.7743333333334 |
+| Elementwise addition · 65,536 elements · f64 | 23.401578110383536 | **21.198666101694915** | 23.480653521126762 |
+| Sum reduction · 65,536 elements · f64 | 31.027383374689827 | **5.697730856882406** | 10.183508957654723 |
+| Row softmax · 256 × 64 · f64 | 397.7875396825397 | **67.23014516129032** | 94.60170943396227 |
 
-## Method and limits
+## Version comparison
 
-All operations allocate their output except scalar sums. Inputs are preallocated and
-contiguous. ndarray uses its default matrixmultiply engine (no BLAS feature); NumPy
-uses the build recorded in raw.json. BLAS/OMP thread counts are fixed to one.
-These are warmed, sequential wall-clock samples on a shared laptop; CPU frequency
-and other system load are uncontrolled. p95 is the maximum of 15 batch means,
-not a per-request tail-latency guarantee. Different sum orders may round differently.
-The ndarray softmax is an explicitly coded stable rowwise comparison, not a native
-ndarray softmax API. NumPy timings include Python call overhead. No GPU comparison.
-No claim that a complete Full HD model reaches 120 FPS follows from these measurements.
-raw.json contains all measurements, dependencies and environment metadata.
+0 of 5 workloads have paired evidence. Exploratory 95% intervals resample process pairs, not calls. No multiple-comparison adjustment.
+
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | — | No paired comparison |
+| Elementwise addition · 65,536 elements · f64 | — | No paired comparison |
+| Sum reduction · 65,536 elements · f64 | — | No paired comparison |
+| Row softmax · 256 × 64 · f64 | — | No paired comparison |
+
+## Historical statistic
+
+These are medians of 15 warmed batch means, not per-call medians. The original p95 field is the maximum of those 15 batch means. No per-call p95/p99, accuracy or allocation probes are inferred.
+
+## Method and provenance
+
+CPU affinity was not pinned. Frequency and background load are uncontrolled.
+
+
+
+Numbers retain source precision; recorded digits do not imply equivalent physical measurement accuracy. Lowest observed medians are bold only when peers were measured. No aggregate winner or universal ranking is inferred.
+
+[Original report and commentary](original-report.txt) · [Raw measurements](raw.json)
+
+Measured source `b208e4231d00635eb4abb5c1647222f5779c43a9`. Run `baseline-0.1.0`. Rendering does not change measurements.

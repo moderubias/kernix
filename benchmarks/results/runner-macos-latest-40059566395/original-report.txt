@@ -1,0 +1,97 @@
+# Kernix 0.11.0 · CPU benchmarks
+
+Apple M1 (Virtual) · warmed public API calls · conditions per workload
+
+**Microseconds per call, median. Lower is faster. Bold marks a lowest observed median only among at least two measured libraries.**
+
+Baseline: baseline-macos-latest-40059566395. Sequential run changes are descriptive, not randomized/interleaved process comparisons.
+
+| Workload | Kernix | Kernix · explicit Accelerate | ndarray | nalgebra | faer | Candle | NumPy | Sequential run change |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Independent matrix operands · 128 × 128 · 128 × 128 · f64 | 101.750 | — | — | — | — | — | **16.542** | +1.3% |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f32 | 52.916 | — | — | — | — | — | **6.000** | -16.5% |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | 2.291 | — | 2.083 | 2.125 | 2.458 | 2.542 | **1.375** | -16.7% |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f64 | 15.000 | — | 41.542 | 13.625 | 14.208 | 15.167 | **3.500** | +11.8% |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 111.833 | **16.167** | 110.583 | 95.125 | 100.917 | 108.542 | 17.291 | +16.8% |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 753.208 | **101.958** | 792.250 | 804.417 | 871.209 | 753.166 | 115.875 | -11.9% |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f32 | 7.584 | — | 6.875 | 7.166 | 22.250 | 8.833 | **1.916** | +12.4% |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 48.875 | 6.500 | 51.333 | 55.500 | 57.292 | 54.000 | **5.250** | -3.5% |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 398.125 | 42.292 | 424.042 | 366.917 | 436.833 | 400.541 | **35.834** | -1.9% |
+| Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64 | 2.834 | — | — | — | — | 3.666 | **2.125** | +11.5% |
+| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | 22.625 | — | — | — | — | — | — | -40.8% |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 65.666 | — | — | — | — | — | — | -53.5% |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 447.583 | — | — | — | — | — | — | -1.6% |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 55.291 | — | — | — | — | — | — | +5.6% |
+| Cholesky factorization · 512 × 512 · f64 | 3496.208 | — | — | 5620.458 | **1658.792** | — | 1888.375 | -62.7% |
+| Column-pivoted QR · 96 × 32 · f64 | 65.208 | — | — | 99.334 | **41.917** | — | — | -5.3% |
+| Column-pivoted QR · 256 × 64 · f64 | 578.208 | — | — | 1061.250 | **301.209** | — | — | -3.2% |
+| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | **49.208** | — | — | 72.291 | — | — | 84.625 | +7.6% |
+| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | **65.584** | — | — | 147.375 | — | — | 158.833 | -1.2% |
+| Thin QR · 96 × 32 · f64 | 61.958 | — | — | **44.000** | 52.416 | — | 48.959 | +7.9% |
+| Thin QR · 256 × 64 · f64 | 577.750 | — | — | 328.375 | **326.667** | — | 401.708 | +3.6% |
+| Cholesky factorization · 64 × 64 · f64 | 22.708 | — | — | 21.084 | **10.292** | — | 16.042 | +12.6% |
+| Cholesky factorization · 128 × 128 · f64 | 166.459 | — | — | 113.792 | **47.083** | — | 51.250 | -15.6% |
+| Cholesky factorization · 256 × 256 · f64 | 646.875 | — | — | 734.250 | **275.084** | — | 317.000 | -42.1% |
+| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | 6.125 | — | — | — | — | **4.250** | — | -23.4% |
+| Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64 | **3.250** | — | — | — | — | 6.541 | — | -1.3% |
+| Model inference · batched normalized/sliced MLP · f64 | **2.458** | — | — | — | — | 5.958 | — | +1.7% |
+| Model recording + forward · batched normalized/sliced MLP · f64 | **3.583** | — | — | — | — | 6.208 | — | +11.7% |
+| Model backward · prepared graph → fresh gradients · f64 | **3.250** | — | — | — | — | 20.958 | — | +1.3% |
+| Parameter update · transactional SGD, fixed gradients · f64 | 1.875 | — | — | — | — | — | — | +164.8% |
+| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | 63.000 | — | — | — | — | — | **5.584** | +0.6% |
+| Row softmax · 256 × 64 · f64 | 76.292 | — | **58.875** | — | — | 66.167 | 83.041 | -11.2% |
+| Create zeros · 64 × 64 · f32 | 0.333 | — | 0.333 | — | **0.292** | 0.417 | 0.541 | +14.0% |
+| Create ones · 64 × 64 · f32 | **0.250** | — | 0.292 | — | 0.334 | 0.416 | 1.209 | -24.9% |
+
+## Version comparison
+
+12 of 34 workloads have paired evidence. Intervals resample process pairs, not calls. Exploratory; no multiple-comparison adjustment.
+
+| Workload | Paired latency ratio [95% interval] | Interpretation |
+|---|---:|---|
+| Independent matrix operands · 128 × 128 · 128 × 128 · f64 | 0.981× [0.960, 1.000] | Timing direction unclear |
+| Independent matrix operands · 128 × 128 · 128 × 128 · f32 | 1.000× [0.983, 1.036] | Timing direction unclear |
+| Matrix multiplication · 32 × 32 · 32 × 32 · f64 | — | No paired comparison |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f64 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 0.981× [0.964, 1.032] | Timing direction unclear |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f64 | 1.006× [0.917, 1.012] | Timing direction unclear |
+| Matrix multiplication · 64 × 64 · 64 × 64 · f32 | — | No paired comparison |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 1.018× [0.980, 1.057] | Timing direction unclear |
+| Matrix multiplication · 256 × 256 · 256 × 256 · f32 | 0.981× [0.913, 1.001] | Timing direction unclear |
+| Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | — | No paired comparison |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 0.910× [0.894, 0.968] | Observed time reduction |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 0.889× [0.876, 0.927] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 0.796× [0.768, 0.829] | Observed time reduction |
+| Cholesky factorization · 512 × 512 · f64 | 0.372× [0.368, 0.398] | Observed time reduction |
+| Column-pivoted QR · 96 × 32 · f64 | — | No paired comparison |
+| Column-pivoted QR · 256 × 64 · f64 | — | No paired comparison |
+| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | — | No paired comparison |
+| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | — | No paired comparison |
+| Thin QR · 96 × 32 · f64 | — | No paired comparison |
+| Thin QR · 256 × 64 · f64 | — | No paired comparison |
+| Cholesky factorization · 64 × 64 · f64 | — | No paired comparison |
+| Cholesky factorization · 128 × 128 · f64 | 1.001× [1.000, 1.062] | Timing direction unclear |
+| Cholesky factorization · 256 × 256 · f64 | 0.520× [0.510, 0.522] | Observed time reduction |
+| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | — | No paired comparison |
+| Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64 | — | No paired comparison |
+| Model inference · batched normalized/sliced MLP · f64 | — | No paired comparison |
+| Model recording + forward · batched normalized/sliced MLP · f64 | — | No paired comparison |
+| Model backward · prepared graph → fresh gradients · f64 | — | No paired comparison |
+| Parameter update · transactional SGD, fixed gradients · f64 | — | No paired comparison |
+| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | — | No paired comparison |
+| Row softmax · 256 × 64 · f64 | — | No paired comparison |
+| Create zeros · 64 × 64 · f32 | — | No paired comparison |
+| Create ones · 64 × 64 · f32 | — | No paired comparison |
+
+## Method and limits
+
+CPU affinity was not pinned. Frequency and background load are uncontrolled; observations establish no universal ranking.
+
+Minimum-norm rows use pivoted QR plus scaled implicit RZ in Kernix; NumPy native lstsq; nalgebra native SVD/solve. Algorithm costs and rank policies differ. Normal residuals and null-space orthogonality are independently checked. See DETAILS.md for thresholds.
+
+Ordinary allocating rows include output allocation and destruction. Explicit two-worker rows reuse output and exclude pool preparation. NumPy native allocations are unavailable, never zero. Warmed probes exclude first-use native workspace and retention.
+
+[Interactive report](report.html) · [Full method](DETAILS.md) · [Raw samples](raw.json) · [Printable family charts](latency.pdf)
+
+Measured source `18750693908110110d85d02d0f11af8d58bfae8b`. Run `runner-macos-latest-40059566395`. Rendering does not change measurements.

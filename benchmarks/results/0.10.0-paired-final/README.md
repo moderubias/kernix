@@ -1,25 +1,29 @@
-# Kernix 0.10.0 vs 0.9.0 · paired processes
+# Kernix 0.10.0 · paired process comparison
 
-Current: `0.10.0-clean`. Baseline: `0.9.0-registry-010`.
+9 fresh-process pairs per workload. Ratios below 1 mean less time.
 
-9 fresh-process pairs per workload. Lower ratio is faster.
-95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
-Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
 
-| Workload | Current / baseline latency | 95% interval |
-|---|---:|---:|
-| Minimum-norm least squares 64 × 32, rank 16, 4 RHS f64 | 0.960× | [0.939, 1.005] |
-| Minimum-norm least squares 32 × 64, rank 32, 4 RHS f64 | 0.759× | [0.718, 0.769] |
-| Coalesced tensor contraction 16 × 32 × 8 · 32 × 8 × 16 f64 | 0.059× | [0.058, 0.062] |
-| Shared-variable backward sum(X * X), 64 × 32; prepared graph f64 | 0.969× | [0.908, 1.005] |
-| Matmul · 2 workers · reused output 64 × 64 · 64 × 64 f64 | 0.940× | [0.468, 1.421] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f64 | 0.774× | [0.769, 0.845] |
-| Matmul · 2 workers · reused output 256 × 256 · 256 × 256 f64 | 0.736× | [0.725, 0.761] |
-| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f32 | 0.769× | [0.438, 0.803] |
-| Matrix multiplication 128 × 128 · 128 × 128 f64 | 1.017× | [0.982, 1.044] |
-| Matrix multiplication 128 × 128 · 128 × 128 f32 | 0.994× | [0.958, 1.032] |
-| Thin QR 96 × 32 f64 | 1.013× | [0.981, 1.061] |
-| Thin QR 256 × 64 f64 | 1.004× | [0.970, 1.046] |
-| Cholesky factorization 128 × 128 f64 | 1.000× | [0.983, 1.023] |
+[![Paired process comparison preview](latency.png)](latency.pdf)
 
-Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).
+| Workload | Current / baseline [95% interval] | Interpretation |
+|---|---:|---|
+| Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64 | 0.9601934957454249× [0.9392138063279003, 1.005085111813559] | Timing direction unclear |
+| Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64 | 0.7588965246897702× [0.7181894083969466, 0.7686042740278929] | Observed time reduction |
+| Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64 | 0.05853394018885557× [0.0575878995545003, 0.061997534457761586] | Observed time reduction |
+| Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64 | 0.9687731241675299× [0.9081661486295564, 1.005344231373782] | Timing direction unclear |
+| Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64 | 0.939817091159406× [0.4675953414021466, 1.4206664022213407] | Timing direction unclear |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64 | 0.7737991100292854× [0.768674522566667, 0.8446403359519241] | Observed time reduction |
+| Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64 | 0.7363103488972145× [0.7254634944389963, 0.7608528926076653] | Observed time reduction |
+| Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32 | 0.7687074829931972× [0.4377720919575346, 0.8030099989691785] | Observed time reduction |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 1.0172824791418356× [0.9823877983479045, 1.0442190966043439] | Timing direction unclear |
+| Matrix multiplication · 128 × 128 · 128 × 128 · f32 | 0.9942393049390877× [0.9576774193548387, 1.0324791345424285] | Timing direction unclear |
+| Thin QR · 96 × 32 · f64 | 1.0127366207057724× [0.9813273721187985, 1.0610946896340843] | Timing direction unclear |
+| Thin QR · 256 × 64 · f64 | 1.0036583839038473× [0.970302782264253, 1.0459129820712867] | Timing direction unclear |
+| Cholesky factorization · 128 × 128 · f64 | 1.0003607237430008× [0.9832872672183858, 1.022784057586786] | Timing direction unclear |
+
+## Method
+
+95% percentile bootstrap over paired process blocks; 10000 resamples; exploratory, no multiple-comparison adjustment
+
+Current `0.10.0-clean`; baseline `0.9.0-registry-010`. All source ratio digits, paired observations and process ordering are preserved. No absolute peer latencies are inferred.
