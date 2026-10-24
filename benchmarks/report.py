@@ -149,7 +149,7 @@ def render_chart(dest, groups, metadata=None):
     with PdfPages(dest/'latency.pdf') as pdf:
         for page,(family_title,items) in enumerate(pages):
             fig,axes=plt.subplots(3,2,figsize=(11.7,8.3),layout='constrained',squeeze=False)
-            fig.get_layout_engine().set(rect=(0, .035, 1, .965))
+            fig.get_layout_engine().set(rect=(.02, .035, .96, .965))
             fig.suptitle(f'{family_title} · page {page+1}/{len(pages)}',fontsize=14,weight='bold')
             for axis,(workload,values) in zip(axes.flat,items):
                 title,shape,dtype=label(workload);base=micros(values['kernix']) if 'kernix' in values else 0
