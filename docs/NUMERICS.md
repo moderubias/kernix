@@ -209,10 +209,13 @@ Diagonal/nonfinite cancellation retries use the original entry and ordered produ
 Smaller/custom portable-capability work retains the existing factorization paths.
 Rounding can differ; positive-definiteness has the same finite-dtype limitations.
 
-AArch64 std dense eligible products use the gemm-rs NEON table directly, bypassing
+AArch64 std dense eligible products outside macOS use the gemm-rs NEON table directly, bypassing
 its optional AMX selector even when downstream Cargo features unify. Small, strided
 and no_std products retain their existing paths. Explicit parallel chunk eligibility
 is matched to this engine; the caller still chooses worker count.
+macOS retains its previous matrixmultiply default: process-paired measurements
+found no stable GEMM128 improvement and a regression for f32 GEMM256 with the fixed
+NEON table. The optional vendor executor below remains a separate choice.
 
 The optional accelerate feature exposes kernix::accelerate::AccelerateExecutor.
 It requires macOS15+, SDK thread-control declarations and C-contiguous rank-two

@@ -13,7 +13,12 @@ mod manipulate;
 mod math;
 mod math_extra;
 mod matmul_element;
-#[cfg(all(feature = "std", target_arch = "aarch64", not(miri)))]
+#[cfg(all(
+    feature = "std",
+    target_arch = "aarch64",
+    not(target_os = "macos"),
+    not(miri)
+))]
 mod neon;
 mod numeric;
 mod ordering;

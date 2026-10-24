@@ -152,7 +152,12 @@ macro_rules! floating {
                     }
                     return true;
                 }
-                #[cfg(all(feature = "std", target_arch = "aarch64", not(miri)))]
+                #[cfg(all(
+                    feature = "std",
+                    target_arch = "aarch64",
+                    not(target_os = "macos"),
+                    not(miri)
+                ))]
                 if m >= 64 && k >= 64 && n >= 64 && std::arch::is_aarch64_feature_detected!("neon")
                 {
                     // SAFETY: validated extents/strides above, disjoint output,
