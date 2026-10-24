@@ -65,6 +65,21 @@ class ReportTests(unittest.TestCase):
         a['metadata']['explicit_execution']={'work':{'workers':2,'affinity_cpus':[0,2]}}
         self.assertIn('Different explicit executor or affinity policies.',report.baseline_warnings(a,b))
 
+    def test_controller_identity_requires_matching_source_and_verified_policy(self):
+        a = dict(metadata=dict(numpy_thread_policy=dict(method='BLASSetThreading/BLASGetThreading',
+            verified_threads=1, controller_source_sha256='same-source', controller_sha256='binary-a')))
+        b = copy.deepcopy(a)
+        b['metadata']['numpy_thread_policy']['controller_sha256'] = 'binary-b'
+        self.assertEqual(report.baseline_warnings(a,b), [])
+        for field, value in [('verified_threads',2), ('method','environment'),
+                             ('controller_source_sha256','different-source')]:
+            changed = copy.deepcopy(b)
+            changed['metadata']['numpy_thread_policy'][field] = value
+            self.assertIn('Different NumPy thread-policy verification.',report.baseline_warnings(a,changed))
+        for metadata in (a['metadata'], b['metadata']):
+            del metadata['numpy_thread_policy']['controller_source_sha256']
+        self.assertIn('Different NumPy thread-policy verification.',report.baseline_warnings(a,b))
+
     def test_html_links_are_valid_and_literal_template_text_is_preserved(self):
         class Links(HTMLParser):
             def __init__(self):

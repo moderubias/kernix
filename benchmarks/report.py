@@ -108,7 +108,14 @@ def baseline_warnings(data, baseline):
         warnings.append('Different effective compiler flags.')
     if a.get('numpy_configuration') != b.get('numpy_configuration'):
         warnings.append('Different NumPy backend configuration.')
-    if a.get('numpy_thread_policy') != b.get('numpy_thread_policy'):
+    def thread_policy(metadata):
+        policy = dict(metadata.get('numpy_thread_policy') or {})
+        # Mach-O UUIDs and install paths differ between separately linked copies.
+        # Keep binary hashes as provenance; compare verified policy and source.
+        if policy.get('controller_source_sha256'):
+            policy.pop('controller_sha256', None)
+        return policy
+    if thread_policy(a) != thread_policy(b):
         warnings.append('Different NumPy thread-policy verification.')
     if a.get('explicit_execution') != b.get('explicit_execution'):
         warnings.append('Different explicit executor or affinity policies.')

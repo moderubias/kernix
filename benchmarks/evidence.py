@@ -121,6 +121,7 @@ def configure_numpy_threads(configuration, binaries):
     os.environ['KERNIX_BENCH_ACCELERATE_CONTROLLER']=str(controller)
     apply_accelerate_policy()
     return dict(method='BLASSetThreading/BLASGetThreading',verified_threads=1,
+                controller_source_sha256=hashlib.sha256((ROOT/'benchmarks/accelerate_threads.c').read_bytes()).hexdigest(),
                 controller_sha256=hashlib.sha256(controller.read_bytes()).hexdigest())
 
 
