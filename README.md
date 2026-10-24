@@ -377,9 +377,9 @@ generation; none is a runtime dependency. On Arch: install `python-numpy python-
 python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
-Reports include a compact comparison table, colored PNG/PDF charts and a standalone
-HTML view with filtering and expandable details. Pair versions with
-`python benchmarks/report.py <current-run> --baseline <baseline-run>`.
+Reports separate version changes from library comparisons, with searchable tables,
+expandable distributions/resources and paginated family charts. Attach process pairs with
+`python benchmarks/report.py <current-run> --baseline <baseline-run> --paired <paired-run>`.
 
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and
@@ -392,11 +392,11 @@ for boundaries and commands. Official reports are retained in
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
 
-Start with the [0.10.0 readable comparison](benchmarks/results/0.10.0-final/README.md)
-and [paired comparison against 0.9.0](benchmarks/results/0.10.0-paired-final/README.md).
-The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.10.0)
+Start with the [0.11.0 readable comparison](benchmarks/results/0.11.0-final/README.md)
+and [paired comparison against 0.10.0](benchmarks/results/0.11.0-paired-final/README.md).
+The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.11.0)
 include the standalone HTML reports and complete measurement evidence.
-The [0.10.0 verification record](docs/QA-0.10.0.md) documents numerical contracts,
+The [0.11.0 verification record](docs/QA-0.11.0.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 
 ## Explicit Apple Accelerate execution

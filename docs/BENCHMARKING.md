@@ -254,3 +254,14 @@ explicit AccelerateExecutor, with output allocation and thread-policy save/resto
 included. Native vendor allocations are opaque. This is a distinct optional backend;
 registry0.10 has no substitute entry for that API. Hardware runs measure registry0.10
 on the same host and interleave frozen processes before interpreting version changes.
+
+For the combined version report, attach matching process evidence explicitly:
+
+```sh
+python benchmarks/report.py web/benchmarks/current --baseline web/benchmarks/baseline --paired web/benchmarks/paired
+```
+
+The renderer checks measured run/revision/executable identities. On macOS the
+NumPy controller's source hash and verified thread settings must match; separately
+linked Mach-O binary hashes remain recorded as provenance. Historical records
+without controller source identity retain strict binary comparison.

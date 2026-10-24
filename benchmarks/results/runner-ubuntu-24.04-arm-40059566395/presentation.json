@@ -1,0 +1,15 @@
+{
+  "measured_revision": "18750693908110110d85d02d0f11af8d58bfae8b",
+  "renderer_revision": "5c2a0638fc8e83a0ebe43da9d517e11c57a1dca6",
+  "renderer_sha256": {
+    "report.py": "de4c9be68e4859347c0399ce2329643aca58215b1782843ef4fec3427c72a5f8",
+    "presentation.py": "53f67e0ee3cda91c7910ad0a984a9ecf7594c3b6e2afe6580e4901831a22e844",
+    "report_frontend.html": "45e2b64353271fc7e87acaf4c087f8ffa771ae21e270ca65543aa007f9e85aeb",
+    "report_style.css": "fa73527b9d2d105d6f24c72bf09e76e67aef232ce126bdc00ffbb566eac4c35e"
+  },
+  "input_sha256": "3cd9705165edd1cd543b79f2205961302054d75d4996f419a469c528549d7eaa",
+  "baseline_canonical_sha256": "b0b2c6ff3ed53fd80ad1fe6819b8be1977e621e4652204aa72ac39531d4fed14",
+  "paired_canonical_sha256": "e42296d7bcf80f8931282d0e36b5498c984dae2185b225f202c99a0b7ffe29f1",
+  "paired_evidence_attached": true,
+  "raw_modified": false
+}
