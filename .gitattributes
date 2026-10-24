@@ -6,3 +6,13 @@ benchmarks/results/**/*.svg binary
 benchmarks/assets/OFL.txt -whitespace
 benchmarks/results/**/original-report.txt -whitespace
 benchmarks/results/original-index.txt -whitespace
+# Evidence and original commentary retain their recorded bytes on every checkout.
+benchmarks/results/**/raw.json -text
+benchmarks/results/**/paired.json -text
+benchmarks/results/**/driver.Cargo.toml -text
+benchmarks/results/**/driver.Cargo.lock -text
+benchmarks/results/**/DETAILS.md -text
+benchmarks/results/**/source.tar.gz binary
+benchmarks/results/**/original-report.txt -text
+benchmarks/results/original-index.txt -text
+benchmarks/assets/OFL.txt -text
