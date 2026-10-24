@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/IBM/plex",
+  "revision": "71f558992315a12ca1f06a2215d57962a1992162",
+  "license": "OFL.txt",
+  "files": [
+    {
+      "file": "IBMPlexSans-Regular.ttf",
+      "url": "https://raw.githubusercontent.com/IBM/plex/71f558992315a12ca1f06a2215d57962a1992162/packages/plex-sans/fonts/complete/ttf/IBMPlexSans-Regular.ttf",
+      "sha256": "975dcda37d80f038dcd143c22e33ca2d97a0cc5a929aace1c749153b0fe1afa5"
+    },
+    {
+      "file": "IBMPlexSans-Regular.woff2",
+      "url": "https://raw.githubusercontent.com/IBM/plex/71f558992315a12ca1f06a2215d57962a1992162/packages/plex-sans/fonts/complete/woff2/IBMPlexSans-Regular.woff2",
+      "sha256": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a"
+    },
+    {
+      "file": "IBMPlexSans-SemiBold.ttf",
+      "url": "https://raw.githubusercontent.com/IBM/plex/71f558992315a12ca1f06a2215d57962a1992162/packages/plex-sans/fonts/complete/ttf/IBMPlexSans-SemiBold.ttf",
+      "sha256": "a20caf8286023a6a7a85e40b1d2a4ae9fc3e3b1f9eda8f4c542dd4986af67bb1"
+    },
+    {
+      "file": "IBMPlexSans-SemiBold.woff2",
+      "url": "https://raw.githubusercontent.com/IBM/plex/71f558992315a12ca1f06a2215d57962a1992162/packages/plex-sans/fonts/complete/woff2/IBMPlexSans-SemiBold.woff2",
+      "sha256": "f78048030eab62e860efa39a0df79e2e5581bf122eb95b9bc42c0b8a4988d205"
+    }
+  ]
+}

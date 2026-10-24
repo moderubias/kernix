@@ -370,16 +370,19 @@ examples. Property tests check shape invariants; regression tests cover layouts,
 aliasing, integer errors, nonfinite math and extreme softmax inputs. Unsafe aligned
 storage has a Miri CI workflow; a configured workflow does not certify an unrun test.
 
-Comparative benchmarks require Python 3 + NumPy + Matplotlib for measurement and report
-generation; none is a runtime dependency. On Arch: install `python-numpy python-matplotlib`; on other systems install equivalent tools.
+Comparative benchmarks use Python 3 with NumPy, ReportLab and Pillow. Install the
+development tools with `python -m pip install -r benchmarks/requirements.txt`. None
+is a runtime dependency of Kernix.
 
 ```sh
 python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
-Reports separate version changes from library comparisons, with searchable tables,
-expandable distributions/resources and paginated family charts. Attach process pairs with
-`python benchmarks/report.py <current-run> --baseline <baseline-run> --paired <paired-run>`.
+Explore the [complete visual benchmark archive](benchmarks/results/index.html):
+53 reports with a consistent design, searchable workloads, exact-value tables,
+process-paired version comparisons and vector PDF charts. Original measurements,
+method notes and build identities remain unchanged. Chart labels explicitly mark
+rounding; exact tables retain every recorded digit.
 
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and

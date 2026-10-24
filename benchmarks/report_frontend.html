@@ -1,36 +1,39 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kernix {{VERSION}} performance</title><style>{{CSS}}</style>
-<main data-paired="{{HAS_PAIRED}}">
-<header><div class="brand">KERNIX / PERFORMANCE</div><h1>What changed in {{VERSION}}?</h1><p class="host">{{CPU}}</p><div class="facts">{{FACTS}}</div><p>{{HOST}}</p><p id="selection-summary"></p></header>
-<section><h2>Version changes</h2><p>{{BASELINE}}</p><p>{{PAIRED_COUNT}} Ratios below 1 mean less time. An interval crossing 1 leaves direction unclear; it does not prove equal speed.</p><div class="insights">{{INSIGHTS}}</div><p class="note">95% bootstrap intervals over fresh-process pairs; exploratory, without multiple-comparison adjustment.</p></section>
-<section class="limits"><h2>Where we still trail</h2><ul>{{LOSSES}}</ul><p class="note">Observed medians on this host. Portable Kernix and explicit vendor execution keep separate names and conditions.</p></section>
-<section class="controls"><h2>Explore your workload</h2><div class="filters">
-<label>Find an operation<input id="search" type="search" placeholder="Try matmul, backward or f32"></label>
-<label>Workload family<select id="family">{{FAMILIES}}</select></label><button id="reset" type="button">Reset filters</button></div>
-<p id="result-count" role="status" aria-live="polite"></p><div class="modes" role="group" aria-label="Comparison question"><button type="button" data-mode="versions">Compare Kernix versions</button><button type="button" data-mode="libraries">Compare libraries</button></div><p id="empty" hidden>No workloads match. Reset filters to see all measurements.</p></section>
-<section id="versions"><h2>Kernix versus its baseline</h2><p>Paired process ratios, not per-call p95 or batch means. Unpaired rows have no inferred interval.</p><div class="scroll"><table><caption>Previous-version comparison on matching recorded conditions</caption><thead><tr><th scope="col">Workload and conditions</th><th scope="col">Time ratio [95% interval]</th><th scope="col">Interpretation</th></tr></thead><tbody>{{VERSIONS}}</tbody></table></div></section>
-<section id="libraries"><h2>Libraries on this host</h2><p>Median µs per public API call; lower is faster. Shading marks a lowest observed median only where at least two libraries were measured. Missing means unmeasured, not unsupported.</p>
-<div class="scroll"><table id="comparison"><caption>Absolute API latency, with execution conditions per row</caption><thead><tr><th scope="col">Workload and conditions</th>{{COLUMNS}}<th scope="col">Coverage</th></tr></thead><tbody>{{ROWS}}</tbody></table></div>
-<h2>By workload</h2><div class="plots">{{PLOTS}}</div><h2>Distributions and resources</h2><p>256 individual warmed calls and 15 separate 10-ms batch means. Allocation probes use a separate binary. Peak additional Rust-requested bytes include output; they are not RSS or total native retention.</p>{{DETAILS}}</section>
-<section><h2>Method and interpretation</h2><p>{{NUMERICAL}}</p><p>Ordinary allocating operations include output allocation and destruction. Explicit reused-output rows exclude pool/output preparation and may have a different recorded affinity. First API call is not a cold-cache measurement.</p><p>Native execution may retain thread-local packing scratch. NumPy allocation counts are unavailable. A numeric minimum alone is not a universal performance claim.</p>{{WARNINGS}}</section>
-<footer><p><a href="DETAILS.md">Full method &amp; all resource fields</a> · <a href="raw.json">Raw samples &amp; provenance</a> · <a href="latency.pdf">Printable family charts</a></p>{{PROVENANCE}}</footer>
-</main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kernix {{VERSION}} · Performance brief</title><style>{{CSS}}</style>{{FONT_LICENSE}}</head><body>
+<a class="skip" href="#explore">Skip to workloads</a>
+<nav class="masthead" aria-label="Report navigation"><a class="wordmark" href="{{ARCHIVE_HREF}}"><b class="monogram" aria-hidden="true">K</b>KERNIX<span>PERFORMANCE</span></a><div class="nav-links"><a href="{{ARCHIVE_HREF}}">{{ARCHIVE_LABEL}} <span aria-hidden="true">↗</span></a><a class="button button-small" href="latency.pdf">Download PDF <span aria-hidden="true">↓</span></a></div></nav>
+<main data-paired="{{HAS_PAIRED}}"><header class="hero"><div><p class="eyebrow">CPU RESEARCH / {{DATE}}</p><h1>Performance.<br><span>In context.</span></h1><p class="edition">Kernix {{VERSION}} <span>/</span> {{PLATFORM}}</p></div><aside class="host-card"><span class="eyebrow">MEASURED HARDWARE</span><p class="host">{{CPU}}</p><p>{{METRIC}} · microseconds</p><p class="host-note">{{HOST}}</p></aside></header>
+<section class="score-strip" aria-label="Report coverage">{{FACTS}}</section>
+<section id="explore" class="explore"><div class="section-heading"><div><p class="eyebrow">01 / EXPLORE THE EVIDENCE</p><h2>Find your workload.</h2></div><p>Exact source digits. Explicit execution conditions.<br>Every measured library, including the losses.</p></div>
+<div class="controls"><div class="filters"><label><span class="sr-only">Search workloads</span><input id="search" type="search" placeholder="Search matmul, Cholesky, f32…"></label><label><span class="sr-only">Workload family</span><select id="family">{{FAMILIES}}</select></label><button id="reset" type="button" class="text-button">Reset</button></div><div class="modes" role="group" aria-label="Comparison question"><button type="button" data-mode="libraries">Libraries</button><button type="button" data-mode="versions">Version changes</button><button type="button" data-mode="resources">Resources</button></div></div>
+<div class="selection-line"><p id="result-count" role="status" aria-live="polite"></p><p id="selection-summary"></p></div><div id="empty" class="empty-state" hidden><h3>No workloads match.</h3><p>Reset filters to see every measurement.</p></div>
+<section id="libraries"><div class="view-heading"><p class="measure-caption">{{METRIC}} / µs <span>Lower is faster</span></p><div class="view-switch" role="group" aria-label="Library display"><button data-view="charts" type="button">Charts</button><button data-view="table" type="button">Exact table</button></div></div><div class="plots">{{PLOTS}}</div><div class="table-view scroll" hidden><table id="comparison"><caption>Absolute latency in microseconds. Source precision retained; missing means unmeasured.</caption><thead><tr><th scope="col">Workload and conditions</th>{{COLUMNS}}<th scope="col">Coverage</th></tr></thead><tbody>{{ROWS}}</tbody></table></div><p class="footnote">Chart labels use up to six significant digits; ≈ marks rounding. The exact table retains all source digits. Bar lengths use a zero baseline and a separate scale per workload. Lowest table medians are highlighted only when peers were measured. Peer measurements do not establish a statistical ranking.</p></section>
+<section id="versions"><div class="view-heading"><div><h3>Kernix versus its baseline.</h3><p>{{BASELINE}}</p></div><span class="pill">Ratio &lt; 1 = less time</span></div><p class="footnote">{{PAIRED_COUNT}} Ranges show exploratory 95% bootstrap intervals over fresh-process pairs, not individual calls. An interval crossing 1 leaves timing direction unclear. No multiple-comparison adjustment.</p><div class="intervals">{{INTERVALS}}</div><details class="exact-version-table"><summary>All ratios at recorded precision</summary><div class="scroll"><table><caption>Paired process medians and 95% intervals</caption><thead><tr><th scope="col">Workload and conditions</th><th scope="col">Current / baseline [95% interval]</th><th scope="col">Interpretation</th></tr></thead><tbody>{{VERSIONS}}</tbody></table></div></details></section>
+<section id="resources"><div class="view-heading"><div><h3>The cost behind the timing.</h3><p>Full-precision distributions and warmed allocation probes.</p></div></div><p class="footnote">Rust requested bytes include output and transient buffers; they are not RSS or total native memory. Unavailable stays unavailable. {{LIMITS}}</p>{{DETAILS}}</section></section>
+<section class="method-section"><div class="section-heading"><div><p class="eyebrow">02 / READ THE CONDITIONS</p><h2>Context is part<br>of the result.</h2></div><div class="method-copy"><p>{{LIMITS}}</p><p>{{SOURCE_STATUS}}</p><p>{{NUMERICAL}}</p><p>First API calls are not cold-cache measurements. Frequency, thermals and background load are uncontrolled. {{WARNINGS}}</p><p>Decimal unit conversion preserves every recorded digit. Display precision does not imply equivalent physical measurement accuracy. No measurements were rerun or altered for this design.</p></div></div><details class="limitations"><summary>Where Kernix still trails in this run</summary><ul>{{LOSSES}}</ul></details></section>
+<footer><div class="footer-top"><span class="wordmark">KERNIX<span>RESEARCH & ENGINEERING</span></span><div><a href="{{RAW_LINK}}">{{RAW_LABEL}}</a><a href="original-report.txt">Original commentary</a><a href="latency.svg">Vector preview</a></div></div><p>{{PROVENANCE}}</p><p class="run-id">{{RUN_ID}}</p></footer></main>
+<script>
 (()=>{
  const search=document.getElementById('search'),family=document.getElementById('family');
- let mode=document.querySelector('main').dataset.paired==='true'?'versions':'libraries';
+ let mode='libraries',view='charts';
+ if(!document.querySelector('#comparison tbody tr'))mode='versions';
  function apply(){
-  const q=search.value.toLowerCase(),f=family.value;
+  const q=search.value.toLowerCase().trim(),f=family.value;
   document.querySelectorAll('[data-workload]').forEach(e=>e.hidden=!(e.dataset.search.includes(q)&&(!f||e.dataset.family===f)));
-  const rows=[...document.querySelectorAll('#comparison tbody tr')],n=rows.filter(r=>!r.hidden).length;
-  document.getElementById('result-count').textContent=n+' of '+rows.length+' workloads shown';
+  const rows=[...document.querySelectorAll('#comparison tbody tr')];
+  const population=rows.length?rows:[...document.querySelectorAll('#versions tbody tr')];
+  const n=population.filter(r=>!r.hidden).length;
+  document.getElementById('result-count').textContent=n+' of '+population.length+' workloads';
+  document.getElementById('selection-summary').textContent=(f?family.selectedOptions[0].text:'Every workload family')+(q?' / '+search.value:'');
   document.getElementById('empty').hidden=n!==0;
-  document.getElementById('selection-summary').textContent=(f?family.selectedOptions[0].text:'All workload families')+(q?' · search: '+search.value:'')+' · '+n+' workloads';
-  for(const name of ['versions','libraries'])document.getElementById(name).hidden=mode!==name;
+  for(const name of ['libraries','versions','resources'])document.getElementById(name).hidden=mode!==name;
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  document.querySelector('.plots').hidden=view!=='charts';document.querySelector('.table-view').hidden=view!=='table';
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));
  }
- let printOpened=[];window.addEventListener('beforeprint',()=>{printOpened=[...document.querySelectorAll('details')].filter(d=>!d.open&&!d.hidden);printOpened.forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>{printOpened.forEach(d=>d.open=false);printOpened=[]});
  search.addEventListener('input',apply);family.addEventListener('change',apply);
  document.getElementById('reset').addEventListener('click',()=>{search.value='';family.value='';apply();search.focus()});
- document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;apply()}));apply();
+ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;apply()}));
+ document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;apply()}));
+ let opened=[];window.addEventListener('beforeprint',()=>{opened=[...document.querySelectorAll('details')].filter(d=>!d.open&&!d.hidden);opened.forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>{opened.forEach(d=>d.open=false);opened=[]});apply();
 })();
-</script></html>
+</script></body></html>

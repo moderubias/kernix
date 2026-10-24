@@ -1,5 +1,12 @@
 # Kernix 0.11.0 verification — 2026-10-24
 
+Presentation update, 2026-10-24: the [complete archive](../benchmarks/results/index.html)
+now uses a shared typographic design, vector exports and exact-value appendices.
+The checks below document the initial 0.11.0 release, including its original page
+counts. Numerical evidence, source archives, methods and published crate bytes are
+unchanged; the [presentation integrity manifest](../benchmarks/results/presentation-integrity.json)
+records that preservation.
+
 0.11.0 adds blocked native Cholesky, explicit NEON selection on ARM and an optional,
 explicit Apple Accelerate executor. Reports now distinguish version changes from
 library comparisons. Existing constructors, generic elements, shape/layout validation,

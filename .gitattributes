@@ -1,0 +1,8 @@
+*.pdf binary
+*.png binary
+*.ttf binary
+*.woff2 binary
+benchmarks/results/**/*.svg binary
+benchmarks/assets/OFL.txt -whitespace
+benchmarks/results/**/original-report.txt -whitespace
+benchmarks/results/original-index.txt -whitespace

@@ -11,7 +11,7 @@ python benchmarks/evidence.py unique-run --require-openblas
 python benchmarks/evidence.py unique-baseline --registry-baseline 0.5.0 --require-openblas
 ```
 
-The selected Python needs NumPy and Matplotlib. PNG/PDF charts and the standalone HTML report are rendered locally. `--require-openblas` rejects a different NumPy BLAS build rather
+The selected Python needs NumPy, ReportLab and Pillow. PNG/PDF charts and the standalone HTML report are rendered locally. `--require-openblas` rejects a different NumPy BLAS build rather
 than silently substituting it. Use an environment with an optimized NumPy wheel
 or a documented vendor build. The NumPy build supplies its recorded BLAS backend; macOS Accelerate is supported
 with verified same-worker-thread control. GPU baselines are not provided. Candle CPU supplies the equivalent automatic-differentiation case;
@@ -117,10 +117,10 @@ so it remains a direct baseline. CPU affinity/thread/dtype controls are unchange
 ## Reading and comparing reports
 
 Each run includes a compact Markdown table, a standalone `report.html` with workload
-filtering and expandable distributions/resources, and colored per-workload PNG/PDF
-panels. Times are per-call medians in microseconds; relative chart values are library
-latency divided by Kernix latency. Below one means that comparator was faster. Every
-workload has its own scale. Missing measurements are shown as unavailable, never zero.
+filtering and expandable distributions/resources, a vector PDF with two workload panels
+per page and an exact-value appendix, and matching SVG/PNG previews. Latency charts
+show absolute microseconds on a zero baseline, with a local scale per workload.
+Paired ratio charts use 1 for unchanged latency. Missing measurements remain unavailable.
 
 Pair a retained current run with its separately measured exact registry baseline:
 
@@ -243,8 +243,8 @@ single-run deltas remain descriptive in Markdown. No paired interval is inferred
 from calls in one process. A lone Kernix result receives no peer-winner emphasis.
 The standalone HTML separates versions/libraries, filters all workload views, reports
 empty results and preserves semantic row/column headers. It keeps losses and actual
-per-row worker/output contracts visible. PDF charts have at most six family panels
-per page; HTML charts keep readable text on narrow displays. presentation.json
+per-row worker/output contracts visible. Current PDF charts use at most two workload panels
+per page and an exact-value appendix; HTML keeps readable text on narrow displays. presentation.json
 records renderer/source fingerprints separately from the measured revision.
 
 New independent-operand128 cases use dyadic f32/f64 matrices and coordinate oracles;
@@ -265,3 +265,43 @@ The renderer checks measured run/revision/executable identities. On macOS the
 NumPy controller's source hash and verified thread settings must match; separately
 linked Mach-O binary hashes remain recorded as provenance. Historical records
 without controller source identity retain strict binary comparison.
+
+## Presentation archive (2026-10-24)
+
+[Open the archive](../benchmarks/results/index.html) for all 53 retained reports:
+45 measurement runs and eight paired-process studies. The redesign changes only
+presentation; it neither reruns workers nor changes any recorded measurements.
+Original report commentary is retained beside each run as `original-report.txt`;
+original `DETAILS.md`, JSON, source snapshots and driver locks stay byte-identical.
+The archive's [integrity manifest](../benchmarks/results/presentation-integrity.json)
+records their SHA-256 values. Earlier instructions to retain historical *presentation*
+unchanged are superseded by this explicit archive-wide redesign; evidence remains immutable.
+
+HTML uses embedded, licensed IBM Plex Sans and works offline. Charts use direct
+labels, zero-based latency bars and a consistent distinction between default Kernix,
+explicit vendor execution and peers. Version intervals are separate from absolute
+peer observations. Search, workload-family filters, exact-value tables, resources
+and keyboard controls share the same visible population. Hosts and measurement
+statistics are never merged into a historical speedup curve.
+
+Chart labels use at most six significant digits, with `≈` whenever rounding occurs.
+Exact tables retain all source digits, using Decimal arithmetic for ns-to-µs
+conversion. Vector PDFs include an exact-value latency appendix; SVG and PNG previews
+use the same drawing scene. This avoids both lossy three-significant-digit tables
+and unreadable floating-point artifacts on primary charts. Recorded precision is not
+a claim about physical timing accuracy. Seven early runs contain medians of 15 batch
+means and a maximum recorded as p95; they are labeled separately and acquire no
+invented call-level tails, accuracy results or memory measurements.
+
+The presentation tools are development dependencies, outside the published crates:
+
+```sh
+python -m pip install -r benchmarks/requirements.txt
+python benchmarks/archive.py
+python -m unittest discover -s benchmarks -p 'test_*.py'
+```
+
+`archive.py` snapshots evidence hashes, rebuilds every view, and refuses any evidence
+mutation. It preserves old `comparison.png`, `comparison.pdf` and `report.pdf` URLs.
+Only generated presentation files and the searchable index are replaced. The runtime
+crates and their published version are unaffected by a presentation-only update.
