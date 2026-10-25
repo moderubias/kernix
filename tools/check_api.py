@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--output',type=Path,default=ROOT/'web/api-compatibility.json')
     args=parser.parse_args()
     revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    dirty_before=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip())
     baseline=subprocess.check_output(['git','rev-parse',args.baseline+'^{commit}'],cwd=ROOT,text=True).strip()
     version=subprocess.check_output(['cargo','semver-checks','--version'],cwd=ROOT,text=True).strip()
     runs=[]
@@ -29,9 +30,12 @@ def main():
         if result.returncode:print(result.stdout,flush=True)
     # The tool has no stable structured findings mode. Retain full diagnostics
     # without parsing human text into invented structured API findings.
-    report=dict(schema_version=1,tool=version,revision=revision,baseline=baseline,
-                working_tree_dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip()),runs=runs,
-                passed=all(run['exit_code']==0 for run in runs))
+    revision_after=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    dirty_after=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip())
+    source_changed=revision_after!=revision
+    report=dict(schema_version=1,tool=version,revision=revision,revision_after=revision_after,baseline=baseline,
+                working_tree_dirty=dirty_before or dirty_after,source_changed_during_check=source_changed,runs=runs,
+                passed=not source_changed and all(run['exit_code']==0 for run in runs))
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
     raise SystemExit(0 if report['passed'] else 1)
