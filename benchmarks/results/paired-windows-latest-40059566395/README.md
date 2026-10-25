@@ -6,6 +6,19 @@
 
 [![Paired process comparison preview](latency.png)](latency.pdf)
 
+
+### Version changes at a glance
+
+The vertical line marks unchanged time. Left is faster; right is slower. Ranges are exploratory 95% intervals over fresh-process pairs. An interval crossing the line leaves direction unclear.
+
+![Matrix multiplication. Current divided by baseline; below 1 is faster.](charts/paired-matmul-1.png)
+
+![Explicit parallel execution. Current divided by baseline; below 1 is faster.](charts/paired-parallel-1.png)
+
+![Decompositions & solvers. Current divided by baseline; below 1 is faster.](charts/paired-algebra-1.png)
+
+## Exact process ratios
+
 | Workload | Current / baseline [95% interval] | Interpretation |
 |---|---:|---|
 | Matrix multiplication · 128 × 128 · 128 × 128 · f64 | 0.9947257383966245× [0.9851694915254238, 1.0042328042328041] | Timing direction unclear |

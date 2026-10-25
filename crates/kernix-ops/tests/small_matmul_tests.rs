@@ -60,7 +60,7 @@ macro_rules! boundaries {
     ($name:ident, $ty:ty) => {
         #[test]
         fn $name() {
-            for m in [0, 1, 3, 4, 5, 7, 8, 15, 16, 17, 31, 32, 33] {
+            for m in [0, 1, 3, 4, 5, 6, 7, 8, 15, 16, 17, 31, 32, 33] {
                 for k in [0, 1, 3, 4, 5, 31, 32, 63, 64, 65] {
                     for n in [0, 1, 7, 8, 9, 15, 16, 17, 24, 31, 32, 33] {
                         // Offset slices exercise unaligned loads. Dyadic data

@@ -6,6 +6,17 @@
 
 [![Paired process comparison preview](latency.png)](latency.pdf)
 
+
+### Version changes at a glance
+
+The vertical line marks unchanged time. Left is faster; right is slower. Ranges are exploratory 95% intervals over fresh-process pairs. An interval crossing the line leaves direction unclear.
+
+![Matrix multiplication. Current divided by baseline; below 1 is faster.](charts/paired-matmul-1.png)
+
+![Decompositions & solvers. Current divided by baseline; below 1 is faster.](charts/paired-algebra-1.png)
+
+## Exact process ratios
+
 | Workload | Current / baseline [95% interval] | Interpretation |
 |---|---:|---|
 | Cholesky factorization · 64 × 64 · f64 | 0.8677118475888073× [0.826547772693496, 0.9410034528326016] | Observed time reduction |
