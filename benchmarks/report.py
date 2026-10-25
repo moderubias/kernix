@@ -23,6 +23,7 @@ NAMES = dict(
     candle="Candle",
     numpy="NumPy",
 )
+NAMES["refactor"] = "Kernix refactor"
 NAMES["kernix-accelerate"] = "Kernix · explicit Accelerate"
 COLORS = dict(
     kernix="#5b47d6",
@@ -34,6 +35,37 @@ COLORS = dict(
 )
 COLORS["kernix-accelerate"] = "#8b72d6"
 WORKLOADS = {
+    "solve_cholesky_128x1_f64":("Cholesky solve · reused factor","128 × 128, 1 RHS","f64"),
+    "solve_cholesky_256x64_f64": (
+        "Cholesky solve · reused factor",
+        "256 × 256, 64 RHS",
+        "f64",
+    ),
+    "solve_cholesky_512x128_f64": (
+        "Cholesky solve · reused factor",
+        "512 × 512, 128 RHS",
+        "f64",
+    ),
+    "solve_lu_256x64_f64": ("LU solve · reused factor", "256 × 256, 64 RHS", "f64"),
+    "cholesky_rank_update_256_f64": ("Cholesky rank-one update", "256 × 256", "f64"),
+    "cholesky_rank_downdate_256_f64": (
+        "Cholesky rank-one downdate",
+        "256 × 256",
+        "f64",
+    ),
+    "cholesky_rank_update_512_f64": ("Cholesky rank-one update", "512 × 512", "f64"),
+    "matmul_transposed_128_f64": (
+        "Matrix multiplication · transposed view",
+        "128 × 128 · 128 × 128",
+        "f64",
+    ),
+    "matmul_transposed_128_f32": (
+        "Matrix multiplication · transposed view",
+        "128 × 128 · 128 × 128",
+        "f32",
+    ),
+    "qr_512x128_f64": ("Thin QR", "512 × 128", "f64"),
+    "qr_1024x256_f64": ("Thin QR", "1024 × 256", "f64"),
     "add_65536_f64": ("Elementwise addition", "65,536 elements", "f64"),
     "sum_65536_f64": ("Sum reduction", "65,536 elements", "f64"),
     "cholesky_64_f64": ("Cholesky factorization", "64 × 64", "f64"),

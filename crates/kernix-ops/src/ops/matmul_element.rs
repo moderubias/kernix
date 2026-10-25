@@ -28,7 +28,7 @@ pub trait MatmulElement: Zero + Clone + AddAssign<Self> + Mul<Output = Self> {
     /// implementation must validate all lengths/dimensions before any unsafe kernel.
     /// Returning true means all m*n output values were initialized. CPU feature
     /// dispatch, packing and fused arithmetic may change floating last bits.
-    /// Built-in floating kernels may allocate packing scratch. Large dense products
+    /// Built-in floating kernels may allocate packing scratch. Large native products
     /// on x86-64/std may retain a thread-local slab until thread exit. Use
     /// `matmul_reference` or an ordered `CpuExecutor` to avoid native packing.
     fn try_dense_matmul(
@@ -69,6 +69,44 @@ macro_rules! floating {
                 let Ok(ns) = isize::try_from(n) else {
                     return false;
                 };
+                #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+                if m >= 32
+                    && k >= 32
+                    && n >= 32
+                    && m.saturating_mul(k).saturating_mul(n) >= 64 * 64 * 64
+                    && a.strides.iter().all(|&s| s > 0)
+                    && b.strides.iter().all(|&s| s > 0)
+                    && gemm_common::simd::V3::try_new().is_some()
+                {
+                    // SAFETY: MatrixInput validated both complete byte spans;
+                    // output has the checked exact C-order extent. Positive strides
+                    // support transpose/F-order/gapped inputs without materializing.
+                    // Native feature dispatch is checked; serial overwriting C^T=B^T A^T.
+                    unsafe {
+                        $native()(
+                            n,
+                            m,
+                            k,
+                            out.as_mut_ptr(),
+                            ns,
+                            1,
+                            false,
+                            b.data.as_ptr().add(b.origin),
+                            b.strides[0],
+                            b.strides[1],
+                            a.data.as_ptr().add(a.origin),
+                            a.strides[0],
+                            a.strides[1],
+                            0.0,
+                            1.0,
+                            false,
+                            false,
+                            false,
+                            gemm_common::Parallelism::None,
+                        );
+                    }
+                    return true;
+                }
                 // SAFETY: MatrixInput constructors validated the full reachable element
                 // and byte spans, including negative/zero strides. Both nonempty origins
                 // address live allocation elements. All raw kernel reads stay within

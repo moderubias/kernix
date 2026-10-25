@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.11",
+  "series": "0.12",
   "operations": [
     {
       "operation": "Tensor::permute",
@@ -397,6 +397,24 @@
       "tape": [],
       "contract": "Construction/inspection or discrete RGB8 preprocessing; no recorded variable.",
       "tests": []
+    },
+    {
+      "operation": "linalg::Cholesky::rank_one_downdate",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Owned factor modification; no Tape recording API. O(n\u00b2), finite checks and transactional failure.",
+      "tests": [
+        "crates/kernix-ops/tests/cholesky_update_tests.rs::updates_downdates_reconstruct_solve_and_preserve_inputs"
+      ]
+    },
+    {
+      "operation": "linalg::Cholesky::rank_one_update",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Owned factor modification; no Tape recording API. O(n\u00b2), finite checks and transactional failure.",
+      "tests": [
+        "crates/kernix-ops/tests/cholesky_update_tests.rs::updates_downdates_reconstruct_solve_and_preserve_inputs"
+      ]
     },
     {
       "operation": "linalg::Cholesky::solve",

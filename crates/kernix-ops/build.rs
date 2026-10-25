@@ -5,7 +5,7 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         cc::Build::new()
             .file("src/accelerate.c")
-            .compile("kernix_accelerate_0_11");
+            .compile("kernix_accelerate_0_12");
         println!("cargo:rustc-link-lib=framework=Accelerate");
     }
 }

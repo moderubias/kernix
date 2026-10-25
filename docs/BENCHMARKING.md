@@ -42,6 +42,24 @@ all implementations; Cholesky times reusable factors (NumPy returns L). Kernix's
 finite/symmetry checks remain enabled; the other libraries' contracts may differ.
 The ndarray/Candle softmax comparisons are explicit stable compositions.
 
+Prepared-factor solve cases borrow the same finite RHS and return an owned
+solution; factorization is outside timing for Kernix, nalgebra and faer. The
+single-column case guards latency while the wide cases measure multiple-RHS
+reuse. Known solutions are validated independently of the decomposition.
+
+Rank-one Cholesky cases start from a prepared factor and return an owned modified
+factor. Nalgebra clones its factor before its in-place update. The separately
+labelled **Kernix refactor** observation instead factors the already formed
+modified matrix using the same Kernix version: it is a workflow reference, not
+another library's rank-update implementation. Forming that matrix and the base
+factor is outside timing. Historical Kernix releases without rank-update methods
+have no Kernix observation for those cases; metadata records the missing API.
+Neither fabricated historical timings nor substituted algorithms fill the gap.
+
+Transposed-matmul cases borrow A-transpose and B; preparing the transpose view is
+outside timing for both Kernix and NumPy. The operation allocates its result.
+There is no timed tensor materialization, although native kernels may pack data.
+
 The autodiff case records `sum(A @ W)`, treats A as constant, and returns W's gradient.
 Kernix and Candle both copy input/weight data and copy the returned gradient. Both
 construct and destroy their own real reverse-mode graph. This compares equivalent

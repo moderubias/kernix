@@ -45,6 +45,14 @@ def family(w):
 
 
 def contract(w):
+    if w.startswith("solve_"):
+        return "1 worker · prepared reusable factor · owned output · factorization excluded"
+    if w.startswith("cholesky_rank_"):
+        return (
+            "Prepared factors · owned output · refactor uses preformed modified matrix"
+        )
+    if w.startswith("matmul_transposed_"):
+        return "1 worker · borrowed transpose · allocated output · independent operands"
     if w.startswith("parallel_"):
         return "2 workers · reused output · pool preparation excluded"
     if w.startswith("matmul_reuse_"):
@@ -408,6 +416,13 @@ def render(dest, data, baseline, paired, h):
         if any(w.startswith("min_norm_") for w, _ in groups)
         else ""
     )
+    if any(w.startswith("cholesky_rank_") for w, _ in groups):
+        numerical += " " + meta.get(
+            "rank_modification_protocol",
+            "Rank modification: prepared base factors; owned output. Refactor entries use a preformed modified matrix.",
+        )
+        if meta.get("unavailable_rank_modification_api"):
+            numerical += " This registry baseline has no rank modification API; Kernix modification entries are omitted, not replaced."
     libs = [lib for lib in h["libraries"] if any(lib in values for _, values in groups)]
     libs += sorted({lib for _, values in groups for lib in values} - set(libs))
     columns = "".join(f'<th scope="col">{esc(names(lib))}</th>' for lib in libs)

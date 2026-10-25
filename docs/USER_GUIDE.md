@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.11 API; the linked rustdoc contains
+foundation. This guide follows the public 0.12 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -60,6 +60,31 @@ returns thin Q/R, and solves full-column-rank overdetermined least squares.
 The existing Qr and least_squares still reject rank-deficient and underdetermined
 systems. Use PivotedQr when these cases are intended. Empty matrices have explicit valid algebraic identities. All input
 values and required decomposition results must be finite. f32 and f64 are supported.
+
+For repeated covariance or least-squares updates, change an existing Cholesky
+factor directly instead of reconstructing its matrix. Both operations return a
+new factor in O(n²); the original factor and vector remain available on failure.
+A downdate must leave the matrix positive definite.
+
+```rust
+use kernix::{matrix, tensor, Cholesky};
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let a = matrix![2.0f64, 0.0; 0.0, 3.0]?;
+    let factor = Cholesky::factor(&a)?;
+    let observation = tensor![1.0, 0.0]?;
+    let updated = factor.rank_one_update(&observation)?;
+    let rhs = matrix![3.0, 6.0; 6.0, 9.0]?;
+    let solutions = updated.solve(&rhs)?; // two RHS columns, one factor
+    assert!((solutions.storage_slice()[0] - 1.0).abs() < 1e-14);
+    let restored = updated.rank_one_downdate(&observation)?;
+    assert!((restored.lower().storage_slice()[0] - 2.0f64.sqrt()).abs() < 1e-14);
+    Ok(())
+}
+```
+
+The owned result allocates an n×n factor and n-element rotation workspace. There
+is no implicit regularization, dtype conversion or autodiff recording. Near a
+singular downdate, inspect the problem's conditioning and handle the error.
 
 For an explicit conditioning diagnostic, `linalg::condition_number_one(&a)` computes
 `||A||_1 * ||inverse(A)||_1` using scaled LU and all identity-column solves.

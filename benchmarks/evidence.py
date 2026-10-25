@@ -18,6 +18,17 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 ACCELERATE_CASES = ['matmul_128_f64','matmul_256_f64','matmul_128_f32','matmul_256_f32']
 CASES = {
+    'solve_cholesky_128x1_f64':['kernix','nalgebra','faer'],
+    'solve_cholesky_256x64_f64':['kernix','nalgebra','faer'],
+    'solve_cholesky_512x128_f64':['kernix','nalgebra','faer'],
+    'solve_lu_256x64_f64':['kernix','nalgebra','faer'],
+    'cholesky_rank_update_256_f64':['kernix','refactor','nalgebra'],
+    'cholesky_rank_downdate_256_f64':['kernix','refactor','nalgebra'],
+    'cholesky_rank_update_512_f64':['kernix','refactor','nalgebra'],
+    'matmul_transposed_128_f64':['kernix','numpy'],
+    'matmul_transposed_128_f32':['kernix','numpy'],
+    'qr_512x128_f64':['kernix','nalgebra','faer','numpy'],
+    'qr_1024x256_f64':['kernix','nalgebra','faer','numpy'],
     'cholesky_factor_512_f64':['kernix','nalgebra','faer','numpy'],
     'matmul_ab_128_f64':['kernix','numpy'],
     'matmul_ab_128_f32':['kernix','numpy'],
@@ -66,11 +77,11 @@ def clean_revision(root=ROOT):
     return command('git','rev-parse','HEAD',cwd=root)
 
 
-def measurement_schedule(seed, legacy_autograd=False, legacy_pivoted=False):
+def measurement_schedule(seed, legacy_autograd=False, legacy_pivoted=False, legacy_rank_updates=False):
     schedule=[(workload,library) for workload,libraries in CASES.items()
               if not (legacy_autograd and workload.startswith('training_'))
               and not (legacy_pivoted and workload.startswith(('pivoted_qr_','min_norm_')))
-              for library in libraries]
+              for library in libraries if not (legacy_rank_updates and workload.startswith('cholesky_rank_') and library=='kernix')]
     random.Random(seed).shuffle(schedule)
     return schedule
 
@@ -167,6 +178,15 @@ def numpy_case(workload,mode):
             error=np.abs(out-expected);assert out.dtype==dtype and out.shape==(4,16,16)
             assert np.all(error<=budget*(1+np.abs(expected)))
             return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=budget)
+    elif workload.startswith('matmul_transposed_'):
+        dtype=np.float32 if workload.endswith('f32') else np.float64
+        a=((np.arange(128*128)%23).astype(dtype)/16-.5).reshape(128,128)
+        b=((np.arange(128*128)%13).astype(dtype)/8-.5).reshape(128,128)
+        operation=lambda:a.T@b
+        def check(out):
+            expected=np.array([[sum(float(a[k,i])*float(b[k,j]) for k in range(128)) for j in range(128)] for i in range(128)])
+            error=float(np.max(np.abs(out-expected)));assert error==0.0 and out.dtype==dtype
+            return dict(coordinate_max_absolute_error=error,budget=0.0,borrowed_transpose=True)
     elif workload.startswith('matmul_ab_'):
         dtype=np.float32 if workload.endswith('f32') else np.float64
         a=((np.arange(128*128)%23).astype(dtype)/16-.5).reshape(128,128)
@@ -371,8 +391,9 @@ def main():
     legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
     legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
     legacy_pivoted=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,9,0))
+    legacy_rank_updates=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,12,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
-        enabled=(['accelerate'] if accelerate else [])+(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])
+        enabled=(['accelerate'] if accelerate else [])+(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])+(['legacy-rank-updates'] if legacy_rank_updates else [])
         features=['--features',','.join(enabled)] if enabled else []
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
@@ -396,7 +417,7 @@ def main():
                 vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
     kernix_version=next(p['version'] for p in library_packages if p['name']=='kernix')
     minimum_norm_algorithm=('pivoted QR plus scaled implicit RZ' if tuple(map(int,kernix_version.split('.'))) >= (0,10,0) else 'pivoted QR plus scaled right QR')
-    metadata=dict(schema_version=2,minimum_norm_algorithm=minimum_norm_algorithm,accelerate_variant=accelerate,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
+    metadata=dict(schema_version=2,unavailable_rank_modification_api=legacy_rank_updates,unavailable_observations=[w+"/kernix" for w in CASES if legacy_rank_updates and w.startswith("cholesky_rank_")],rank_modification_protocol="Kernix/nalgebra: prepared base factor, owned modified factor; refactor: same Kernix version, full factorization of preformed modified matrix; base setup and matrix formation excluded",minimum_norm_algorithm=minimum_norm_algorithm,accelerate_variant=accelerate,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
         unavailable_workloads=[w for w in CASES if (legacy_autograd and w.startswith('training_')) or (legacy_pivoted and w.startswith(('pivoted_qr_','min_norm_')))],
@@ -407,7 +428,7 @@ def main():
         explicit_execution={w:dict(workers=2,affinity_cpus=parallel_cpus,output='reused; allocated before first call',wrapper='RefCell borrow included; pool construction excluded') for w in CASES if w.startswith('parallel_matmul_into_')},
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
-    schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted)
+    schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted,legacy_rank_updates)
     metadata['measurement_order_seed']=args.seed
     metadata['measurement_order']=[w+'/'+lib for w,lib in schedule]
     results={}

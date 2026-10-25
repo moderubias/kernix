@@ -20,5 +20,10 @@ jobs:
         run: cargo +nightly miri setup
       - name: Exercise unsafe storage and tensor code
         run: cargo +nightly miri test -p kernix-core --tests
+        env:
+          # Proptest's disk persistence calls getcwd in Miri isolation. Keep
+          # isolation and every property case; only disable saving seed files.
+          PROPTEST_DISABLE_FAILURE_PERSISTENCE: '1'
+          MIRIFLAGS: -Zmiri-env-forward=PROPTEST_DISABLE_FAILURE_PERSISTENCE
       - name: Exercise checked native matrix wrappers
         run: cargo +nightly miri test -p kernix-ops --test native_kernel_tests

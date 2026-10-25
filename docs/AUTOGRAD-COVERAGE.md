@@ -1,4 +1,4 @@
-# Forward and reverse-mode coverage (0.11 series)
+# Forward and reverse-mode coverage (0.12 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 
@@ -69,6 +69,8 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `less_equal` | unsupported | — | No Tape recording API. |
 | `linalg::Cholesky::factor` | unsupported | — | No Tape recording API. |
 | `linalg::Cholesky::lower` | not_applicable | — | Construction/inspection or discrete RGB8 preprocessing; no recorded variable. |
+| `linalg::Cholesky::rank_one_downdate` | unsupported | — | Owned factor modification; no Tape recording API. O(n²), finite checks and transactional failure. |
+| `linalg::Cholesky::rank_one_update` | unsupported | — | Owned factor modification; no Tape recording API. O(n²), finite checks and transactional failure. |
 | `linalg::Cholesky::solve` | unsupported | — | No Tape recording API. |
 | `linalg::Lu::determinant` | unsupported | — | No Tape recording API. |
 | `linalg::Lu::factor` | unsupported | — | No Tape recording API. |

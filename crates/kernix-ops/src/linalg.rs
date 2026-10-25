@@ -26,7 +26,10 @@ use thiserror::Error;
 mod pivoted_qr;
 pub use pivoted_qr::PivotedQr;
 mod blocked_cholesky;
+mod blocked_qr;
+mod cholesky_update;
 mod rz;
+mod triangular;
 
 mod diagnostics;
 pub use diagnostics::{
@@ -300,23 +303,28 @@ impl<T: LinalgFloat> Lu<T> {
                 );
             }
             let a = self.packed.storage_slice();
-            for row in 0..n {
-                for j in 0..columns {
-                    let mut value = out[row * columns + j];
-                    for k in 0..row {
-                        value = value - a[row * n + k] * out[k * columns + j];
+            if columns <= 4 {
+                for row in 0..n {
+                    for j in 0..columns {
+                        let mut value = out[row * columns + j];
+                        for k in 0..row {
+                            value = value - a[row * n + k] * out[k * columns + j];
+                        }
+                        out[row * columns + j] = value;
                     }
-                    out[row * columns + j] = value;
                 }
-            }
-            for row in (0..n).rev() {
-                for j in 0..columns {
-                    let mut value = out[row * columns + j];
-                    for k in row + 1..n {
-                        value = value - a[row * n + k] * out[k * columns + j];
+                for row in (0..n).rev() {
+                    for j in 0..columns {
+                        let mut value = out[row * columns + j];
+                        for k in row + 1..n {
+                            value = value - a[row * n + k] * out[k * columns + j];
+                        }
+                        out[row * columns + j] = value / a[row * n + row];
                     }
-                    out[row * columns + j] = value / a[row * n + row];
                 }
+            } else {
+                triangular::solve(&mut out, n, columns, true, true, |i, j| a[i * n + j]);
+                triangular::solve(&mut out, n, columns, false, false, |i, j| a[i * n + j]);
             }
         }
         check_finite(&out)?;
@@ -470,35 +478,136 @@ impl<T: LinalgFloat> Cholesky<T> {
     pub fn lower(&self) -> &Tensor<T> {
         &self.lower
     }
+    /// Factor `A + x*x^T` from this factor of A, in O(n²) time.
+    ///
+    /// Returns a new factor; this factor and x remain unchanged, including on
+    /// failure. x must be a finite rank-one tensor of length n; strided vectors
+    /// are supported. Allocates an n×n factor and an n-element rotation workspace.
+    /// Rotations avoid explicitly forming A or squaring large entries of x.
+    /// Required intermediates and the resulting factor must remain finite.
+    ///
+    /// ```
+    /// use kernix_core::tensor::Tensor;
+    /// use kernix_ops::linalg::Cholesky;
+    /// let a=Tensor::from_rows([[2.0f64,0.0],[0.0,3.0]])?;
+    /// let factor=Cholesky::factor(&a)?;
+    /// let updated=factor.rank_one_update(&Tensor::from_values([2],vec![1.0,0.0])?)?;
+    /// let x=updated.solve(&Tensor::from_values([2],vec![3.0,6.0])?)?;
+    /// assert!((x.storage_slice()[0]-1.0).abs()<1e-14);
+    /// assert!((x.storage_slice()[1]-2.0).abs()<1e-14);
+    /// # Ok::<(),Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn rank_one_update<V: TensorInput<T>>(&self, x: &V) -> Result<Self, LinalgError> {
+        Ok(Self {
+            lower: cholesky_update::modify(&self.lower, x, false)?,
+        })
+    }
+    /// Factor `A - x*x^T` in O(n²), rejecting nonpositive pivots explicitly.
+    ///
+    /// Returns a new factor and leaves both inputs unchanged on every error.
+    /// x must be a finite vector of length n. Allocates an n×n output and
+    /// n-element workspace. Near the positive-definite boundary, rounding and
+    /// conditioning can limit accuracy or cause rejection; no jitter is added.
+    /// Nonfinite or unrepresentable intermediates return `LinalgError::NonFinite`.
+    pub fn rank_one_downdate<V: TensorInput<T>>(&self, x: &V) -> Result<Self, LinalgError> {
+        Ok(Self {
+            lower: cholesky_update::modify(&self.lower, x, true)?,
+        })
+    }
     /// Solve one or multiple RHS columns using L followed by L^T. O(n^2*k).
     pub fn solve<B: TensorInput<T>>(&self, b: &B) -> Result<Tensor<T>, LinalgError> {
         let n = self.lower.shape().dims()[0];
         let (mut out, columns, shape) = rhs(b, n)?;
         let l = self.lower.storage_slice();
-        if !out.is_empty() {
-            for row in 0..n {
-                for j in 0..columns {
-                    let mut value = out[row * columns + j];
-                    for k in 0..row {
-                        value = value - l[row * n + k] * out[k * columns + j];
+        if columns <= 4 {
+            if !out.is_empty() {
+                for row in 0..n {
+                    for j in 0..columns {
+                        let mut value = out[row * columns + j];
+                        for k in 0..row {
+                            value = value - l[row * n + k] * out[k * columns + j];
+                        }
+                        out[row * columns + j] = value / l[row * n + row];
                     }
-                    out[row * columns + j] = value / l[row * n + row];
+                }
+                for row in (0..n).rev() {
+                    for j in 0..columns {
+                        let mut value = out[row * columns + j];
+                        for k in row + 1..n {
+                            value = value - l[k * n + row] * out[k * columns + j];
+                        }
+                        out[row * columns + j] = value / l[row * n + row];
+                    }
                 }
             }
-            for row in (0..n).rev() {
-                for j in 0..columns {
-                    let mut value = out[row * columns + j];
-                    for k in row + 1..n {
-                        value = value - l[k * n + row] * out[k * columns + j];
-                    }
-                    out[row * columns + j] = value / l[row * n + row];
-                }
-            }
+        } else {
+            triangular::solve(&mut out, n, columns, true, false, |i, j| l[i * n + j]);
+            triangular::solve(&mut out, n, columns, false, false, |i, j| l[j * n + i]);
         }
         check_finite(&out)?;
         Ok(Tensor::from_vec(out, shape, Order::C)?)
     }
 }
+#[inline(always)]
+fn qr_column<T: LinalgFloat>(
+    packed: &mut [T],
+    m: usize,
+    k: usize,
+    target_end: usize,
+    tau: &mut T,
+) -> Result<(), LinalgError> {
+    let mut s = T::zero();
+    let mut ssq = T::one();
+    for &value in &packed[k * m + k..(k + 1) * m] {
+        let v = FloatMath::abs(value);
+        if v != T::zero() {
+            if s < v {
+                let ratio = s / v;
+                ssq = T::one() + ssq * ratio * ratio;
+                s = v;
+            } else {
+                let ratio = v / s;
+                ssq += ratio * ratio;
+            }
+        }
+    }
+    if s == T::zero() {
+        return Ok(());
+    }
+    let unit_norm = FloatMath::sqrt(ssq);
+    let norm = s * unit_norm;
+    if !FloatMath::is_finite(norm) {
+        return Err(LinalgError::NonFinite);
+    }
+    let a0 = packed[k * m + k];
+    let sign = if a0 >= T::zero() { T::one() } else { -T::one() };
+    // A rounded subnormal norm can corrupt a dimensionless reflector.
+    let weak_norm = norm * T::EPSILON == T::zero();
+    let ratio = if weak_norm {
+        (a0 / s) / unit_norm
+    } else {
+        a0 / norm
+    };
+    let denom = ratio + sign;
+    *tau = T::one() + sign * ratio;
+    if weak_norm {
+        for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+            *value = ((*value / s) / unit_norm) / denom;
+        }
+    } else {
+        for value in &mut packed[k * m + k + 1..(k + 1) * m] {
+            *value = (*value / norm) / denom;
+        }
+    }
+    packed[k * m + k] = -sign * norm;
+    let (done, remaining) = packed[..target_end * m].split_at_mut((k + 1) * m);
+    let reflector = &done[k * m + k + 1..(k + 1) * m];
+    for column in remaining.chunks_exact_mut(m) {
+        apply_reflector(&mut column[k..], reflector, *tau);
+    }
+    Ok(())
+}
+
 /// Thin Householder QR: Q has shape `[m,min(m,n)]`, R `[min(m,n),n]`.
 /// Orthogonal reflectors are preferable to normal equations for least-squares accuracy.
 /// Input is copied; finite intermediate/output checks reject unrepresentable ranges.
@@ -556,55 +665,46 @@ impl<T: LinalgFloat> Qr<T> {
         let scale = max_abs(&packed);
         let cutoff = (T::EPSILON * T::from_count(m.max(n).max(1))) * scale;
         let mut tau = vec![T::zero(); rank];
-        for k in 0..rank {
-            let mut s = T::zero();
-            let mut ssq = T::one();
-            for &value in &packed[k * m + k..(k + 1) * m] {
-                let v = FloatMath::abs(value);
-                if v != T::zero() {
-                    if s < v {
-                        let ratio = s / v;
-                        ssq = T::one() + ssq * ratio * ratio;
-                        s = v;
-                    } else {
-                        let ratio = v / s;
-                        ssq += ratio * ratio;
+        let blocked = T::HAS_NATIVE_MATMUL && m >= 192 && n >= 128 && m >= n;
+        let mut workspace = if blocked {
+            Some(blocked_qr::Workspace::new(m, n)?)
+        } else {
+            None
+        };
+        let mut q_output = if blocked {
+            Tensor::<T>::zeros([m, rank])?.into_storage_vec()
+        } else {
+            Vec::new()
+        };
+        let block = if blocked { blocked_qr::BLOCK } else { 1 };
+        for start in (0..rank).step_by(block) {
+            let end = (start + block).min(rank);
+            for (k, tau_k) in tau.iter_mut().enumerate().take(end).skip(start) {
+                qr_column(&mut packed, m, k, if blocked { end } else { n }, tau_k)?;
+            }
+            if let Some(work) = workspace.as_mut() {
+                let prepared = work.prepare(&packed, &tau, start, end, false);
+                if end == n {
+                    continue;
+                }
+                let input = crate::MatrixInput::new(
+                    &packed,
+                    [m - start, n - end],
+                    [1, m as isize],
+                    end * m + start,
+                )?;
+                let applied = prepared
+                    && work.product(input, n - end, true, &mut q_output)?
+                    && blocked_qr::commit(&mut packed, m, start, end, n - end, &mut q_output);
+                if !applied {
+                    for (k, &tau_k) in tau.iter().enumerate().take(end).skip(start) {
+                        let (done, remaining) = packed.split_at_mut(end * m);
+                        let reflector = &done[k * m + k + 1..(k + 1) * m];
+                        for column in remaining.chunks_exact_mut(m) {
+                            apply_reflector(&mut column[k..], reflector, tau_k);
+                        }
                     }
                 }
-            }
-            if s == T::zero() {
-                continue;
-            }
-            let unit_norm = FloatMath::sqrt(ssq);
-            let norm = s * unit_norm;
-            if !FloatMath::is_finite(norm) {
-                return Err(LinalgError::NonFinite);
-            }
-            let a0 = packed[k * m + k];
-            let sign = if a0 >= T::zero() { T::one() } else { -T::one() };
-            // A rounded subnormal norm can corrupt a dimensionless reflector.
-            let weak_norm = norm * T::EPSILON == T::zero();
-            let ratio = if weak_norm {
-                (a0 / s) / unit_norm
-            } else {
-                a0 / norm
-            };
-            let denom = ratio + sign;
-            tau[k] = T::one() + sign * ratio;
-            if weak_norm {
-                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
-                    *value = ((*value / s) / unit_norm) / denom;
-                }
-            } else {
-                for value in &mut packed[k * m + k + 1..(k + 1) * m] {
-                    *value = (*value / norm) / denom;
-                }
-            }
-            packed[k * m + k] = -sign * norm;
-            let (done, remaining) = packed.split_at_mut((k + 1) * m);
-            let reflector = &done[k * m + k + 1..(k + 1) * m];
-            for column in remaining.chunks_exact_mut(m) {
-                apply_reflector(&mut column[k..], reflector, tau[k]);
             }
         }
         check_finite(&packed)?;
@@ -612,14 +712,31 @@ impl<T: LinalgFloat> Qr<T> {
         for i in 0..rank {
             q[i * m + i] = T::one();
         }
-        for k in (0..rank).rev() {
-            let reflector = &packed[k * m + k + 1..(k + 1) * m];
-            // Earlier columns are still identity columns with zero active tails.
-            // Restrict work to columns that this reflector can actually change.
-            for column in q.chunks_exact_mut(m).skip(k) {
-                apply_reflector(&mut column[k..], reflector, tau[k]);
+        for start in (0..rank).step_by(block).rev() {
+            let end = (start + block).min(rank);
+            let mut applied = false;
+            if let Some(work) = workspace.as_mut() {
+                let prepared = work.prepare(&packed, &tau, start, end, true);
+                let input = crate::MatrixInput::new(
+                    &q,
+                    [m - start, rank - start],
+                    [1, m as isize],
+                    start * m + start,
+                )?;
+                applied = prepared
+                    && work.product(input, rank - start, false, &mut q_output)?
+                    && blocked_qr::commit(&mut q, m, start, start, rank - start, &mut q_output);
+            }
+            if !applied {
+                for k in (start..end).rev() {
+                    let reflector = &packed[k * m + k + 1..(k + 1) * m];
+                    for column in q.chunks_exact_mut(m).skip(k) {
+                        apply_reflector(&mut column[k..], reflector, tau[k]);
+                    }
+                }
             }
         }
+        drop(workspace);
         let mut r = vec![T::zero(); Kahen::new([rank, n])?.numel()];
         for row in 0..rank {
             for col in row..n {
@@ -627,10 +744,18 @@ impl<T: LinalgFloat> Qr<T> {
             }
         }
         let q_columns = q;
-        let mut q = vec![T::zero(); q_columns.len()];
-        for col in 0..rank {
-            for row in 0..m {
-                q[row * rank + col] = q_columns[col * m + row];
+        let mut q = if blocked {
+            q_output
+        } else {
+            vec![T::zero(); q_columns.len()]
+        };
+        for first_row in (0..m).step_by(8) {
+            for first_col in (0..rank).step_by(16) {
+                for col in first_col..(first_col + 16).min(rank) {
+                    for row in first_row..(first_row + 8).min(m) {
+                        q[row * rank + col] = q_columns[col * m + row];
+                    }
+                }
             }
         }
         check_finite(&q)?;
@@ -669,16 +794,20 @@ impl<T: LinalgFloat> Qr<T> {
         let columns = if b.dims().len() == 1 { 1 } else { b.dims()[1] };
         let r = self.r.storage_slice();
         let values = out.storage_slice_mut();
-        if !values.is_empty() {
-            for row in (0..n).rev() {
-                for j in 0..columns {
-                    let mut value = values[row * columns + j];
-                    for k in row + 1..n {
-                        value = value - r[row * n + k] * values[k * columns + j];
+        if columns <= 4 {
+            if !values.is_empty() {
+                for row in (0..n).rev() {
+                    for j in 0..columns {
+                        let mut value = values[row * columns + j];
+                        for k in row + 1..n {
+                            value = value - r[row * n + k] * values[k * columns + j];
+                        }
+                        values[row * columns + j] = value / r[row * n + row];
                     }
-                    values[row * columns + j] = value / r[row * n + row];
                 }
             }
+        } else {
+            triangular::solve(values, n, columns, false, false, |i, j| r[i * n + j]);
         }
         check_finite(values)?;
         Ok(out)

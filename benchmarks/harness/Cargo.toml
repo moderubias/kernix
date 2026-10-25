@@ -13,6 +13,7 @@ accelerate = ["kernix/accelerate"]
 legacy-constructors = []
 legacy-autograd = []
 legacy-pivoted = []
+legacy-rank-updates = []
 
 [dependencies]
 kernix = { path = "../../crates/kernix", default-features = false, features = ["std", "parallel"] }

@@ -67,3 +67,19 @@ mod minimum_norm_tests {
         }
     }
 }
+
+/// Reuse a factor after adding and removing one observation without std.
+pub fn modified_cholesky() -> Result<Tensor<f32>,kernix::LinalgError> {
+    let factor=Cholesky::factor(&matrix![2.0f32,0.0;0.0,3.0]?)?;
+    let x=tensor![1.0f32,0.0]?;
+    let factor=factor.rank_one_update(&x)?.rank_one_downdate(&x)?;
+    factor.solve(&tensor![2.0f32,6.0]?)
+}
+#[cfg(test)]
+mod modification_tests {
+    #[test]
+    fn rank_modifications_are_available_without_std() {
+        let x=super::modified_cholesky().unwrap();
+        for(&v,e)in x.storage_slice().iter().zip([1.0,2.0]) {assert!((v-e).abs()<1e-5);}
+    }
+}

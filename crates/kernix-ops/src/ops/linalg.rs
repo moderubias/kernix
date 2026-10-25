@@ -14,9 +14,10 @@ use super::{OpsError, TensorInput, Zero, broadcast::broadcast_shape, error::flat
 /// remove the corresponding singleton matrix dimension. All batch axes
 /// broadcast right-aligned. Zero contracted dimension yields additive zero.
 /// Contiguous f32/f64 inputs use runtime-dispatched packed CPU kernels per matrix
-/// (matrixmultiply), with no external BLAS requirement. Floating accumulation/FMA
-/// order may differ from matmul_reference. Other layouts use the checked
-/// portable fallback. Integer scalar arithmetic retains native overflow semantics.
+/// with no external BLAS requirement. Validated rank-two host views can also
+/// use native strided kernels, without materializing a contiguous input tensor.
+/// Floating accumulation/FMA order may differ from matmul_reference. Other
+/// geometry uses the checked portable fallback. Integer scalar arithmetic retains native overflow semantics.
 ///
 /// # Examples
 ///

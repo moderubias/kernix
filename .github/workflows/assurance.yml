@@ -50,7 +50,7 @@ jobs:
           cargo test -p kernix-ops --target x86_64-unknown-linux-gnu
           --features parallel
           --test native_kernel_tests --test factorization_regressions --test diagnostics_tests --test pivoted_qr_tests
-          --test contraction_paths --test execution_tests --test blocked_cholesky_tests --test small_matmul_tests
+          --test contraction_paths --test execution_tests --test blocked_cholesky_tests --test small_matmul_tests --test blocked_qr_tests --test cholesky_update_tests --test many_rhs_tests
           --locked
         env:
           RUSTFLAGS: -Zsanitizer=address

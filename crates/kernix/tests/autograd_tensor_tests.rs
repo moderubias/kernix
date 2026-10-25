@@ -633,3 +633,34 @@ fn slice_errors_and_empty_inputs_preserve_checked_semantics() {
     let scalar = t.variable(values(&[], 0)).unwrap();
     assert!(t.slice_axis(&scalar, 0, 0, 1, 1).is_err());
 }
+
+#[test]
+fn large_matmul_gradients_use_positive_transpose_kernels_without_changing_the_api() {
+    let (m, k, n) = (65, 67, 69);
+    let av: Vec<f64> = (0..m * k).map(|p| (p % 23) as f64 / 16. - 0.5).collect();
+    let bv: Vec<f64> = (0..k * n).map(|p| (p % 13) as f64 / 8. - 0.5).collect();
+    let mut tape = Tape::new();
+    let a = tape
+        .variable(Tensor::from_values([m, k], av.clone()).unwrap())
+        .unwrap();
+    let b = tape
+        .variable(Tensor::from_values([k, n], bv.clone()).unwrap())
+        .unwrap();
+    let y = tape.matmul(&a, &b).unwrap();
+    let loss = tape.sum(&y).unwrap();
+    let gradients = tape.backward(&loss).unwrap();
+    let da = gradients.get(&a).unwrap().unwrap();
+    let db = gradients.get(&b).unwrap().unwrap();
+    for i in 0..m {
+        for p in 0..k {
+            let expected: f64 = bv[p * n..(p + 1) * n].iter().sum();
+            assert_eq!(da.storage_slice()[i * k + p], expected);
+        }
+    }
+    for p in 0..k {
+        let expected: f64 = (0..m).map(|i| av[i * k + p]).sum();
+        for j in 0..n {
+            assert_eq!(db.storage_slice()[p * n + j], expected);
+        }
+    }
+}

@@ -1,5 +1,6 @@
 //! Reproducible CPU measurements; not linked into any published Kernix package.
 #![deny(unsafe_op_in_unsafe_fn)]
+mod extended;
 #[cfg(all(test, not(feature = "legacy-autograd")))]
 mod gradient_checks;
 #[cfg(not(feature = "legacy-pivoted"))]
@@ -712,6 +713,23 @@ fn main() {
         }
         "create_zeros_64x64_f32" => identity_constructor(mode, library, false),
         "create_ones_64x64_f32" => identity_constructor(mode, library, true),
+        "solve_cholesky_128x1_f64" => extended::solve(mode, library, 128, 1, false),
+        "solve_cholesky_256x64_f64" => extended::solve(mode, library, 256, 64, false),
+        "solve_cholesky_512x128_f64" => extended::solve(mode, library, 512, 128, false),
+        "solve_lu_256x64_f64" => extended::solve(mode, library, 256, 64, true),
+        "cholesky_rank_update_256_f64" => extended::modification(mode, library, 256, false),
+        "cholesky_rank_downdate_256_f64" => extended::modification(mode, library, 256, true),
+        "cholesky_rank_update_512_f64" => extended::modification(mode, library, 512, false),
+        "matmul_transposed_128_f64" => {
+            assert_eq!(library, "kernix");
+            extended::transpose(mode, false)
+        }
+        "matmul_transposed_128_f32" => {
+            assert_eq!(library, "kernix");
+            extended::transpose(mode, true)
+        }
+        "qr_512x128_f64" => qr(mode, library, 512, 128),
+        "qr_1024x256_f64" => qr(mode, library, 1024, 256),
         "matmul_batched_4x16x32x16_f64" => batched_gemm(mode, library),
         "matmul_batched_4x16x32x16_f32" => batched_gemm_f32(mode, library),
         "matmul_32_f64" => gemm(mode, library, 32),

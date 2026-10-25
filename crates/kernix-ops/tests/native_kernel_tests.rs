@@ -239,3 +239,53 @@ fn tiled_convolution_matches_ordered_reference_across_tiles_and_geometry() {
         assert_eq!(actual.storage_slice(), expected.storage_slice());
     }
 }
+
+#[test]
+fn large_positive_gapped_strides_match_coordinate_oracles_in_both_dtypes() {
+    macro_rules! check {
+        ($ty:ty) => {{
+            for (m, k, n) in [
+                (63usize, 65usize, 67usize),
+                (64, 64, 64),
+                (65, 67, 69),
+                (128, 128, 128),
+            ] {
+                let ar = 2 * k + 5;
+                let bc = 3 * k + 7;
+                let mut a = vec![<$ty>::NAN; 7 + (m - 1) * ar + 2 * (k - 1) + 1];
+                let mut b = vec![<$ty>::NAN; 3 + 3 * (k - 1) + (n - 1) * bc + 1];
+                for i in 0..m {
+                    for p in 0..k {
+                        a[7 + i * ar + 2 * p] = ((i * 7 + p * 3) % 23) as $ty / 16. - 0.5;
+                    }
+                }
+                for p in 0..k {
+                    for j in 0..n {
+                        b[3 + 3 * p + j * bc] = ((p * 5 + j * 11) % 13) as $ty / 8. - 0.5;
+                    }
+                }
+                let mut out = vec![<$ty>::NAN; m * n + 2];
+                let aa = MatrixInput::new(&a, [m, k], [ar as isize, 2], 7).unwrap();
+                let bb = MatrixInput::new(&b, [k, n], [3, bc as isize], 3).unwrap();
+                assert!(<$ty>::try_strided_matmul(aa, bb, &mut out[1..1 + m * n]));
+                for i in 0..m {
+                    for j in 0..n {
+                        let expected: f64 = (0..k)
+                            .map(|p| {
+                                f64::from(a[7 + i * ar + 2 * p]) * f64::from(b[3 + 3 * p + j * bc])
+                            })
+                            .sum();
+                        assert_eq!(
+                            f64::from(out[1 + i * n + j]),
+                            expected,
+                            "{m}/{k}/{n} {i}/{j}"
+                        );
+                    }
+                }
+                assert!(out[0].is_nan() && out[m * n + 1].is_nan());
+            }
+        }};
+    }
+    check!(f64);
+    check!(f32);
+}

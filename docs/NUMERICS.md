@@ -126,8 +126,11 @@ C-contiguous products with m, k and n at least 64 use serial `gemm-f64` (since
 0.7.2) or `gemm-f32` (since 0.7.3) on x86-64 with std and the engine's complete
 runtime-detected SIMD feature set. C^T = B^T A^T is passed in column-major
 orientation, writing the same C-order output; this does not materialize a transpose.
-Small/skinny products, signed-stride rank-two inputs, no_std and other targets
-retain matrixmultiply. Noncontiguous batches retain the checked reference path.
+Small/skinny products, negative/zero-stride rank-two inputs, no_std and other targets
+retain matrixmultiply. Since 0.12, positive-stride rank-two views on std/x86-64
+can also use the same serial native engine when all dimensions are at least 32
+and m*k*n is at least 64³. Borrowed transposes, F-order and gapped inputs need no
+materialized tensor copies; native packing workspace can still allocate/cache. Noncontiguous batches retain the checked reference path.
 Custom scalar implementations and all shape/storage checks remain unchanged.
 Native engines may use FMA and reassociation; ordered mode remains available via
 `matmul_reference` and `CpuExecutor::with_ordered_matmul(true)`.
@@ -242,3 +245,33 @@ batches reuse this path per matrix. This changes fused rounding, not shape,
 ownership, dtype or error contracts. Custom scalars, signed-stride views,
 `no_std`, unavailable CPU features and explicit ordered execution keep their
 existing paths. The default 128×128/256×256 engines are unchanged.
+
+
+## Reusable solves, compact-WY QR and factor modifications (0.12)
+
+LU, Cholesky and unpivoted QR substitution traverse contiguous RHS rows when
+there are more than four columns. Each output retains increasing-k scalar
+subtraction, with no additional heap workspace. Four or fewer RHS columns keep
+the earlier scalar loop. The output allocation and finite checks remain part of
+the public solve operation. This does not change factorization or rank policy.
+
+For native-capable tall/square inputs with m>=192 and n>=128, unpivoted QR groups
+32 Householder reflectors as H=I-V*T*V^T. Forward factorization applies H^T;
+reverse Q construction applies H. The triangular panel is computed once and
+reused. The eventual Q allocation doubles as product scratch; additional panel
+workspace is O((m+n)*32). Native GEMM may additionally pack/cache workspace.
+Each candidate block update is checked before modifying factor data. Unsupported
+or nonfinite native products fall back to individual reflectors. Scaled norms,
+subnormal handling, finite validation and existing thin-Q/R shapes are retained.
+FMA and blocked arithmetic can change rounding. Pivoted QR is unchanged.
+
+`Cholesky::rank_one_update` and `rank_one_downdate` construct new lower factors
+of A+x*x^T and A-x*x^T in O(n²), without materializing A or x*x^T. They allocate
+an n×n output and n-element workspace and borrow their finite length-n input.
+Update rotations use a scaled hypotenuse; downdates require |x[k]|<L[k,k]
+at every pivot and retain the small representable diagonal gap before taking a
+square root. A failed downdate leaves both original inputs untouched and reports
+the failing pivot or nonfinite intermediate. The methods support signed-stride
+vectors, custom LinalgFloat types and no_std+alloc, and do not record gradients.
+Reciprocal multiplication in downdates and rotations introduce ordinary rounding;
+near-boundary positive-definiteness and accuracy remain conditioning dependent.

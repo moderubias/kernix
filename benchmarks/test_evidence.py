@@ -9,6 +9,13 @@ evidence=importlib.util.module_from_spec(spec);spec.loader.exec_module(evidence)
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_legacy_rank_apis_are_omitted_without_substitute_numbers(self):
+        legacy=evidence.measurement_schedule(123,False,False,True)
+        self.assertNotIn(('cholesky_rank_update_256_f64','kernix'),legacy)
+        self.assertIn(('cholesky_rank_update_256_f64','refactor'),legacy)
+        self.assertIn(('cholesky_rank_update_256_f64','nalgebra'),legacy)
+        self.assertIn(('solve_cholesky_256x64_f64','kernix'),legacy)
+
     def test_parallel_affinity_never_invents_unavailable_cpus(self):
         self.assertIsNone(evidence.parallel_affinity(None))
         self.assertEqual(evidence.parallel_affinity({7}),[7])

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0
+
+- Preserve existing public signatures and add owned Cholesky rank-one updates and
+  downdates, with checked finite arithmetic and unchanged inputs on failure.
+- Reorder multiple-RHS substitution in reusable LU/Cholesky/QR solves to reuse
+  contiguous rows, preserving increasing-k scalar accumulation. Small RHS retain
+  the existing scalar path; no extra solve scratch or hidden dtype conversion.
+- Use compact-WY QR for sufficiently large tall/square matrices, cached triangular
+  panels and tiled layout conversion. Reuse the eventual Q output as product
+  scratch; retain individual reflectors when native kernels decline or overflow.
+- Accelerate large positive-stride x86-64/std matrix views through existing serial
+  GEMM capabilities. Preserve ordered, negative-stride and portable paths.
+- Add comparative prepared-factor solve, rank-modification, transposed-view and
+  larger QR fixtures. Missing historical APIs stay unavailable, never substituted.
+
 ## 0.11.1
 
 - Use bounded AVX2/FMA kernels without packing for small dense f32/f64
