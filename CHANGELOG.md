@@ -4,7 +4,7 @@
 
 - Use bounded AVX2/FMA kernels without packing for small dense f32/f64
   products on x86-64 with std. Dispatch covers rows 4–32, contraction 4–64,
-  and columns up to 32 in multiples of 16 (f32) or 8 (f64). Other shapes,
+  and columns up to 16 in multiples of 16 (f32) or 8 (f64). Other shapes,
   targets, signed-stride views and ordered execution retain existing paths.
 - Reused-output native hooks need no heap scratch in this bounded path;
   ordinary matmul still allocates output. Native fused arithmetic can change

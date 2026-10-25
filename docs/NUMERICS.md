@@ -230,7 +230,7 @@ products are handled without BLAS. The optional SDK bridge needs an Apple C tool
 ## Small dense kernels (0.11.1)
 
 On x86-64 with `std`, runtime AVX2 and FMA support enables a bounded no-packing
-path for dense f32/f64 products: rows 4–32, contraction 4–64, columns at most 32
+path for dense f32/f64 products: rows 4–32, contraction 4–64, columns at most 16
 in complete tiles of 16 (f32) or 8 (f64). Four rows and two SIMD vectors per row
 reuse each loaded right-hand tile. Remaining rows use smaller specializations;
 column tails outside those tiles retain the general engine. Exact input/output

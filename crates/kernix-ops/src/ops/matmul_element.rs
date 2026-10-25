@@ -121,7 +121,7 @@ macro_rules! floating {
                 #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
                 if (4..=32).contains(&m)
                     && (4..=64).contains(&k)
-                    && ($columns..=32).contains(&n)
+                    && ($columns..=16).contains(&n)
                     && n % $columns == 0
                     && std::arch::is_x86_feature_detected!("avx2")
                     && std::arch::is_x86_feature_detected!("fma")
