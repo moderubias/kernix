@@ -8,7 +8,7 @@
 
 No previous-version baseline attached. Sequential run changes are descriptive; paired process evidence is shown separately.
 
-[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
+[Interactive HTML (open locally)](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
 
 [![Performance brief preview](latency.png)](latency.pdf)
 
@@ -25,9 +25,13 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Matrix multiplication · 32 × 32 · 32 × 32 · f64. Shorter bars mean less time.](charts/matmul_32_f64.png)
 
+Kernix: **5.9207331281079805 µs**. Kernix took ≈ 281.7% more time than ndarray in this run.
+
 **Matrix multiplication · 128 × 128 · 128 × 128 · f64**
 
 ![Matrix multiplication · 128 × 128 · 128 × 128 · f64. Shorter bars mean less time.](charts/matmul_128_f64.png)
+
+Kernix: **382.25798484848486 µs**. Kernix took ≈ 330.5% more time than ndarray in this run.
 
 </details>
 
@@ -38,9 +42,13 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Matrix multiplication · reused output · 32 × 32 · 32 × 32 · f64. Shorter bars mean less time.](charts/matmul_reuse_32_f64.png)
 
+Kernix: **5.52918597965502 µs**. Kernix took ≈ 268.7% more time than ndarray in this run.
+
 **Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64**
 
 ![Matrix multiplication · reused output · 128 × 128 · 128 × 128 · f64. Shorter bars mean less time.](charts/matmul_reuse_128_f64.png)
+
+Kernix: **418.93075 µs**. Kernix took ≈ 380.0% more time than ndarray in this run.
 
 </details>
 
@@ -51,13 +59,19 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Elementwise addition · 65,536 elements · f64. Shorter bars mean less time.](charts/add_65536_f64.png)
 
+Kernix: **26.130575757575756 µs**. Kernix took ≈ 14.6% more time than NumPy in this run.
+
 **Sum reduction · 65,536 elements · f64**
 
 ![Sum reduction · 65,536 elements · f64. Shorter bars mean less time.](charts/sum_65536_f64.png)
 
+Kernix: **33.71090026954178 µs**. Kernix took ≈ 283.5% more time than ndarray in this run.
+
 **Row softmax · 256 × 64 · f64**
 
 ![Row softmax · 256 × 64 · f64. Shorter bars mean less time.](charts/softmax_256x64_f64.png)
+
+Kernix: **221.61737168141594 µs**. Kernix took ≈ 229.5% more time than ndarray in this run.
 
 </details>
 

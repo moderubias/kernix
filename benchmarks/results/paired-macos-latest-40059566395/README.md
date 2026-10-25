@@ -2,7 +2,7 @@
 
 9 fresh-process pairs per workload. Ratios below 1 mean less time.
 
-[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
+[Interactive HTML (open locally)](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)
 
 [![Paired process comparison preview](latency.png)](latency.pdf)
 

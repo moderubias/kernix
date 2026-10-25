@@ -378,13 +378,18 @@ is a runtime dependency of Kernix.
 python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
-Explore the [complete visual benchmark archive](benchmarks/results/index.html):
-53 reports with a consistent design, searchable workloads, exact-value tables,
+Explore the [complete benchmark archive](benchmarks/results/README.md):
+68 reports with a consistent design, every workload chart embedded in GitHub,
+searchable workloads, exact-value tables,
 process-paired version comparisons and vector PDF charts. Original measurements,
 method notes and build identities remain unchanged. Chart labels explicitly mark
 rounding; exact tables retain every recorded digit.
 
-[![Kernix performance brief](benchmarks/results/0.11.0-final/latency.png)](https://github.com/moderubias/kernix/releases/tag/v0.11.0)
+Small x86-64 broadcast batches in 0.11.1 take approximately 24–34% less time for
+f64 and 29–42% less for f32 than 0.11.0 on the three tested x86-64 hosts. See the
+paired reports for uncertainty, conditions and the remaining large-matrix gaps.
+
+[![Kernix performance brief](benchmarks/results/0.11.1-final/charts/matmul_batched_4x16x32x16_f64.png)](https://github.com/moderubias/kernix/releases/tag/v0.11.1)
 
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and
@@ -397,11 +402,11 @@ for boundaries and commands. Official reports are retained in
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
 
-Start with the [0.11.0 readable comparison](benchmarks/results/0.11.0-final/README.md)
-and [paired comparison against 0.10.0](benchmarks/results/0.11.0-paired-final/README.md).
-The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.11.0)
+Start with the [0.11.1 readable comparison](benchmarks/results/0.11.1-final/README.md)
+and [paired comparison against 0.11.0](benchmarks/results/0.11.1-paired-final/README.md).
+The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.11.1)
 include the standalone HTML reports and complete measurement evidence.
-The [0.11.0 verification record](docs/QA-0.11.0.md) documents numerical contracts,
+The [0.11.1 verification record](docs/QA-0.11.1.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 
 ## Explicit Apple Accelerate execution

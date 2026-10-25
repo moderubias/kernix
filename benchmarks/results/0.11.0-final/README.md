@@ -8,7 +8,7 @@
 
 Baseline: 0.10.0-registry-011. Sequential run changes are descriptive; paired process evidence is shown separately.
 
-[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
+[Interactive HTML (open locally)](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)
 
 [![Performance brief preview](latency.png)](latency.pdf)
 
@@ -25,41 +25,61 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Independent matrix operands · 128 × 128 · 128 × 128 · f64. Shorter bars mean less time.](charts/matmul_ab_128_f64.png)
 
+Kernix: **79.522 µs**. Kernix took ≈ 3.4% less time than NumPy in this run.
+
 **Independent matrix operands · 128 × 128 · 128 × 128 · f32**
 
 ![Independent matrix operands · 128 × 128 · 128 × 128 · f32. Shorter bars mean less time.](charts/matmul_ab_128_f32.png)
+
+Kernix: **40.851 µs**. Kernix took ≈ 1.3% less time than NumPy in this run.
 
 **Matrix multiplication · 32 × 32 · 32 × 32 · f64**
 
 ![Matrix multiplication · 32 × 32 · 32 × 32 · f64. Shorter bars mean less time.](charts/matmul_32_f64.png)
 
+Kernix: **1.822 µs**. Kernix took ≈ 13.2% more time than ndarray in this run.
+
 **Matrix multiplication · 64 × 64 · 64 × 64 · f64**
 
 ![Matrix multiplication · 64 × 64 · 64 × 64 · f64. Shorter bars mean less time.](charts/matmul_64_f64.png)
+
+Kernix: **10.685 µs**. Kernix took ≈ 3.4% less time than Candle in this run.
 
 **Matrix multiplication · 128 × 128 · 128 × 128 · f64**
 
 ![Matrix multiplication · 128 × 128 · 128 × 128 · f64. Shorter bars mean less time.](charts/matmul_128_f64.png)
 
+Kernix: **81.483 µs**. Kernix took ≈ 10.7% less time than Candle in this run.
+
 **Matrix multiplication · 256 × 256 · 256 × 256 · f64**
 
 ![Matrix multiplication · 256 × 256 · 256 × 256 · f64. Shorter bars mean less time.](charts/matmul_256_f64.png)
+
+Kernix: **651.551 µs**. Kernix took ≈ 1.0% more time than Candle in this run.
 
 **Matrix multiplication · 64 × 64 · 64 × 64 · f32**
 
 ![Matrix multiplication · 64 × 64 · 64 × 64 · f32. Shorter bars mean less time.](charts/matmul_64_f32.png)
 
+Kernix: **5.239 µs**. Kernix took ≈ 4.0% less time than Candle in this run.
+
 **Matrix multiplication · 128 × 128 · 128 × 128 · f32**
 
 ![Matrix multiplication · 128 × 128 · 128 × 128 · f32. Shorter bars mean less time.](charts/matmul_128_f32.png)
+
+Kernix: **46.01 µs**. Kernix took ≈ 11.4% more time than NumPy in this run.
 
 **Matrix multiplication · 256 × 256 · 256 × 256 · f32**
 
 ![Matrix multiplication · 256 × 256 · 256 × 256 · f32. Shorter bars mean less time.](charts/matmul_256_f32.png)
 
+Kernix: **346.674 µs**. Kernix took ≈ 11.4% more time than Candle in this run.
+
 **Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64**
 
 ![Batched multiplication · 4 × 16 × 32 · 1 × 32 × 16 · f64. Shorter bars mean less time.](charts/matmul_batched_4x16x32x16_f64.png)
+
+Kernix: **2.279 µs**. Kernix took ≈ 0.6% less time than Candle in this run.
 
 </details>
 
@@ -70,17 +90,25 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Matmul · 2 workers · reused output · 64 × 64 · 64 × 64 · f64. Shorter bars mean less time.](charts/parallel_matmul_into_64_f64.png)
 
+Kernix: **11.276 µs**. No external comparison with Kernix was measured for this workload.
+
 **Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64**
 
 ![Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f64. Shorter bars mean less time.](charts/parallel_matmul_into_128_f64.png)
+
+Kernix: **79.016 µs**. No external comparison with Kernix was measured for this workload.
 
 **Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64**
 
 ![Matmul · 2 workers · reused output · 256 × 256 · 256 × 256 · f64. Shorter bars mean less time.](charts/parallel_matmul_into_256_f64.png)
 
+Kernix: **343.076 µs**. No external comparison with Kernix was measured for this workload.
+
 **Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32**
 
 ![Matmul · 2 workers · reused output · 128 × 128 · 128 × 128 · f32. Shorter bars mean less time.](charts/parallel_matmul_into_128_f32.png)
+
+Kernix: **41.048 µs**. No external comparison with Kernix was measured for this workload.
 
 </details>
 
@@ -91,41 +119,61 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Cholesky factorization · 512 × 512 · f64. Shorter bars mean less time.](charts/cholesky_factor_512_f64.png)
 
+Kernix: **4062.093 µs**. Kernix took ≈ 97.2% more time than faer in this run.
+
 **Column-pivoted QR · 96 × 32 · f64**
 
 ![Column-pivoted QR · 96 × 32 · f64. Shorter bars mean less time.](charts/pivoted_qr_96x32_f64.png)
+
+Kernix: **61.85 µs**. Kernix took ≈ 23.9% less time than faer in this run.
 
 **Column-pivoted QR · 256 × 64 · f64**
 
 ![Column-pivoted QR · 256 × 64 · f64. Shorter bars mean less time.](charts/pivoted_qr_256x64_f64.png)
 
+Kernix: **602.805 µs**. Kernix took ≈ 17.2% more time than faer in this run.
+
 **Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64**
 
 ![Minimum-norm least squares · 64 × 32, rank 16, 4 RHS · f64. Shorter bars mean less time.](charts/min_norm_64x32_rank16_f64.png)
+
+Kernix: **54.399 µs**. Kernix took ≈ 27.3% less time than NumPy in this run.
 
 **Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64**
 
 ![Minimum-norm least squares · 32 × 64, rank 32, 4 RHS · f64. Shorter bars mean less time.](charts/min_norm_32x64_rank32_f64.png)
 
+Kernix: **66.701 µs**. Kernix took ≈ 54.4% less time than NumPy in this run.
+
 **Thin QR · 96 × 32 · f64**
 
 ![Thin QR · 96 × 32 · f64. Shorter bars mean less time.](charts/qr_96x32_f64.png)
+
+Kernix: **53.055 µs**. Kernix took ≈ 20.7% more time than nalgebra in this run.
 
 **Thin QR · 256 × 64 · f64**
 
 ![Thin QR · 256 × 64 · f64. Shorter bars mean less time.](charts/qr_256x64_f64.png)
 
+Kernix: **588.471 µs**. Kernix took ≈ 36.7% more time than NumPy in this run.
+
 **Cholesky factorization · 64 × 64 · f64**
 
 ![Cholesky factorization · 64 × 64 · f64. Shorter bars mean less time.](charts/cholesky_factor_64_f64.png)
+
+Kernix: **23.116 µs**. Kernix took ≈ 149.6% more time than faer in this run.
 
 **Cholesky factorization · 128 × 128 · f64**
 
 ![Cholesky factorization · 128 × 128 · f64. Shorter bars mean less time.](charts/cholesky_factor_128_f64.png)
 
+Kernix: **128.36799999999999 µs**. Kernix took ≈ 170.0% more time than faer in this run.
+
 **Cholesky factorization · 256 × 256 · f64**
 
 ![Cholesky factorization · 256 × 256 · f64. Shorter bars mean less time.](charts/cholesky_factor_256_f64.png)
+
+Kernix: **579.5 µs**. Kernix took ≈ 155.3% more time than faer in this run.
 
 </details>
 
@@ -136,25 +184,37 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Shared-variable backward · sum(X * X), 64 × 32; prepared graph · f64. Shorter bars mean less time.](charts/training_shared_backward_64x32_f64.png)
 
+Kernix: **6.946 µs**. Kernix took ≈ 47.3% more time than Candle in this run.
+
 **Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64**
 
 ![Record + backward · sum(A · W), 32 × 16 · 16 × 8 · f64. Shorter bars mean less time.](charts/matmul_sum_backward_32x16x8_f64.png)
+
+Kernix: **2.753 µs**. Kernix took ≈ 38.3% less time than Candle in this run.
 
 **Model inference · batched normalized/sliced MLP · f64**
 
 ![Model inference · batched normalized/sliced MLP · f64. Shorter bars mean less time.](charts/training_forward_2x4x8x4_f64.png)
 
+Kernix: **4.036 µs**. Kernix took ≈ 14.7% less time than Candle in this run.
+
 **Model recording + forward · batched normalized/sliced MLP · f64**
 
 ![Model recording + forward · batched normalized/sliced MLP · f64. Shorter bars mean less time.](charts/training_record_2x4x8x4_f64.png)
+
+Kernix: **2.84 µs**. Kernix took ≈ 66.6% less time than Candle in this run.
 
 **Model backward · prepared graph → fresh gradients · f64**
 
 ![Model backward · prepared graph → fresh gradients · f64. Shorter bars mean less time.](charts/training_backward_2x4x8x4_f64.png)
 
+Kernix: **3.515 µs**. Kernix took ≈ 83.9% less time than Candle in this run.
+
 **Parameter update · transactional SGD, fixed gradients · f64**
 
 ![Parameter update · transactional SGD, fixed gradients · f64. Shorter bars mean less time.](charts/training_sgd_2x4x8x4_f64.png)
+
+Kernix: **0.584 µs**. No external comparison with Kernix was measured for this workload.
 
 </details>
 
@@ -165,6 +225,8 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Coalesced tensor contraction · 16 × 32 × 8 · 32 × 8 × 16 · f64. Shorter bars mean less time.](charts/tensordot_16x32x8_32x8x16_f64.png)
 
+Kernix: **41.049 µs**. Kernix took ≈ 384.8% more time than NumPy in this run.
+
 </details>
 
 <details>
@@ -173,6 +235,8 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 **Row softmax · 256 × 64 · f64**
 
 ![Row softmax · 256 × 64 · f64. Shorter bars mean less time.](charts/softmax_256x64_f64.png)
+
+Kernix: **100.743 µs**. Kernix took ≈ 28.1% more time than ndarray in this run.
 
 </details>
 
@@ -183,9 +247,13 @@ Expand a group to see every chart here on GitHub. Click a chart to enlarge it. T
 
 ![Create zeros · 64 × 64 · f32. Shorter bars mean less time.](charts/create_zeros_64x64_f32.png)
 
+Kernix: **0.155 µs**. Kernix took ≈ 7.7% less time than Candle in this run.
+
 **Create ones · 64 × 64 · f32**
 
 ![Create ones · 64 × 64 · f32. Shorter bars mean less time.](charts/create_ones_64x64_f32.png)
+
+Kernix: **0.205 µs**. Kernix took ≈ 21.3% more time than ndarray in this run.
 
 </details>
 

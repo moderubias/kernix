@@ -1,0 +1,28 @@
+# Kernix 0.11.1 vs 0.11.0 · paired processes
+
+Current: `runner-macos-latest-40161751367`. Baseline: `baseline-macos-latest-40161751367`.
+
+9 fresh-process pairs per workload. Lower ratio is faster.
+95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
+Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+
+| Workload | Current / baseline latency | 95% interval |
+|---|---:|---:|
+| Matrix multiplication 32 × 32 · 32 × 32 f64 | 0.985× | [0.771, 1.074] |
+| Matrix multiplication 128 × 128 · 128 × 128 f64 | 1.005× | [0.905, 1.093] |
+| Matrix multiplication 128 × 128 · 128 × 128 f32 | 0.976× | [0.845, 1.011] |
+| Matrix multiplication 256 × 256 · 256 × 256 f64 | 0.999× | [0.921, 1.095] |
+| Matrix multiplication 256 × 256 · 256 × 256 f32 | 0.986× | [0.869, 1.042] |
+| Record + backward sum(A · W), 32 × 16 · 16 × 8 f64 | 0.923× | [0.775, 1.256] |
+| Independent matrix operands 128 × 128 · 128 × 128 f64 | 0.994× | [0.944, 1.053] |
+| Independent matrix operands 128 × 128 · 128 × 128 f32 | 0.909× | [0.877, 0.988] |
+| Batched multiplication 4 × 16 × 32 · 1 × 32 × 16 f64 | 1.000× | [0.958, 1.076] |
+| Batched multiplication 4 × 16 × 32 · 1 × 32 × 16 f32 | 1.000× | [0.883, 1.024] |
+| Cholesky factorization 128 × 128 f64 | 1.000× | [0.950, 1.082] |
+| Cholesky factorization 256 × 256 f64 | 1.006× | [0.926, 1.177] |
+| Cholesky factorization 512 × 512 f64 | 1.071× | [0.964, 1.282] |
+| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f64 | 0.951× | [0.529, 1.399] |
+| Matmul · 2 workers · reused output 256 × 256 · 256 × 256 f64 | 0.976× | [0.908, 1.408] |
+| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f32 | 1.044× | [0.512, 1.282] |
+
+Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).
