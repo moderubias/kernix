@@ -129,7 +129,7 @@ python benchmarks/report.py web/benchmarks/current --baseline web/benchmarks/bas
 ```
 
 This rewrites presentation files only. It does not modify raw observations or claim
-that rendering remeasures code. Historical official artifacts are retained unchanged.
+that rendering remeasures code. Raw official measurements, source snapshots and original commentary are retained byte-for-byte. Presentation files can be regenerated from those records.
 The comparison names both runs, displays signed latency changes (negative is faster)
 and flags CPU/toolchain/governor/thread/backend mismatches. Sequential, unrandomized
 runs on a shared laptop do not establish statistical significance. Full p95/batch/RSS/
@@ -305,3 +305,32 @@ python -m unittest discover -s benchmarks -p 'test_*.py'
 mutation. It preserves old `comparison.png`, `comparison.pdf` and `report.pdf` URLs.
 Only generated presentation files and the searchable index are replaced. The runtime
 crates and their published version are unaffected by a presentation-only update.
+
+
+## Reading results directly on GitHub (0.11.1)
+
+Each report README includes every workload chart, grouped in expandable sections.
+Bars start at zero and are sorted by their recorded median: shorter means less time.
+Blue identifies the default Kernix path; teal identifies an explicitly selected
+Kernix backend; grey identifies external libraries. A plain-language caption
+compares default Kernix with the lowest external peer median in that run. It does
+not establish a statistically supported peer ranking. Each chart has its own scale.
+
+Paired version sheets show all measured changes with a shared reference at 1:
+left means less time and right means more. Their exploratory 95% intervals resample
+fresh-process pairs, without multiple-comparison adjustment. Crossing 1 leaves the
+direction unclear. These sheets do not mix version changes with peer observations.
+
+PNG charts work in GitHub READMEs; the downloadable HTML adds search, filters and
+resources. Six-significant-digit chart labels mark rounding with ≈. Exact Markdown,
+HTML and PDF tables preserve all original source digits through Decimal unit
+conversion. The presentation integrity manifest hashes immutable evidence; generated
+files under each report's charts/ directory are explicitly presentation assets.
+
+The new broadcast-batched f32 fixture uses [4,16,32] times [1,32,16], prepared in
+f32 without timed conversions. The independent validator accumulates actual f32
+inputs in f64 outside timing with the same 1e-5 relative-plus-absolute budget as
+other f32 products. The f64 fixture and its 1e-11 budget are unchanged. Both exact
+0.11.0 and candidate drivers run these fixtures, including first-call and allocation
+probes outside warmed timing. The normal suite now has 119 observations / 35 workloads;
+macOS adds four separately labeled optional Accelerate observations.

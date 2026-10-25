@@ -233,33 +233,12 @@ def _attrs(w, caption):
 
 
 def _chart(w, title, shape, dtype, values, names, legacy=False):
+    from github_charts import ranked, observation
+
     esc = html.escape
     maximum = max((median(v) for v in values.values()), default=1) or 1
     rows = []
-    ordered = [
-        x
-        for x in [
-            "kernix",
-            "kernix-accelerate",
-            "numpy",
-            "candle",
-            "faer",
-            "ndarray",
-            "nalgebra",
-        ]
-        if x in values
-    ] + sorted(
-        set(values)
-        - {
-            "kernix",
-            "kernix-accelerate",
-            "numpy",
-            "candle",
-            "faer",
-            "ndarray",
-            "nalgebra",
-        }
-    )
+    ordered = ranked(values)
     for lib in ordered:
         ns = median(values[lib])
         kind = (
@@ -282,7 +261,7 @@ def _chart(w, title, shape, dtype, values, names, legacy=False):
     return (
         f'<article class="plot" {_attrs(w, caption)}><div class="chart-top"><span class="eyebrow">{esc(FAMILIES[family(w)])}</span><span class="chart-unit">{metric({"_batch_only": legacy})} / µs</span></div><h3>{esc(title)}</h3><p class="shape">{esc(shape)} <span>{esc(dtype)}</span></p><p class="contract">{esc(contract(w))}</p><div class="bar-chart">'
         + "".join(rows)
-        + f'</div><div class="chart-foot"><span>{badge}</span><span>0 → {us(maximum)} µs</span></div></article>'
+        + f'</div><p class="reading">{esc(observation(values, names))}</p><div class="chart-foot"><span>{badge}</span><span>0 → {us(maximum)} µs</span></div></article>'
     )
 
 
@@ -331,6 +310,7 @@ def receipt(dest, data, baseline=None, paired=None):
         "report.py",
         "presentation.py",
         "visuals.py",
+        "github_charts.py",
         "report_frontend.html",
         "report_style.css",
         "archive.py",
@@ -347,7 +327,7 @@ def receipt(dest, data, baseline=None, paired=None):
         if (dest / name).exists()
     }
     record = dict(
-        design_version=2,
+        design_version=3,
         measured_revision=data.get("metadata", data.get("current", {})).get("revision"),
         renderer_revision=revision,
         renderer_sha256={
@@ -364,6 +344,8 @@ def receipt(dest, data, baseline=None, paired=None):
 
 
 def render(dest, data, baseline, paired, h):
+    from github_charts import sections, pair_sections
+
     esc = html.escape
     dest = Path(dest)
     data = normalize(data)
@@ -434,27 +416,36 @@ def render(dest, data, baseline, paired, h):
     details = []
     plots = []
     losses = []
-    md = [
-        f"# Kernix {version} · performance brief",
-        "",
-        f"{cpu} / {os_name}",
-        "",
-        f"**{metric(meta)}, microseconds per operation. Lower is faster. All recorded digits retained.**",
-        "",
-        f"{len(groups)} workloads · {len(data['results'])} observations",
-        "",
-        note,
-        "",
-        "[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)",
-        "",
-        "[![Performance brief preview](latency.png)](latency.pdf)",
-        "",
-        "| Workload | "
-        + " | ".join(names(x) for x in libs)
-        + (" | Sequential run change" if baseline else "")
-        + " |",
-        "|---|" + "---:|" * (len(libs) + (1 if baseline else 0)),
-    ]
+    md = (
+        [
+            f"# Kernix {version} · performance brief",
+            "",
+            f"{cpu} / {os_name}",
+            "",
+            f"**{metric(meta)}, microseconds per operation. Lower is faster. All recorded digits retained.**",
+            "",
+            f"{len(groups)} workloads · {len(data['results'])} observations",
+            "",
+            note,
+            "",
+            "[Open the visual report](report.html) · [Vector PDF](latency.pdf) · [Raw measurements](raw.json)",
+            "",
+            "[![Performance brief preview](latency.png)](latency.pdf)",
+            "",
+        ]
+        + sections(groups, label)
+        + [
+            "## Exact latency table",
+            "",
+            "All values below are microseconds per operation. **Lower is faster.** Missing entries were not measured.",
+            "",
+            "| Workload | "
+            + " | ".join(names(x) for x in libs)
+            + (" | Sequential run change" if baseline else "")
+            + " |",
+            "|---|" + "---:|" * (len(libs) + (1 if baseline else 0)),
+        ]
+    )
     for w, values in groups:
         title, shape, dtype = label(w)
         caption = " · ".join(filter(None, [title, shape, dtype]))
@@ -561,6 +552,10 @@ def render(dest, data, baseline, paired, h):
         count
         + " Exploratory 95% intervals resample process pairs, not calls. No multiple-comparison adjustment.",
         "",
+    ]
+    if paired and ratios:
+        md += pair_sections(paired)
+    md += [
         "| Workload | Current / baseline [95% interval] | Interpretation |",
         "|---|---:|---|",
     ]
@@ -659,6 +654,8 @@ def render(dest, data, baseline, paired, h):
 
 def render_pair(dest, paired, h):
     """Standalone paired reports retain ratios and all process blocks unchanged."""
+    from github_charts import pair_sections
+
     dest = Path(dest)
     meta = paired["current"]
     old = paired["baseline"]
@@ -682,18 +679,25 @@ def render_pair(dest, paired, h):
     label = h["label"]
     cpu = h["cpu"]
     rows = []
-    md = [
-        f"# Kernix {version} · paired process comparison",
-        "",
-        f"{paired['rounds']} fresh-process pairs per workload. Ratios below 1 mean less time.",
-        "",
-        "[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)",
-        "",
-        "[![Paired process comparison preview](latency.png)](latency.pdf)",
-        "",
-        "| Workload | Current / baseline [95% interval] | Interpretation |",
-        "|---|---:|---|",
-    ]
+    md = (
+        [
+            f"# Kernix {version} · paired process comparison",
+            "",
+            f"{paired['rounds']} fresh-process pairs per workload. Ratios below 1 mean less time.",
+            "",
+            "[Open visual comparison](report.html) · [Vector PDF](latency.pdf) · [Original process evidence](paired.json)",
+            "",
+            "[![Paired process comparison preview](latency.png)](latency.pdf)",
+            "",
+        ]
+        + pair_sections(paired)
+        + [
+            "## Exact process ratios",
+            "",
+            "| Workload | Current / baseline [95% interval] | Interpretation |",
+            "|---|---:|---|",
+        ]
+    )
     for w, p in ratios.items():
         caption = " · ".join(filter(None, label(w)))
         status, kind = verdict(p)
@@ -798,30 +802,9 @@ def static_report(dest, data, h, paired=None):
             scene.text(800, 214, "Source precision retained", 17)
         for j, (w, values) in enumerate(items):
             title, shape, dtype = label(w)
-            ordered = [
-                k
-                for k in [
-                    "kernix",
-                    "kernix-accelerate",
-                    "numpy",
-                    "candle",
-                    "faer",
-                    "ndarray",
-                    "nalgebra",
-                ]
-                if k in values
-            ] + sorted(
-                set(values)
-                - {
-                    "kernix",
-                    "kernix-accelerate",
-                    "numpy",
-                    "candle",
-                    "faer",
-                    "ndarray",
-                    "nalgebra",
-                }
-            )
+            from github_charts import ranked
+
+            ordered = ranked(values)
             v = [
                 dict(
                     key=k,
@@ -890,6 +873,9 @@ def static_report(dest, data, h, paired=None):
             scene.line(64, yy + 31, 1136, yy + 31)
         scenes.append(scene)
     export(scenes, Path(dest), "latency")
+    from github_charts import generate
+
+    generate(dest, data, h, paired)
 
 
 def static_pair(dest, paired, h, offset=0, total=None, return_scenes=False):
@@ -927,3 +913,6 @@ def static_pair(dest, paired, h, offset=0, total=None, return_scenes=False):
     if return_scenes:
         return scenes
     export(scenes, Path(dest), "latency")
+    from github_charts import generate_pairs
+
+    generate_pairs(dest, paired, h, standalone=True)

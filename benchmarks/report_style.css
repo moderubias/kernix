@@ -6,3 +6,7 @@
 /* Keep exploration controls compact and touch targets usable. */
 @media(min-width:1151px){.filters{flex:1 1 650px}.modes{align-self:center}}
 @media(max-width:700px){h1{font-size:39px}.host-card .host-note{font-size:11px}.modes button{font-size:11px;padding:7px 8px;min-height:44px}}
+
+/* Plain-language reading comes before statistical details. */
+.hero h1{font-size:clamp(38px,5vw,68px)}
+.reading{font-size:14px;line-height:1.6;color:var(--ink);font-weight:600;margin:20px 0 5px;padding-top:14px;border-top:1px solid var(--line)}

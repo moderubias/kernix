@@ -32,6 +32,7 @@ def protected_files(root):
         for p in root.rglob("*")
         if p.is_file()
         and p.parent != root
+        and "charts" not in p.relative_to(root).parts
         and p.name not in GENERATED
         and p.name != "original-report.txt"
     }
@@ -87,7 +88,7 @@ def make_index(root, records):
     md = [
         "# Kernix performance archive",
         "",
-        "[Open the visual archive](index.html) to search every retained run, machine and measurement type.",
+        "Read the reports below directly on GitHub: every workload has a chart and a plain-language caption. Download the [complete offline archive](https://github.com/moderubias/kernix/releases/latest/download/kernix-benchmark-archive.zip) for the interactive edition, or open [index.html](index.html) locally.",
         "",
         "All raw measurements, process pairs, source archives, locks and original methods are preserved. Chart labels use six significant digits with ≈ for rounding. Exact tables preserve all source digits through Decimal unit conversion.",
         "",
@@ -142,7 +143,7 @@ def make_index(root, records):
             f'<tr data-search="{search}" data-kind="{"paired" if r["paired"] else "batch" if legacy else "calls"}"><th scope="row"><a href="{esc(name)}/report.html">Kernix {esc(str(r["version"]))}<span aria-hidden="true"> ↗</span></a><small>{esc(name)}</small></th><td>{esc(r["cpu"])}<small>{os}</small></td><td><span class="type-tag">{measure}</span></td><td>{count}</td><td class="archive-actions"><a href="{esc(name)}/latency.pdf">PDF</a><a href="{esc(name)}/README.md">Exact data</a></td></tr>'
         )
         md.append(
-            f"| [{name}]({name}/report.html) | {r['cpu']} / {os} | {measure} | {count} |"
+            f"| [{name}]({name}/README.md) | {r['cpu']} / {os} | {measure} | {count} |"
         )
     base = Path(__file__).parent
     css = (
@@ -225,7 +226,7 @@ def rebuild(root):
     if any(after.get(name) != digest for name, digest in before.items()):
         raise RuntimeError("evidence mutation refused")
     record = dict(
-        design_version=2,
+        design_version=3,
         reports=len(records),
         raw_runs=sum(not x["paired"] for x in records),
         paired_runs=sum(x["paired"] for x in records),

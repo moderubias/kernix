@@ -17,7 +17,8 @@ W, H = 1200, 848.5
 class Scene:
     """One coordinate system; exporters do not recalculate chart data."""
 
-    def __init__(self):
+    def __init__(self, width=W, height=H):
+        self.width, self.height = width, height
         self.commands = []
 
     def rect(self, x, y, w, h, color, radius=0):
@@ -36,7 +37,7 @@ class Scene:
         from presentation import font_css, font_license
 
         elements = [
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">',
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.width}" height="{self.height}" viewBox="0 0 {self.width} {self.height}">',
             "<title>Kernix performance report preview</title>",
             "<style>"
             + font_css()
@@ -175,7 +176,6 @@ def export(scenes, dest, stem):
     """PDF stays vector; PNG is a deterministic preview of the same first scene."""
     from reportlab.pdfgen.canvas import Canvas
     from reportlab.lib.colors import HexColor
-    from PIL import Image, ImageDraw, ImageFont
 
     fonts()
     dest = Path(dest)
@@ -211,14 +211,22 @@ def export(scenes, dest, stem):
         canvas.restoreState()
         canvas.showPage()
     canvas.save()
-    scale = 1.5
-    image = Image.new("RGB", (round(W * scale), round(H * scale)), "white")
+    raster(scenes[0], dest / (stem + ".png"))
+
+
+def raster(scene, path, scale=1.5):
+    """Offline PNG for GitHub, with readable type and lossless PNG storage."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.new(
+        "RGB", (round(scene.width * scale), round(scene.height * scale)), "white"
+    )
     draw = ImageDraw.Draw(image)
 
     def xy(*v):
         return tuple(round(x * scale) for x in v)
 
-    for cmd in scenes[0].commands:
+    for cmd in scene.commands:
         kind, *v = cmd
         if kind == "rect":
             x, y, w, h, c, r = v
@@ -244,4 +252,5 @@ def export(scenes, dest, stem):
                 fill=c,
                 anchor={"end": "rs", "middle": "ms"}.get(anchor, "ls"),
             )
-    image.save(dest / (stem + ".png"))
+    # No numeric or geometric data is altered; palette storage reduces archive size.
+    image.save(path, optimize=True)
