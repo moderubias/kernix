@@ -98,6 +98,17 @@ def pair_sections(paired):
     return lines
 
 
+def version(meta):
+    return next(
+        (
+            str(lib["version"])
+            for lib in meta.get("library_packages", [])
+            if lib["name"] == "kernix"
+        ),
+        str(meta.get("version", "unrecorded")),
+    )
+
+
 def header(scene, title, cpu, metric):
     scene.rect(0, 0, scene.width, scene.height, PAPER)
     scene.rect(0, 0, 9, scene.height, BLUE)
@@ -116,7 +127,7 @@ def latency_scene(w, values, meta, h):
     scene = Scene(height=420 + len(values) * 46 + max(0, len(lines) - 1) * 29)
     header(
         scene,
-        "workload comparison",
+        "workload comparison · " + version(meta),
         h["cpu"],
         p.metric(meta) + " · microseconds (µs) · lower is faster",
     )
@@ -177,7 +188,7 @@ def paired_scene(title, items, paired, h):
     scene = Scene(height=230 + 90 * len(items))
     header(
         scene,
-        "version comparison",
+        "Kernix " + version(paired["current"]) + " vs " + version(paired["baseline"]),
         h["cpu"],
         f"{paired['rounds']} fresh-process pairs · current / baseline · below 1 is faster",
     )
