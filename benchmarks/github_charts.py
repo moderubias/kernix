@@ -112,7 +112,9 @@ def version(meta):
 def header(scene, title, cpu, metric):
     scene.rect(0, 0, scene.width, scene.height, PAPER)
     scene.rect(0, 0, 9, scene.height, BLUE)
-    scene.text(48, 42, "KERNIX / " + title.upper(), 19, bold=True)
+    scene.text(
+        48, 42, "KERNIX / " + title.removeprefix("Kernix ").upper(), 19, bold=True
+    )
     scene.text(1152, 42, "LESS TIME IS BETTER", 17, MUTED, anchor="end")
     scene.text(48, 81, cpu, 22, bold=True)
     scene.text(48, 113, metric, 18, MUTED)
