@@ -14,6 +14,7 @@ LIBRARIES = (
     "faer",
     "candle",
     "numpy",
+    "refactor",
 )
 NAMES = dict(
     kernix="Kernix",

@@ -494,7 +494,9 @@ def render(dest, data, baseline, paired, h):
         md.append("| " + caption + " | " + " | ".join(md_cells) + " |")
         heading = f'<th scope="row">{esc(title)}<small>{esc(shape)} · {esc(dtype)}</small><small>{esc(contract(w))}</small></th>'
         badge = (
-            "No peer comparison measured"
+            "Observed medians · includes same-version refactor reference"
+            if "refactor" in values
+            else "No peer comparison measured"
             if len(values) == 1
             else "Observed median · not a statistical peer ranking"
         )
@@ -510,7 +512,7 @@ def render(dest, data, baseline, paired, h):
         )
         plots.append(_chart(w, title, shape, dtype, values, names, legacy))
         k = values.get("kernix")
-        others = {lib: v for lib, v in values.items() if not lib.startswith("kernix")}
+        others = {lib: v for lib, v in values.items() if not lib.startswith("kernix") and lib != "refactor"}
         if k and others:
             lib, v = min(others.items(), key=lambda x: median(x[1]))
             if median(v) < median(k):

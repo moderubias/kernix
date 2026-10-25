@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Save immutable comparative measurements and printable reports (dev tools only)."""
-import argparse, hashlib, io, json, os, platform, statistics, subprocess, tarfile, time
+import argparse, hashlib, json, os, platform, statistics, subprocess, tarfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

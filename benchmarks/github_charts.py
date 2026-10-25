@@ -17,7 +17,7 @@ def ranked(values):
 
 def observation(values, names):
     """Explain the default Kernix median against the lowest external peer median."""
-    peers = [key for key in values if not key.startswith("kernix")]
+    peers = [key for key in values if not key.startswith("kernix") and key != "refactor"]
     if "kernix" not in values or not peers:
         return "No external comparison with Kernix was measured for this workload."
     peer = min(peers, key=lambda key: p.median(values[key]))

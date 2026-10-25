@@ -78,6 +78,24 @@ class PrecisionTests(unittest.TestCase):
             self.assertIn("≈ 126.333", doc)
         self.assertEqual(data, original)
 
+    def test_refactor_reference_stays_in_exact_table_and_out_of_external_ranking(self):
+        import github_charts
+
+        values = {"kernix": sample(1000), "refactor": sample(100), "nalgebra": sample(2000)}
+        data = dict(metadata=dict(run_id="rank", environment={}, library_source="workspace new"),
+                    results={"cholesky_rank_update_256_f64/" + lib: row for lib, row in values.items()})
+        with tempfile.TemporaryDirectory() as d, patch.object(report, "render_chart"):
+            path = Path(d)
+            report.render_report(path, data)
+            doc = (path / "report.html").read_text(encoding="utf-8")
+            md = (path / "README.md").read_text(encoding="utf-8")
+            self.assertIn('data-ns="100"', doc)
+            self.assertIn("Kernix refactor", md)
+            self.assertIn("same-version refactor reference", doc)
+        summary = github_charts.observation(values, lambda lib: report.NAMES[lib])
+        self.assertIn("less time than nalgebra", summary)
+        self.assertNotIn("refactor", summary)
+
     def test_historical_batch_means_do_not_become_call_tails_or_allocations(self):
         data = dict(
             metadata=dict(version="0.1.1", cpu="old CPU"),
