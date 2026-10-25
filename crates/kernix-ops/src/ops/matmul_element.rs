@@ -47,7 +47,7 @@ integer!(
     u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
 );
 macro_rules! floating {
-    ($ty:ident,$kernel:ident,$native:path) => {
+    ($ty:ident,$kernel:ident,$native:path,$columns:expr) => {
         impl MatmulElement for $ty {
             const HAS_NATIVE_MATMUL: bool = true;
             fn try_strided_matmul(
@@ -118,6 +118,20 @@ macro_rules! floating {
                 let (Ok(ks), Ok(ns)) = (isize::try_from(k), isize::try_from(n)) else {
                     return false;
                 };
+                #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+                if (4..=32).contains(&m)
+                    && (4..=64).contains(&k)
+                    && ($columns..=32).contains(&n)
+                    && n % $columns == 0
+                    && std::arch::is_x86_feature_detected!("avx2")
+                    && std::arch::is_x86_feature_detected!("fma")
+                {
+                    // SAFETY: exact slice lengths checked above; the bounded dense
+                    // kernel writes every output once and checks vector/row tails.
+                    // Both required CPU features were detected on this host.
+                    unsafe { super::small_gemm::$ty(a, b, out, m, k, n) };
+                    return true;
+                }
                 #[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
                 if m >= 64 && k >= 64 && n >= 64 && gemm_common::simd::V3::try_new().is_some() {
                     // SAFETY: exact checked slice extents and representable strides
@@ -196,8 +210,8 @@ macro_rules! floating {
         }
     };
 }
-floating!(f32, sgemm, gemm_f32::gemm::f32::get_gemm_fn);
-floating!(f64, dgemm, gemm_f64::gemm::f64::get_gemm_fn);
+floating!(f32, sgemm, gemm_f32::gemm::f32::get_gemm_fn, 16);
+floating!(f64, dgemm, gemm_f64::gemm::f64::get_gemm_fn, 8);
 
 /// Validated borrowed rank-two host matrix, including signed/broadcast strides.
 /// Storage and metadata remain independent of devices. This capability allows

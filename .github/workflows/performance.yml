@@ -32,7 +32,7 @@ jobs:
           RUSTC_WRAPPER: ''
           CARGO_BUILD_JOBS: '2'
       - name: Measure exact registry baseline on the same host
-        run: python benchmarks/evidence.py baseline-${{ matrix.os }}-${{ github.run_id }} --registry-baseline 0.10.0
+        run: python benchmarks/evidence.py baseline-${{ matrix.os }}-${{ github.run_id }} --registry-baseline 0.11.0
         env:
           RUSTC_WRAPPER: ''
           CARGO_BUILD_JOBS: '2'
@@ -43,7 +43,7 @@ jobs:
           web/benchmarks/baseline-${{ matrix.os }}-${{ github.run_id }}
           web/benchmarks/paired-${{ matrix.os }}-${{ github.run_id }}
           --rounds 9 --workloads matmul_128_f64 matmul_128_f32 matmul_256_f64 matmul_256_f32
-          matmul_ab_128_f64 matmul_ab_128_f32 cholesky_factor_128_f64 cholesky_factor_256_f64 cholesky_factor_512_f64
+          matmul_ab_128_f64 matmul_ab_128_f32 matmul_batched_4x16x32x16_f64 matmul_batched_4x16x32x16_f32 cholesky_factor_128_f64 cholesky_factor_256_f64 cholesky_factor_512_f64
           parallel_matmul_into_128_f64 parallel_matmul_into_256_f64 parallel_matmul_into_128_f32
       - name: Present paired evidence alongside peer observations
         run: >-

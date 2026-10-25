@@ -292,6 +292,56 @@ fn batched_gemm(mode: &str, library: &str) -> Value {
         _ => panic!("unknown batched matmul library"),
     }
 }
+fn batched_gemm_f32(mode: &str, library: &str) -> Value {
+    let a: Vec<f32> = (0..4 * 16 * 32).map(|i| (i % 13) as f32 / 13.0).collect();
+    let b: Vec<f32> = (0..32 * 16).map(|i| (i % 17) as f32 / 17.0).collect();
+    let check = |get: &dyn Fn(usize, usize, usize) -> f32| {
+        let mut error = 0.0f64;
+        for batch in 0..4 {
+            for row in 0..16 {
+                for col in 0..16 {
+                    let expected: f64 = (0..32)
+                        .map(|k| {
+                            f64::from(a[(batch * 16 + row) * 32 + k]) * f64::from(b[k * 16 + col])
+                        })
+                        .sum();
+                    let delta = (f64::from(get(batch, row, col)) - expected).abs();
+                    assert!(delta < 1e-5 * (1.0 + expected.abs()));
+                    error = error.max(delta);
+                }
+            }
+        }
+        json!({"max_absolute_error":error,"relative_plus_absolute_budget":1e-5})
+    };
+    match library {
+        "kernix" => {
+            let a = Tensor::from_values([4, 16, 32], a.clone()).unwrap();
+            let b = Tensor::from_values([1, 32, 16], b.clone()).unwrap();
+            measure(
+                mode,
+                || kernix::matmul(&a, &b).unwrap(),
+                |out| check(&|i, j, k| *out.get(&[i, j, k]).unwrap()),
+            )
+        }
+        "candle" => {
+            let a =
+                candle_core::Tensor::from_vec(a.clone(), (4, 16, 32), &candle_core::Device::Cpu)
+                    .unwrap();
+            let b =
+                candle_core::Tensor::from_vec(b.clone(), (1, 32, 16), &candle_core::Device::Cpu)
+                    .unwrap();
+            measure(
+                mode,
+                || a.broadcast_matmul(&b).unwrap(),
+                |out| {
+                    let data = out.to_vec3::<f32>().unwrap();
+                    check(&|i, j, k| data[i][j][k])
+                },
+            )
+        }
+        _ => panic!("unknown batched matmul library"),
+    }
+}
 fn qr_error(
     m: usize,
     n: usize,
@@ -663,6 +713,7 @@ fn main() {
         "create_zeros_64x64_f32" => identity_constructor(mode, library, false),
         "create_ones_64x64_f32" => identity_constructor(mode, library, true),
         "matmul_batched_4x16x32x16_f64" => batched_gemm(mode, library),
+        "matmul_batched_4x16x32x16_f32" => batched_gemm_f32(mode, library),
         "matmul_32_f64" => gemm(mode, library, 32),
         "matmul_64_f64" => gemm(mode, library, 64),
         "matmul_128_f64" => gemm(mode, library, 128),

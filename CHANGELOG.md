@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.1
+
+- Use bounded AVX2/FMA kernels without packing for small dense f32/f64
+  products on x86-64 with std. Dispatch covers rows 4–32, contraction 4–64,
+  and columns up to 32 in multiples of 16 (f32) or 8 (f64). Other shapes,
+  targets, signed-stride views and ordered execution retain existing paths.
+- Reused-output native hooks need no heap scratch in this bounded path;
+  ordinary matmul still allocates output. Native fused arithmetic can change
+  last bits. No public API or default 128×128 engine changes.
+- Add independent boundary, ownership, allocation and numerical-error checks;
+  compare both dtypes of broadcast batched multiplication against exact 0.11.0.
+
 ## 0.11.0
 
 - Block Cholesky for native-capable matrices of order at least 192, with borrowed

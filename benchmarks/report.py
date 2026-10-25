@@ -116,6 +116,11 @@ WORKLOADS = {
         "4 × 16 × 32 · 1 × 32 × 16",
         "f64",
     ),
+    "matmul_batched_4x16x32x16_f32": (
+        "Batched multiplication",
+        "4 × 16 × 32 · 1 × 32 × 16",
+        "f32",
+    ),
     "pivoted_qr_96x32_f64": ("Column-pivoted QR", "96 × 32", "f64"),
     "pivoted_qr_256x64_f64": ("Column-pivoted QR", "256 × 64", "f64"),
     "min_norm_64x32_rank16_f64": (

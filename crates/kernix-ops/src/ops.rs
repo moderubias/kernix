@@ -25,6 +25,8 @@ mod ordering;
 mod reduce;
 mod reduce_extra;
 mod scan;
+#[cfg(all(feature = "std", target_arch = "x86_64", not(miri)))]
+mod small_gemm;
 mod stable;
 mod stats;
 mod structural;

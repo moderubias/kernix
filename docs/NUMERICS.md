@@ -226,3 +226,19 @@ device transfer, hidden CPU fallback or autodiff integration is provided. Vendor
 workspace is opaque and not included in Rust allocation probes. The portable CPU
 remains the default. Dimensions passed to the SDK fit signed32-bit integers; empty
 products are handled without BLAS. The optional SDK bridge needs an Apple C toolchain.
+
+## Small dense kernels (0.11.1)
+
+On x86-64 with `std`, runtime AVX2 and FMA support enables a bounded no-packing
+path for dense f32/f64 products: rows 4–32, contraction 4–64, columns at most 32
+in complete tiles of 16 (f32) or 8 (f64). Four rows and two SIMD vectors per row
+reuse each loaded right-hand tile. Remaining rows use smaller specializations;
+column tails outside those tiles retain the general engine. Exact input/output
+lengths are checked before dispatch. No aligned-input assumption is made.
+
+The native hook writes the existing output and uses no heap scratch, including
+first use. Ordinary `matmul` still allocates its result. Contiguous broadcast
+batches reuse this path per matrix. This changes fused rounding, not shape,
+ownership, dtype or error contracts. Custom scalars, signed-stride views,
+`no_std`, unavailable CPU features and explicit ordered execution keep their
+existing paths. The default 128×128/256×256 engines are unchanged.

@@ -28,6 +28,7 @@ CASES = {
     'tensordot_16x32x8_32x8x16_f64':['kernix','numpy'],
     'training_shared_backward_64x32_f64':['kernix','candle'],
     'matmul_batched_4x16x32x16_f64':['kernix','candle','numpy'],
+    'matmul_batched_4x16x32x16_f32':['kernix','candle','numpy'],
     'training_forward_2x4x8x4_f64':['kernix','candle'],
     'training_record_2x4x8x4_f64':['kernix','candle'],
     'training_backward_2x4x8x4_f64':['kernix','candle'],
@@ -155,14 +156,17 @@ def numpy_case(workload,mode):
             expected=np.array([[sum(float(av[i,k])*float(bv[k,j]) for k in range(256)) for j in range(16)] for i in range(16)])
             error=float(np.max(np.abs(out-expected)));assert error==0. and out.shape==(16,16)
             return dict(coordinate_max_absolute_error=error,budget=0.)
-    elif workload=='matmul_batched_4x16x32x16_f64':
-        a=((np.arange(4*16*32)%13).astype(np.float64)/13).reshape(4,16,32)
-        b=((np.arange(32*16)%17).astype(np.float64)/17).reshape(1,32,16)
+    elif workload in ['matmul_batched_4x16x32x16_f64','matmul_batched_4x16x32x16_f32']:
+        dtype=np.float32 if workload.endswith('f32') else np.float64
+        budget=1e-5 if dtype==np.float32 else 1e-11
+        a=((np.arange(4*16*32)%13).astype(dtype)/13).reshape(4,16,32)
+        b=((np.arange(32*16)%17).astype(dtype)/17).reshape(1,32,16)
         operation=lambda:a@b
         def check(out):
             expected=np.array([[[sum(float(a[t,i,k])*float(b[0,k,j]) for k in range(32)) for j in range(16)] for i in range(16)] for t in range(4)])
-            error=np.abs(out-expected);assert np.all(error<=1e-11*(1+np.abs(expected)))
-            return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=1e-11)
+            error=np.abs(out-expected);assert out.dtype==dtype and out.shape==(4,16,16)
+            assert np.all(error<=budget*(1+np.abs(expected)))
+            return dict(max_absolute_error=float(error.max()),relative_plus_absolute_budget=budget)
     elif workload.startswith('matmul_ab_'):
         dtype=np.float32 if workload.endswith('f32') else np.float64
         a=((np.arange(128*128)%23).astype(dtype)/16-.5).reshape(128,128)

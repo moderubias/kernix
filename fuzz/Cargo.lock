@@ -162,7 +162,7 @@ dependencies = [
 
 [[package]]
 name = "kernix"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "kernix-core",
  "kernix-ops",
@@ -171,7 +171,7 @@ dependencies = [
 
 [[package]]
 name = "kernix-core"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "serde",
  "smallvec",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "kernix-ops"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "gemm-common",
  "gemm-f32",
