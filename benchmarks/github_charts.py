@@ -37,7 +37,7 @@ def filename(workload):
     return f"charts/{workload}.png"
 
 
-def sections(groups, label):
+def sections(groups, label, names):
     lines = [
         "## Charts by workload",
         "",
@@ -55,7 +55,7 @@ def sections(groups, label):
             f"<summary>{title} · {len(items)} workloads</summary>",
             "",
         ]
-        for w, _ in items:
+        for w, values in items:
             caption = (
                 html.escape(" · ".join(filter(None, label(w))), quote=False)
                 .replace("[", r"\[")
@@ -65,6 +65,15 @@ def sections(groups, label):
                 f"**{caption}**",
                 "",
                 f"![{caption}. Shorter bars mean less time.]({filename(w)})",
+                "",
+            ]
+            summary = (
+                ("Kernix: **" + p.us(p.median(values["kernix"])) + " µs**. ")
+                if "kernix" in values
+                else ""
+            )
+            lines += [
+                summary + html.escape(observation(values, names), quote=False),
                 "",
             ]
         lines += ["</details>", ""]

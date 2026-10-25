@@ -433,7 +433,7 @@ def render(dest, data, baseline, paired, h):
             "[![Performance brief preview](latency.png)](latency.pdf)",
             "",
         ]
-        + sections(groups, label)
+        + sections(groups, label, names)
         + [
             "## Exact latency table",
             "",

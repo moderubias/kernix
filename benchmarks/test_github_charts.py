@@ -65,7 +65,9 @@ class GithubChartsTests(unittest.TestCase):
                 import report
 
                 groups = report.rows(data)
-                md = "\n".join(g.sections(groups, report.label))
+                md = "\n".join(
+                    g.sections(groups, report.label, lambda k: report.NAMES.get(k, k))
+                )
                 for w, _ in groups:
                     self.assertEqual(md.count("](" + g.filename(w) + ")"), 1)
 

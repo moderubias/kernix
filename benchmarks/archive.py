@@ -28,7 +28,7 @@ GENERATED = {
 
 def protected_files(root):
     return {
-        str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+        p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in root.rglob("*")
         if p.is_file()
         and p.parent != root
@@ -194,7 +194,7 @@ def rebuild(root):
         original = d / "original-report.txt"
         if not original.exists():
             original.write_bytes((d / "README.md").read_bytes())
-        originals[str(original.relative_to(root))] = hashlib.sha256(
+        originals[original.relative_to(root).as_posix()] = hashlib.sha256(
             original.read_bytes()
         ).hexdigest()
     for r in records:
