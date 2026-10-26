@@ -130,7 +130,7 @@ All three 0.12.0 packages are accepted by crates.io. Actual downloads contain
 48 core / 75 ops / 27 facade files; every source/legal file, normalized dependency
 lock checksum and clean VCS identity matches measured source90. All three archives
 were built and verified by normal `cargo publish --workspace --dry-run --locked`.
-Because the previously accepted core is still absent from both official indexes,
+Because the previously accepted core was absent from both official indexes,
 individual Cargo packaging could not resolve it. The remaining already-verified
 archives were uploaded through the documented registry publish API, without
 changing their bytes or skipping package build verification.
@@ -138,9 +138,10 @@ changing their bytes or skipping package build verification.
 The source tag is signed and its [nine CI jobs](https://github.com/moderubias/kernix/actions/runs/40274313026)
 pass. The GitHub release includes four actual-download-verified assets.
 
-As of 2026-10-26 07:23 UTC, index propagation still lags for all three packages.
-**Normal crates.io resolver/consumer verification remains pending**. Git installation
-below is verified and remains the working route while the registry catches up.
+The index delay was resolved later on 2026-10-26. An independent ordinary registry
+consumer now resolves all three nodes to exact 0.12.0, with no Git/path patches.
+Rust 1.86 executes four no_std workflow tests plus the renamed-dependency executable;
+stable Wasm checks pass. Publication and registry installation are complete.
 
 The [public report commit](https://github.com/moderubias/kernix/commit/d6c6e76b47c425df274cf936c2d04a2561e3e1fc)
 also passes all nine [CI jobs](https://github.com/moderubias/kernix/actions/runs/40274705744)
@@ -155,8 +156,7 @@ all three library packages resolve exactly 0.12.0 from signed tag `v0.12.0`, com
 Rust 1.86 executes four no_std workflow tests plus the renamed-dependency
 executable, and 25 native/QR/solve/rank-modification tests in release mode. A stable
 Wasm library check passes. Metadata confirms std is absent from all three no_std
-library nodes. This verifies Git installation, **not** the still-pending registry
-installation. Use `git`/`tag` in the dependency declaration as shown in README.
+library nodes. Git and ordinary registry installation are now both verified.
 
 
 Sparse COO/CSR/CSC, sparse kernels, SVD/eigen/complex solvers and GPU execution

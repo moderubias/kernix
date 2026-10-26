@@ -16,18 +16,17 @@ Install stable Rust and Cargo from [rustup](https://rustup.rs), then:
 ```sh
 cargo new tensor-demo
 cd tensor-demo
-cargo add kernix --git https://github.com/moderubias/kernix --tag v0.13.0
+cargo add kernix@0.13.0
 ```
 
 ```toml
 [dependencies]
-kernix = { version = "0.13.0", git = "https://github.com/moderubias/kernix", tag = "v0.13.0" }
+kernix = "0.13.0"
 ```
 
-The signed Git tag provides an installation route independent of registry index
-propagation. Publication and downstream verification are recorded in
-[release QA](docs/QA-0.13.0.md); the previous [0.12 rollout](docs/QA-0.12.0.md#source-and-registry-status)
-was accepted by crates.io while its canonical index update remained pending.
+All three 0.13.0 crates are published on crates.io and independently verified on
+Rust 1.86 with std, no_std and Wasm. The signed Git tag is also verified.
+See the [release QA](docs/QA-0.13.0.md) for package provenance and test results.
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
 recommended. A C/C++ compiler or native linear algebra runtime is not needed by
@@ -41,7 +40,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Release 0.12.0 source passes runtime CI on Linux x86_64/ARM64, Windows and macOS.
+Release 0.13.0 source passes runtime CI on Linux x86_64/ARM64, Windows and macOS.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -50,7 +49,7 @@ Optional backends preserve access to the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.13.0", git = "https://github.com/moderubias/kernix", tag = "v0.13.0", default-features = false }
+kernix = { version = "0.13.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -405,11 +404,21 @@ python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
 Explore the [complete benchmark archive](benchmarks/results/README.md):
-83 reports with a consistent design, every workload chart embedded in GitHub,
+98 reports with a consistent design, every workload chart embedded in GitHub,
 searchable workloads, exact-value tables,
 process-paired version comparisons and vector PDF charts. Original measurements,
 method notes and build identities remain unchanged. Chart labels explicitly mark
 rounding; exact tables retain every recorded digit.
+
+New [0.13 sparse comparisons](benchmarks/results/0.13.0-final/README.md) measure
+matrix-vector, sparse/dense products, sparse products and construction against
+Kernix dense, faer, SciPy CSR and NumPy. On the local five-diagonal fixtures,
+prepared sparse kernels take about **6.6–276× faster than Kernix dense**.
+The 2048×2048 f64 input payload drops from 32 MiB to about 176 KiB, including CSR
+indices. Construction costs are separate; SciPy/faer still win several sparse
+kernels. These results do not imply a universal sparse or dense speed advantage.
+
+[![Sparse × dense: Kernix Matrix, explicit dense, faer, SciPy and NumPy on the same five-diagonal fixture](benchmarks/results/0.13.0-final/charts/sparse_matmul_512x32_f64.png)](benchmarks/results/0.13.0-final/README.md)
 
 In five CPU studies, 0.12.0 solves a 256×256 system with 64 right-hand sides
 about **2.8–5.3× faster with Cholesky** and **2.1–4.5× with LU** than exact registry
@@ -431,12 +440,12 @@ for boundaries and commands. Official reports are retained in
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
 
-Start with the [0.12.0 readable comparison](benchmarks/results/0.12.0-final/README.md)
-and [paired comparison against 0.11.1](benchmarks/results/0.12.0-paired-final/README.md).
-The [release bundles](https://github.com/moderubias/kernix/releases/tag/v0.12.0)
+Start with the [0.13.0 readable comparison](benchmarks/results/0.13.0-final/README.md)
+and [paired dense guards against 0.12](benchmarks/results/0.13.0-paired-final/README.md).
+The [release bundles](https://github.com/moderubias/kernix/releases/tag/v0.13.0)
 include standalone HTML, vector PDFs and full evidence. All report charts and
 original data are also available in the comparison folders above.
-The [0.12.0 verification record](docs/QA-0.12.0.md) documents numerical contracts,
+The [0.13.0 verification record](docs/QA-0.13.0.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 
 ## Explicit Apple Accelerate execution
