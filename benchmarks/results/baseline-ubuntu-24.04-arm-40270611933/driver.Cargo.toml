@@ -1,0 +1,32 @@
+[package]
+name = "kernix-benchmark-harness"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+resolver = "3"
+
+[features]
+allocation-counting = []
+accelerate = ["kernix/accelerate"]
+legacy-constructors = []
+legacy-autograd = []
+legacy-pivoted = []
+legacy-rank-updates = []
+
+[dependencies]
+kernix = { version = "=0.11.1", default-features = false, features = ["std", "parallel"] }
+ndarray = "0.17.2"
+nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+faer = { version = "=0.24.4", default-features = false, features = ["std", "linalg"] }
+candle-core = { version = "=0.11.0", default-features = false }
+serde_json = "1"
+
+kernix-core = "=0.11.1"
+kernix-ops = "=0.11.1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

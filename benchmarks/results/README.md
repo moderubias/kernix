@@ -6,6 +6,16 @@ All raw measurements, process pairs, source archives, locks and original methods
 
 | Report | Hardware | Measure | Workloads |
 |---|---|---|---:|
+| [runner-windows-latest-40270611933](runner-windows-latest-40270611933/README.md) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 46 |
+| [runner-ubuntu-latest-40270611933](runner-ubuntu-latest-40270611933/README.md) | AMD EPYC 9V45 96-Core Processor / Linux | Individual-call medians | 46 |
+| [runner-ubuntu-24.04-arm-40270611933](runner-ubuntu-24.04-arm-40270611933/README.md) | Neoverse-N2 / Linux | Individual-call medians | 46 |
+| [runner-macos-latest-40270611933](runner-macos-latest-40270611933/README.md) | Apple M1 (Virtual) / macOS | Individual-call medians | 46 |
+| [paired-windows-latest-40270611933](paired-windows-latest-40270611933/README.md) | AMD EPYC 7763 64-Core Processor / Windows | Paired process ratios | 24 |
+| [paired-ubuntu-latest-40270611933](paired-ubuntu-latest-40270611933/README.md) | AMD EPYC 9V45 96-Core Processor / Linux | Paired process ratios | 24 |
+| [paired-ubuntu-24.04-arm-40270611933](paired-ubuntu-24.04-arm-40270611933/README.md) | Neoverse-N2 / Linux | Paired process ratios | 24 |
+| [paired-macos-latest-40270611933](paired-macos-latest-40270611933/README.md) | Apple M1 (Virtual) / macOS | Paired process ratios | 24 |
+| [0.12.0-paired-final](0.12.0-paired-final/README.md) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 24 |
+| [0.12.0-final](0.12.0-final/README.md) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 46 |
 | [runner-windows-latest-40161751367](runner-windows-latest-40161751367/README.md) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 35 |
 | [runner-ubuntu-latest-40161751367](runner-ubuntu-latest-40161751367/README.md) | AMD EPYC 7763 64-Core Processor / Linux | Individual-call medians | 35 |
 | [runner-ubuntu-24.04-arm-40161751367](runner-ubuntu-24.04-arm-40161751367/README.md) | Neoverse-N2 / Linux | Individual-call medians | 35 |
@@ -14,6 +24,11 @@ All raw measurements, process pairs, source archives, locks and original methods
 | [paired-ubuntu-latest-40161751367](paired-ubuntu-latest-40161751367/README.md) | AMD EPYC 7763 64-Core Processor / Linux | Paired process ratios | 16 |
 | [paired-ubuntu-24.04-arm-40161751367](paired-ubuntu-24.04-arm-40161751367/README.md) | Neoverse-N2 / Linux | Paired process ratios | 16 |
 | [paired-macos-latest-40161751367](paired-macos-latest-40161751367/README.md) | Apple M1 (Virtual) / macOS | Paired process ratios | 16 |
+| [baseline-windows-latest-40270611933](baseline-windows-latest-40270611933/README.md) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 46 |
+| [baseline-ubuntu-latest-40270611933](baseline-ubuntu-latest-40270611933/README.md) | AMD EPYC 9V45 96-Core Processor / Linux | Individual-call medians | 46 |
+| [baseline-ubuntu-24.04-arm-40270611933](baseline-ubuntu-24.04-arm-40270611933/README.md) | Neoverse-N2 / Linux | Individual-call medians | 46 |
+| [baseline-macos-latest-40270611933](baseline-macos-latest-40270611933/README.md) | Apple M1 (Virtual) / macOS | Individual-call medians | 46 |
+| [0.11.1-registry-0120](0.11.1-registry-0120/README.md) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 46 |
 | [0.11.1-paired-final](0.11.1-paired-final/README.md) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Paired process ratios | 16 |
 | [0.11.1-final](0.11.1-final/README.md) | 12th Gen Intel(R) Core(TM) i3-1215U / Linux | Individual-call medians | 35 |
 | [runner-windows-latest-40059566395](runner-windows-latest-40059566395/README.md) | AMD EPYC 7763 64-Core Processor / Windows | Individual-call medians | 34 |

@@ -1,12 +1,12 @@
 {
   "design_version": 3,
   "measured_revision": "4e40ea5a98e7f98505da7cc3dd8a2d80c1a4bd92",
-  "renderer_revision": "b9c85274464ea7591410adc79daf3f23dc6f828b",
+  "renderer_revision": "90cbbff60e5d7458ef9f89918c99a6cca94b51d1",
   "renderer_sha256": {
-    "report.py": "6a6322ea86816e1d56f8d6783ecbda75effd14ee781b086e431ff8aa40c2df14",
-    "presentation.py": "ff12d19c94c99a72463d8335e1daaa5d24164166259d1ab51c404283db914db9",
+    "report.py": "5b7e739e4a37c41e07ce5a932e217feaa09787ed06c6ea42276778fd1bfef813",
+    "presentation.py": "56cc7f83efa3f10324bd79526e7d9fbea756f22879c9edaeb07b2ab6057046bb",
     "visuals.py": "12a671482e13def972128a7798c96baedfdfc8de462ac8976a9291e21e207b09",
-    "github_charts.py": "c56fc1aa2890e8ab9e32c65539db63eae1b3b631bd4470f7b1bff2e15b00f0ab",
+    "github_charts.py": "766955b8c39d406686c4bac792cebc1f00298de4fe6a7ae3c66f3179da9a17ee",
     "report_frontend.html": "09e4d49b100c21615bc64fd7a25e7c3aea686fd4bd8c33ac07b7d2ef7db24d23",
     "report_style.css": "5d212cb912f245ee35e0e05182c0a79088a63a47bcee0264d3efbaec675700b5",
     "archive.py": "c41f46183e782d791b437a6f4dd2834caa84cfcbf943ea50ce3302713c7ca82a",

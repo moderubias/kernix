@@ -14,7 +14,7 @@ Baseline: 0.7.3-registry-fix080. Sequential run changes are descriptive; paired 
 
 ## Charts by workload
 
-**Shorter bars mean less time.** Blue is Kernix; grey is another library; teal is an explicitly selected Kernix backend. Entries are sorted by the recorded median, with a separate zero-based scale per chart. These point observations do not establish a statistical ranking.
+**Shorter bars mean less time.** Blue is Kernix; grey is a comparison implementation; teal is an explicitly selected Kernix backend. Entries are sorted by the recorded median, with a separate zero-based scale per chart. These point observations do not establish a statistical ranking.
 
 Expand a group to see every chart here on GitHub. Click a chart to enlarge it. The exact table below keeps every source digit.
 

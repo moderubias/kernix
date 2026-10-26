@@ -24,6 +24,8 @@ cargo add kernix
 kernix = "0.12.0"
 ```
 
+Registry rollout is in progress; the [verification record](docs/QA-0.12.0.md#source-and-registry-status) records publication status.
+
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
 recommended. A C/C++ compiler or native linear algebra runtime is not needed by
 Kernix itself; the Rust target still needs its normal linker/system SDK.
@@ -36,7 +38,7 @@ Kernix itself; the Rust target still needs its normal linker/system SDK.
 | macOS | Install Command Line Tools (`xcode-select --install`), then rustup |
 | Other Rust targets | Use the target toolchain/linker; core and ops support `no_std` with an allocator |
 
-Linux x86_64 is verified locally. Release 0.6.0 CI passed on Windows, macOS and Linux.
+Release 0.12.0 source passes runtime CI on Linux x86_64/ARM64, Windows and macOS.
 WebAssembly, ARM and 32-bit availability depends on their Rust toolchain, allocator
 and selected features; a portable API is not evidence that every target was tested.
 No CUDA, ROCm, SIMD-specific or OS-specific library is a mandatory dependency.
@@ -127,7 +129,7 @@ for adapters and programmatic dimensions. For column-major data, explicit alignm
 fixed rank or device storage, use the existing constructors and capability traits.
 The macros also work with `no_std` plus an allocator and no caller-side `alloc` import.
 
-See the [0.9 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.9.md)
+See the [0.12 capability matrix](https://github.com/moderubias/kernix/blob/main/docs/CAPABILITY-MATRIX-0.12.md)
 and [forward/VJP coverage](https://github.com/moderubias/kernix/blob/main/docs/AUTOGRAD-COVERAGE.md)
 for available APIs and their exact limits.
 
@@ -379,17 +381,20 @@ python benchmarks/evidence.py my-unique-run --require-openblas
 ```
 
 Explore the [complete benchmark archive](benchmarks/results/README.md):
-68 reports with a consistent design, every workload chart embedded in GitHub,
+83 reports with a consistent design, every workload chart embedded in GitHub,
 searchable workloads, exact-value tables,
 process-paired version comparisons and vector PDF charts. Original measurements,
 method notes and build identities remain unchanged. Chart labels explicitly mark
 rounding; exact tables retain every recorded digit.
 
-Small x86-64 broadcast batches in 0.11.1 take approximately 24–34% less time for
-f64 and 29–42% less for f32 than 0.11.0 on the three tested x86-64 hosts. See the
-paired reports for uncertainty, conditions and the remaining large-matrix gaps.
+In five CPU studies, 0.12.0 solves a 256×256 system with 64 right-hand sides
+about **2.8–5.3× faster with Cholesky** and **2.1–4.5× with LU** than exact registry
+0.11.1. Thin QR at 1024×256 is about **1.5–2.0× faster**. Prepared-factor solves
+exclude factorization; nine fresh-process pairs provide exploratory intervals.
+The reports retain peer losses, adverse version observations and allocation costs.
+Ordinary dense128 remains a performance target.
 
-[![Kernix performance brief](benchmarks/results/0.11.1-final/charts/matmul_batched_4x16x32x16_f64.png)](https://github.com/moderubias/kernix/releases/tag/v0.11.1)
+[![Kernix 0.12.0 versus 0.11.1: lower ratios mean less time](benchmarks/results/0.12.0-paired-final/latency.png)](benchmarks/results/0.12.0-paired-final/README.md)
 
 The evidence runner requires a clean commit and saves uniquely named local results
 with source/tree IDs, lockfiles and hashes. It records separate per-call and
@@ -402,11 +407,11 @@ for boundaries and commands. Official reports are retained in
 batch-only reports. A shared laptop benchmark is not a universal performance guarantee
 or evidence that an unspecified complete model reaches 120 FPS.
 
-Start with the [0.11.1 readable comparison](benchmarks/results/0.11.1-final/README.md)
-and [paired comparison against 0.11.0](benchmarks/results/0.11.1-paired-final/README.md).
-The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.11.1)
+Start with the [0.12.0 readable comparison](benchmarks/results/0.12.0-final/README.md)
+and [paired comparison against 0.11.1](benchmarks/results/0.12.0-paired-final/README.md).
+The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.12.0)
 include the standalone HTML reports and complete measurement evidence.
-The [0.11.1 verification record](docs/QA-0.11.1.md) documents numerical contracts,
+The [0.12.0 verification record](docs/QA-0.12.0.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 
 ## Explicit Apple Accelerate execution

@@ -1,0 +1,36 @@
+# Kernix 0.12.0 vs 0.11.1 · paired processes
+
+Current: `runner-windows-latest-40270611933`. Baseline: `baseline-windows-latest-40270611933`.
+
+9 fresh-process pairs per workload. Lower ratio is faster.
+95% bootstrap intervals resample process pairs, not individual calls. Exploratory intervals do not correct for multiple comparisons.
+Shared-machine drift and small sample counts remain limits; these are not per-call p95 intervals.
+
+| Workload | Current / baseline latency | 95% interval |
+|---|---:|---:|
+| Cholesky solve · reused factor 128 × 128, 1 RHS f64 | 0.974× | [0.968, 0.974] |
+| Cholesky solve · reused factor 256 × 256, 64 RHS f64 | 0.187× | [0.187, 0.189] |
+| LU solve · reused factor 256 × 256, 64 RHS f64 | 0.222× | [0.222, 0.223] |
+| Thin QR 512 × 128 f64 | 0.778× | [0.775, 0.780] |
+| Thin QR 1024 × 256 f64 | 0.579× | [0.578, 0.583] |
+| Matrix multiplication · transposed view 128 × 128 · 128 × 128 f64 | 0.828× | [0.812, 0.839] |
+| Matrix multiplication · transposed view 128 × 128 · 128 × 128 f32 | 0.827× | [0.809, 0.858] |
+| Thin QR 256 × 64 f64 | 0.957× | [0.937, 1.021] |
+| Matrix multiplication 32 × 32 · 32 × 32 f64 | 1.000× | [1.000, 1.000] |
+| Matrix multiplication 128 × 128 · 128 × 128 f64 | 0.999× | [0.696, 1.426] |
+| Matrix multiplication 128 × 128 · 128 × 128 f32 | 1.000× | [0.653, 1.002] |
+| Matrix multiplication 256 × 256 · 256 × 256 f64 | 0.996× | [0.844, 1.008] |
+| Matrix multiplication 256 × 256 · 256 × 256 f32 | 0.997× | [0.843, 1.003] |
+| Record + backward sum(A · W), 32 × 16 · 16 × 8 f64 | 1.000× | [0.979, 1.021] |
+| Independent matrix operands 128 × 128 · 128 × 128 f64 | 0.998× | [0.996, 1.032] |
+| Independent matrix operands 128 × 128 · 128 × 128 f32 | 0.992× | [0.908, 1.003] |
+| Batched multiplication 4 × 16 × 32 · 1 × 32 × 16 f64 | 1.000× | [1.000, 1.280] |
+| Batched multiplication 4 × 16 × 32 · 1 × 32 × 16 f32 | 1.000× | [1.000, 1.000] |
+| Cholesky factorization 128 × 128 f64 | 1.001× | [0.961, 1.041] |
+| Cholesky factorization 256 × 256 f64 | 1.005× | [1.001, 1.014] |
+| Cholesky factorization 512 × 512 f64 | 1.001× | [0.980, 1.009] |
+| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f64 | 1.010× | [0.989, 1.017] |
+| Matmul · 2 workers · reused output 256 × 256 · 256 × 256 f64 | 1.020× | [0.721, 1.327] |
+| Matmul · 2 workers · reused output 128 × 128 · 128 × 128 f32 | 1.002× | [0.970, 1.271] |
+
+Full worker samples, accuracy checks, randomized order, executable hashes and source metadata: [paired.json](paired.json).

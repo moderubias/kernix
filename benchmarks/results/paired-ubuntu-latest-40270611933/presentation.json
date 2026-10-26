@@ -1,0 +1,27 @@
+{
+  "design_version": 3,
+  "measured_revision": "90cbbff60e5d7458ef9f89918c99a6cca94b51d1",
+  "renderer_revision": "90cbbff60e5d7458ef9f89918c99a6cca94b51d1",
+  "renderer_sha256": {
+    "report.py": "5b7e739e4a37c41e07ce5a932e217feaa09787ed06c6ea42276778fd1bfef813",
+    "presentation.py": "56cc7f83efa3f10324bd79526e7d9fbea756f22879c9edaeb07b2ab6057046bb",
+    "visuals.py": "12a671482e13def972128a7798c96baedfdfc8de462ac8976a9291e21e207b09",
+    "github_charts.py": "766955b8c39d406686c4bac792cebc1f00298de4fe6a7ae3c66f3179da9a17ee",
+    "report_frontend.html": "09e4d49b100c21615bc64fd7a25e7c3aea686fd4bd8c33ac07b7d2ef7db24d23",
+    "report_style.css": "5d212cb912f245ee35e0e05182c0a79088a63a47bcee0264d3efbaec675700b5",
+    "archive.py": "c41f46183e782d791b437a6f4dd2834caa84cfcbf943ea50ce3302713c7ca82a",
+    "assets/fonts.json": "a4252c87455974e53c1e6252747869a984303512f6ada9a2deea6be6c0228a87",
+    "assets/OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "assets/IBMPlexSans-Regular.ttf": "975dcda37d80f038dcd143c22e33ca2d97a0cc5a929aace1c749153b0fe1afa5",
+    "assets/IBMPlexSans-SemiBold.ttf": "a20caf8286023a6a7a85e40b1d2a4ae9fc3e3b1f9eda8f4c542dd4986af67bb1",
+    "assets/IBMPlexSans-Regular.woff2": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a",
+    "assets/IBMPlexSans-SemiBold.woff2": "f78048030eab62e860efa39a0df79e2e5581bf122eb95b9bc42c0b8a4988d205"
+  },
+  "source_files_sha256": {
+    "paired.json": "3c79678d04a75c5fb4389e7050d8371aa62421662b2096841a9a8efaf67b418b",
+    "original-report.txt": "85030d1367e4a0ce56c526c9bf77620791563fe01647b1733a33a70a426ba435"
+  },
+  "paired_evidence_attached": true,
+  "raw_modified": false,
+  "number_policy": "Decimal source digits; exact decimal nanoseconds to microseconds; chart geometry only uses floats"
+}
