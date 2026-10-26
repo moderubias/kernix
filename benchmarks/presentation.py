@@ -276,7 +276,7 @@ def _chart(w, title, shape, dtype, values, names, legacy=False):
     return (
         f'<article class="plot" {_attrs(w, caption)}><div class="chart-top"><span class="eyebrow">{esc(FAMILIES[family(w)])}</span><span class="chart-unit">{metric({"_batch_only": legacy})} / µs</span></div><h3>{esc(title)}</h3><p class="shape">{esc(shape)} <span>{esc(dtype)}</span></p><p class="contract">{esc(contract(w))}</p><div class="bar-chart">'
         + "".join(rows)
-        + f'</div><p class="reading">{esc(observation(values, names))}</p><div class="chart-foot"><span>{badge}</span><span>0 → {us(maximum)} µs</span></div></article>'
+        + f'</div><p class="reading">{esc(observation(values, names, w))}</p><div class="chart-foot"><span>{badge}</span><span>0 → {us(maximum)} µs</span></div></article>'
     )
 
 
@@ -586,7 +586,7 @@ def render(dest, data, baseline, paired, h):
             cells=[title,lib,str(store["left_nnz"]),str(store["left_payload_bytes"]),str(store["dense_left_bytes"]),str(store["index_bytes"])]
             md.append("| "+" | ".join(cells)+" |")
             rows.append("<tr>"+"".join("<td>"+esc(c)+"</td>" for c in cells)+"</tr>")
-        details.insert(0,'<section><h3>Matrix memory · initialized input payload</h3><p>Bytes include sparse indices/offsets; exclude unused capacity, metadata, allocator overhead and construction peak. Index widths can differ.</p><div class="table-scroll"><table><thead><tr><th>Workload</th><th>Implementation</th><th>Entries</th><th>Payload bytes</th><th>Dense bytes</th><th>Index bytes</th></tr></thead><tbody>'+"".join(rows)+'</tbody></table></div></section>')
+        details.insert(0,'<section><h3>Matrix memory · initialized input payload</h3><p>Bytes include sparse indices/offsets; exclude unused capacity, metadata, allocator overhead and construction peak. Index widths can differ.</p><div class="scroll"><table><thead><tr><th>Workload</th><th>Implementation</th><th>Entries</th><th>Payload bytes</th><th>Dense bytes</th><th>Index bytes</th></tr></thead><tbody>'+"".join(rows)+'</tbody></table></div></section>')
     md += [
         "",
         "## Version comparison",

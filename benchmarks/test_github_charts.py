@@ -44,6 +44,14 @@ class GithubChartsTests(unittest.TestCase):
             ),
         )
 
+    def test_compression_is_not_ranked_as_equivalent_to_dense_copy(self):
+        values={"kernix":sample(2000),"numpy":sample(1000),"scipy":sample(3000)}
+        text=g.observation(values,str,"sparse_auto_512_f64")
+        self.assertIn("Construction trade-off",text)
+        self.assertIn("different storage",text)
+        self.assertNotIn("less time",text)
+        self.assertNotIn("more time",text)
+
     def test_filenames_cannot_escape_the_chart_directory(self):
         self.assertEqual(g.filename("matmul_128_f64"), "charts/matmul_128_f64.png")
         for w in ["../../raw.json", "a/b", "<script>", "[label]"]:

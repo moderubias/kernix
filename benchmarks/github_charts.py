@@ -15,8 +15,10 @@ def ranked(values):
     return sorted(values, key=lambda key: (p.median(values[key]), key))
 
 
-def observation(values, names):
+def observation(values, names, workload=None):
     """Explain the default Kernix median against the lowest external peer median."""
+    if workload and workload.startswith("sparse_auto_"):
+        return "Construction trade-off: CSR compression versus dense copying; outputs use different storage. Compare payload as well as time."
     peers = [key for key in values if not key.startswith("kernix") and key != "refactor"]
     if "kernix" not in values or not peers:
         return "No external comparison with Kernix was measured for this workload."
@@ -73,7 +75,7 @@ def sections(groups, label, names):
                 else ""
             )
             lines += [
-                summary + html.escape(observation(values, names), quote=False),
+                summary + html.escape(observation(values, names, w), quote=False),
                 "",
             ]
         lines += ["</details>", ""]
@@ -133,7 +135,7 @@ def header(scene, title, cpu, metric):
 def latency_scene(w, values, meta, h):
     title, shape, dtype = h["label"](w)
     names = h["names"]
-    reading = observation(values, names)
+    reading = observation(values, names, w)
     lines = wrap(reading, 1104, 22, True)
     scene = Scene(height=420 + len(values) * 46 + max(0, len(lines) - 1) * 29)
     header(
