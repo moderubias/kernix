@@ -25,7 +25,7 @@ kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag
 ```
 
 The signed Git tag is the currently verified 0.12.0 installation route. Registry
-rollout is waiting for crates.io to index its accepted dependency; the normal
+rollout is waiting for crates.io to index the three accepted packages; the normal
 crates.io install is not complete. External consumers verify this Git source on
 Rust 1.86 with std, no_std and Wasm. See the [verification record](docs/QA-0.12.0.md#source-and-registry-status).
 
@@ -412,9 +412,9 @@ or evidence that an unspecified complete model reaches 120 FPS.
 
 Start with the [0.12.0 readable comparison](benchmarks/results/0.12.0-final/README.md)
 and [paired comparison against 0.11.1](benchmarks/results/0.12.0-paired-final/README.md).
-Release bundles with standalone HTML and full evidence are prepared in a draft
-while registry rollout is pending. All report charts, HTML/PDF files and original
-data are already available in the comparison folders above.
+The [release bundles](https://github.com/moderubias/kernix/releases/tag/v0.12.0)
+include standalone HTML, vector PDFs and full evidence. All report charts and
+original data are also available in the comparison folders above.
 The [0.12.0 verification record](docs/QA-0.12.0.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 

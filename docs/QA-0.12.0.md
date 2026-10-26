@@ -126,16 +126,21 @@ those production, manifest, build-script and integration-test bytes. Subsequent
 report/QA commits keep the entire crates tree unchanged. Registry baselines pin
 all three packages to exact 0.11.1 and retain the generated driver/lockfile.
 
-As of 2026-10-26 06:01 UTC, `kernix-core 0.12.0` was accepted and all 48 files
-in its downloaded archive match source, legal files and clean VCS identity. Its
-SHA-256 is `e94b3aa521392b800bcb3ddf2024bb9249aac8859e7b89ade55768f3495f85e9`.
-Both the canonical sparse index and official Git index still omit that version,
-so normal Cargo cannot resolve the dependency. Repeated ordinary dry runs stop
-at that resolution error. `kernix-ops` and `kernix` 0.12.0 are **not published**;
-actual-registry consumer verification is **pending**. Their 75/27-file candidate
-payloads pass inclusion/legal/privacy checks, which is not a publication claim.
-The signed tag is pushed and its [nine CI jobs](https://github.com/moderubias/kernix/actions/runs/40274313026)
-pass; the GitHub release stays draft until the registry rollout is verified.
+All three 0.12.0 packages are accepted by crates.io. Actual downloads contain
+48 core / 75 ops / 27 facade files; every source/legal file, normalized dependency
+lock checksum and clean VCS identity matches measured source90. All three archives
+were built and verified by normal `cargo publish --workspace --dry-run --locked`.
+Because the previously accepted core is still absent from both official indexes,
+individual Cargo packaging could not resolve it. The remaining already-verified
+archives were uploaded through the documented registry publish API, without
+changing their bytes or skipping package build verification.
+
+The source tag is signed and its [nine CI jobs](https://github.com/moderubias/kernix/actions/runs/40274313026)
+pass. The GitHub release includes four actual-download-verified assets.
+
+As of 2026-10-26 07:23 UTC, index propagation still lags for all three packages.
+**Normal crates.io resolver/consumer verification remains pending**. Git installation
+below is verified and remains the working route while the registry catches up.
 
 The [public report commit](https://github.com/moderubias/kernix/commit/d6c6e76b47c425df274cf936c2d04a2561e3e1fc)
 also passes all nine [CI jobs](https://github.com/moderubias/kernix/actions/runs/40274705744)
