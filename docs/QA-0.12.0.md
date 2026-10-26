@@ -148,7 +148,7 @@ An external Git-dependency consumer provides a verified installation route now:
 all three library packages resolve exactly 0.12.0 from signed tag `v0.12.0`, commit
 `90cbbff60e5d7458ef9f89918c99a6cca94b51d1`, without registry substitutions or patches.
 Rust 1.86 executes four no_std workflow tests plus the renamed-dependency
-executable, and 26 native/QR/solve/rank-modification tests in release mode. A stable
+executable, and 25 native/QR/solve/rank-modification tests in release mode. A stable
 Wasm library check passes. Metadata confirms std is absent from all three no_std
 library nodes. This verifies Git installation, **not** the still-pending registry
 installation. Use `git`/`tag` in the dependency declaration as shown in README.
