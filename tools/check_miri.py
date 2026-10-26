@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--native', action='store_true', help='run the same fixture without Miri')
     parser.add_argument('--root', type=Path, default=ROOT)
     args = parser.parse_args()
+    args.root = args.root.resolve()
     # Miri launchers retain their manifest cwd. A deleted TemporaryDirectory can
     # leave a cached launcher pointing at a nonexistent directory on the next run.
     package = args.root / 'target/miri-wrappers-fixture'

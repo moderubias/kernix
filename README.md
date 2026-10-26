@@ -16,15 +16,18 @@ Install stable Rust and Cargo from [rustup](https://rustup.rs), then:
 ```sh
 cargo new tensor-demo
 cd tensor-demo
-cargo add kernix
+cargo add kernix --git https://github.com/moderubias/kernix --tag v0.12.0
 ```
 
 ```toml
 [dependencies]
-kernix = "0.12.0"
+kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0" }
 ```
 
-Registry rollout is in progress; the [verification record](docs/QA-0.12.0.md#source-and-registry-status) records publication status.
+The signed Git tag is the currently verified 0.12.0 installation route. Registry
+rollout is waiting for crates.io to index its accepted dependency; the normal
+crates.io install is not complete. External consumers verify this Git source on
+Rust 1.86 with std, no_std and Wasm. See the [verification record](docs/QA-0.12.0.md#source-and-registry-status).
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
 recommended. A C/C++ compiler or native linear algebra runtime is not needed by
@@ -47,7 +50,7 @@ Optional backends preserve access to the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.12.0", default-features = false }
+kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -409,8 +412,9 @@ or evidence that an unspecified complete model reaches 120 FPS.
 
 Start with the [0.12.0 readable comparison](benchmarks/results/0.12.0-final/README.md)
 and [paired comparison against 0.11.1](benchmarks/results/0.12.0-paired-final/README.md).
-The [release downloads](https://github.com/moderubias/kernix/releases/tag/v0.12.0)
-include the standalone HTML reports and complete measurement evidence.
+Release bundles with standalone HTML and full evidence are prepared in a draft
+while registry rollout is pending. All report charts, HTML/PDF files and original
+data are already available in the comparison folders above.
 The [0.12.0 verification record](docs/QA-0.12.0.md) documents numerical contracts,
 package provenance, checks and remaining performance gaps.
 
@@ -419,7 +423,7 @@ package provenance, checks and remaining performance gaps.
 On macOS 15+ with a suitable Apple SDK, enable the optional `accelerate` feature:
 
 ```toml
-kernix = { version = "0.12.0", features = ["accelerate"] }
+kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0", features = ["accelerate"] }
 ```
 
 Use `kernix::accelerate::AccelerateExecutor::new()?`, then `cpu.matmul(&a, &b)?`.

@@ -41,6 +41,15 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'duplicate'):
             support.validate(data, self.names, self.tape)
 
+    def test_installation_versions_check_git_tag_and_every_declaration(self):
+        simple = '```toml\n[dependencies]\nkernix = "0.12.0"\n```'
+        git = '```toml\nkernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0", default-features = false }\n```'
+        self.assertTrue(support.installation_versions_match(simple, '0.12.0'))
+        self.assertTrue(support.installation_versions_match(git, '0.12.0'))
+        self.assertFalse(support.installation_versions_match(git.replace('v0.12.0', 'v0.11.1'), '0.12.0'))
+        self.assertFalse(support.installation_versions_match(simple + '\n' + git.replace('version = "0.12.0"', 'version = "0.11.1"'), '0.12.0'))
+        self.assertFalse(support.installation_versions_match('no dependency declaration', '0.12.0'))
+
     def test_stale_release_series_fails(self):
         data = copy.deepcopy(self.data)
         data['series'] = '0.4'

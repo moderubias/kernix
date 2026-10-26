@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,13 +94,34 @@ def render(data):
     return '\n'.join(lines)
 
 
+def installation_versions_match(document, version):
+    """Check the documented string/inline dependencies, including pinned Git tags."""
+    matches = []
+    for code in re.findall(r'```toml[^\n]*\n(.*?)\n```', document, re.S):
+        if not re.search(r'^\s*kernix\s*=', code, re.M):
+            continue
+        try:
+            data = tomllib.loads(code)
+        except tomllib.TOMLDecodeError:
+            return False
+        dependency = data.get('dependencies', {}).get('kernix', data.get('kernix'))
+        if isinstance(dependency, str):
+            matches.append(dependency == version)
+        elif isinstance(dependency, dict):
+            matches.append(dependency.get('version') == version and (
+                'git' not in dependency or dependency.get('tag') == 'v' + version))
+        else:
+            return False
+    return bool(matches) and all(matches)
+
+
 def validate(data, names, tape, root=ROOT):
     manifest = (root / 'Cargo.toml').read_text(encoding='utf-8')
     version = re.search(r'^version\s*=\s*"([^"]+)"', manifest, re.M).group(1)
     if data['series'] != '.'.join(version.split('.')[:2]):
         raise ValueError('coverage series does not match the workspace version')
     for path in ['README.md', 'crates/kernix/README.md']:
-        if f'kernix = "{version}"' not in (root / path).read_text(encoding='utf-8'):
+        if not installation_versions_match((root / path).read_text(encoding='utf-8'), version):
             raise ValueError('installation version drift in ' + path)
     guide = (root / 'docs/USER_GUIDE.md').read_text(encoding='utf-8')
     if f"public {data['series']} API" not in guide:

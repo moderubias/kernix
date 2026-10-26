@@ -104,13 +104,13 @@ two-worker reusable-output operations remain separately labelled.
 - [Bounded fuzzing](https://github.com/moderubias/kernix/actions/runs/40227589286)
   passes on the pre-restriction source with the same numerical algorithms.
 - [Full core/native Miri at the initial source](https://github.com/moderubias/kernix/actions/runs/40227258643) passed; its native step took over
-  three hours with SIMD disabled. A separate bounded downstream f32/f64 wrapper
+  three hours with optimized Kernix native dispatch disabled. A separate bounded downstream f32/f64 wrapper
   fixture now checks addressing, invalid/empty extents, signed/zero strides,
   aliased read inputs and output canaries. Native execution and two consecutive
   cached Miri runs pass locally. The [bounded Miri CI](https://github.com/moderubias/kernix/actions/runs/40273798912)
   also passes, retaining the full core suite. The redundant final three-hour
   rerun was cancelled after this passed. Full large shapes remain unchanged in hardware
-  and ASan CI; this interpreter check does not certify SIMD instructions.
+  and ASan CI; this interpreter check does not certify actual SIMD instructions.
 - 83 retained reports, 312 protected data/source/driver/method files; all 257 prior
   protected files, 68 original commentaries and original archive commentary remain
   byte-identical. Exact medians/paired interval digits occur in every PDF; every
@@ -126,10 +126,33 @@ those production, manifest, build-script and integration-test bytes. Subsequent
 report/QA commits keep the entire crates tree unchanged. Registry baselines pin
 all three packages to exact 0.11.1 and retain the generated driver/lockfile.
 
-Publication in progress: kernix-core 0.12.0 was accepted and its downloaded archive
-checksum/VCS match the clean source. The canonical registry index has not yet
-propagated that dependency, so kernix-ops/kernix publication and actual-registry
-consumer verification are pending. No completed publication is claimed here.
+As of 2026-10-26 06:01 UTC, `kernix-core 0.12.0` was accepted and all 48 files
+in its downloaded archive match source, legal files and clean VCS identity. Its
+SHA-256 is `e94b3aa521392b800bcb3ddf2024bb9249aac8859e7b89ade55768f3495f85e9`.
+Both the canonical sparse index and official Git index still omit that version,
+so normal Cargo cannot resolve the dependency. Repeated ordinary dry runs stop
+at that resolution error. `kernix-ops` and `kernix` 0.12.0 are **not published**;
+actual-registry consumer verification is **pending**. Their 75/27-file candidate
+payloads pass inclusion/legal/privacy checks, which is not a publication claim.
+The signed tag is pushed and its [nine CI jobs](https://github.com/moderubias/kernix/actions/runs/40274313026)
+pass; the GitHub release stays draft until the registry rollout is verified.
+
+The [public report commit](https://github.com/moderubias/kernix/commit/d6c6e76b47c425df274cf936c2d04a2561e3e1fc)
+also passes all nine [CI jobs](https://github.com/moderubias/kernix/actions/runs/40274705744)
+and four [assurance jobs](https://github.com/moderubias/kernix/actions/runs/40274705857).
+All four uploaded draft assets were downloaded back from GitHub; every byte hash
+matches the verified local ZIP/PNG. Actual GitHub rendering at 1440/320 verifies
+family expansion, inline charts, enlargement links and readable text captions.
+
+An external Git-dependency consumer provides a verified installation route now:
+all three library packages resolve exactly 0.12.0 from signed tag `v0.12.0`, commit
+`90cbbff60e5d7458ef9f89918c99a6cca94b51d1`, without registry substitutions or patches.
+Rust 1.86 executes four no_std workflow tests plus the renamed-dependency
+executable, and 26 native/QR/solve/rank-modification tests in release mode. A stable
+Wasm library check passes. Metadata confirms std is absent from all three no_std
+library nodes. This verifies Git installation, **not** the still-pending registry
+installation. Use `git`/`tag` in the dependency declaration as shown in README.
+
 
 Sparse COO/CSR/CSC, sparse kernels, SVD/eigen/complex solvers and GPU execution
 remain unimplemented. Sparse is a separate additive direction; it must preserve
