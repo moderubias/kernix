@@ -15,6 +15,8 @@ LIBRARIES = (
     "candle",
     "numpy",
     "refactor",
+    "kernix-dense",
+    "scipy",
 )
 NAMES = dict(
     kernix="Kernix",
@@ -24,6 +26,8 @@ NAMES = dict(
     candle="Candle",
     numpy="NumPy",
 )
+NAMES["kernix-dense"] = "Kernix · explicit dense"
+NAMES["scipy"] = "SciPy · CSR"
 NAMES["refactor"] = "Kernix refactor"
 NAMES["kernix-accelerate"] = "Kernix · explicit Accelerate"
 COLORS = dict(
@@ -34,8 +38,15 @@ COLORS = dict(
     candle="#ca627f",
     numpy="#577da8",
 )
+COLORS["kernix-dense"] = "#9b8cae"
+COLORS["scipy"] = "#267a85"
 COLORS["kernix-accelerate"] = "#8b72d6"
 WORKLOADS = {
+    "sparse_matvec_2048_f64":("Sparse matrix × vector","2048 × 2048 · five diagonals","f64"),
+    "sparse_matmul_512x32_f64":("Sparse × dense matrix","512 × 512 · 32 RHS · five diagonals","f64"),
+    "sparse_matmul_512x32_f32":("Sparse × dense matrix","512 × 512 · 32 RHS · five diagonals","f32"),
+    "sparse_product_256_f64":("Sparse × sparse matrix","256 × 256 · five diagonals each","f64"),
+    "sparse_auto_512_f64":("Automatic CSR construction","512 × 512 · clone + scan + compress","f64"),
     "solve_cholesky_128x1_f64":("Cholesky solve · reused factor","128 × 128, 1 RHS","f64"),
     "solve_cholesky_256x64_f64": (
         "Cholesky solve · reused factor",

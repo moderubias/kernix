@@ -127,3 +127,20 @@ backward, empty contractions and a normalized two-layer batched model. Normaliza
 now rejects nonfinite/unrepresentable statistics that could formerly produce zeros
 or NaNs; this is an explicit numerical validation correction. General integer indexing VJPs,
 operator syntax and ND literal grammar remain deferred, not reported as implemented.
+
+## Additive storage-aware matrix workflow (0.13)
+
+`Matrix` wraps rank-two finite real matrices with automatic Dense/CSR selection.
+It keeps the existing dense affine `Tensor` contract intact; CSR cannot expose
+ordinary strides/HostBuffer without hiding a conversion. Construction scans once
+for selection and again only when compressing. Explicit CSR assembly avoids the
+dense input. Multiplication dispatches on stored representation without conversion.
+The permanent surface addresses real sparse memory and arithmetic costs rather
+than adding synonyms for dense operations. Tests exercise all four storage products,
+views, ownership, empty/resource failures and a downstream no_std consumer.
+
+Classification: additive `Matrix`/`CsrMatrix`/`CscView`; compatibility-sensitive
+implicit changes to Tensor storage and numerical nonfinite semantics are rejected.
+Deferred: N-D sparse TensorInput, automatic timing policy, batch/sparse autodiff
+and index-width abstraction pending actual workloads and backend contracts.
+See [contracts](SPARSE.md) and executable `examples/sparse.rs`.

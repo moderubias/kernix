@@ -14,7 +14,7 @@ pub use ops::*;
 /// Common tensor types and traits for concise CPU-operation applications.
 /// This intentionally does not glob-import hundreds of operations.
 pub mod prelude {
-    pub use crate::{FloatMath, TensorInput, TensorOutput};
+    pub use crate::{CsrMatrix, FloatMath, Matrix, MatrixStorage, TensorInput, TensorOutput};
     pub use kernix_core::{
         layout::{Layout, Order},
         shape::{Kahen, Kotei, Shape},
@@ -30,6 +30,10 @@ pub mod neural;
 pub mod vision;
 
 pub mod linalg;
+
+/// Compressed matrices and automatic dense/CSR execution.
+pub mod sparse;
+pub use sparse::{CscView, CsrMatrix, Matrix, MatrixStorage, SparseError};
 
 pub use linalg::{
     Cholesky, LinalgError, LinalgFloat, Lu, PivotedQr, Qr, RefinedSolution, RefinementTermination,

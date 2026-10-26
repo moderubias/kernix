@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "series": "0.12",
+  "series": "0.13",
   "operations": [
     {
       "operation": "Tensor::permute",
@@ -1512,6 +1512,375 @@
       "tape": [],
       "contract": "No Tape recording API.",
       "tests": []
+    },
+    {
+      "operation": "sparse::CscView::column_offsets",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::dims",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::get",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::matmul_dense",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::matvec",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::row_indices",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::transpose",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CscView::values",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::column_indices",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::dims",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::from_parts",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::from_tensor",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::from_triplets",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::get",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::into_parts",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::matmul",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::matmul_dense",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::matmul_with_limit",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::matvec",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::nnz",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::payload_bytes",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::row_offsets",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::to_dense",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::transpose",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::CsrMatrix::values",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::as_dense",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::as_sparse",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::dense",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::dims",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::from_rows",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::from_tensor",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::from_triplets",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::from_values",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::into_csr",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::into_dense",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::matmul",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::matmul_with_limit",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::matvec",
+      "vjp": "unsupported",
+      "tape": [],
+      "contract": "Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::all_four_storage_products_and_signed_stride_vectors_match_independent_oracles"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::payload_bytes",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::sparse",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
+    },
+    {
+      "operation": "sparse::Matrix::storage_kind",
+      "vjp": "not_applicable",
+      "tape": [],
+      "contract": "Checked construction, inspection, ownership transfer or explicit representation conversion; no recording.",
+      "tests": [
+        "crates/kernix-ops/tests/sparse_tests.rs::auto_storage_preserves_dense_buffer_and_uses_exact_zero_memory_policy"
+      ]
     }
   ]
 }

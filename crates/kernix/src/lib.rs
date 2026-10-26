@@ -48,7 +48,8 @@ pub mod prelude {
         Cholesky, LinalgError, Lu, PivotedQr, Qr, least_squares, residual_norm, solve,
     };
     pub use crate::{
-        Kahen, Kotei, Order, Shape, Tensor, TensorError, TensorInput, TensorView, TensorViewMut,
-        add, div, full, matmul, matrix, mul, shape, sub, tensor,
+        CsrMatrix, Kahen, Kotei, Matrix, MatrixStorage, Order, Shape, Tensor, TensorError,
+        TensorInput, TensorView, TensorViewMut, add, div, full, matmul, matrix, mul, shape, sub,
+        tensor,
     };
 }

@@ -1,7 +1,7 @@
 # kernix-ops
 
 Portable CPU tensor operations for [Kernix](https://github.com/moderubias/kernix).
-Use `kernix = "0.12.0"` for the complete public facade, or add `kernix-ops` and
+Use `kernix = "0.13.0"` for the complete public facade, or add `kernix-ops` and
 `kernix-core` directly. The crate supports `no_std` with `alloc`; the `std` feature
 is enabled by default. No BLAS, GPU driver or system math library is required.
 
@@ -38,3 +38,7 @@ for selection, rounding and memory costs.
 Developed with OpenAI Codex (GPT-6 agent), under human direction.
 
 Kiyoshima Open profile: MIT OR Apache-2.0. See LICENSE, LICENSES and KIYOSHIMA.json.
+
+`Matrix` adds automatic Dense/CSR selection for finite real rank-two inputs.
+`CsrMatrix` and borrowed `CscView` support explicit sparse storage and products.
+No affine dense contract is changed, and conversions remain explicit.

@@ -25,6 +25,22 @@ def sample(ns):
 
 
 class PrecisionTests(unittest.TestCase):
+    def test_sparse_payloads_and_index_widths_are_readable_without_changing_data(self):
+        a=sample(Decimal("12500.00000000001"))
+        a["timing"]["storage"]=dict(left_nnz=2560,left_payload_bytes=45064,dense_left_bytes=2097152,index_bytes=8)
+        b=sample(Decimal("15000.00000000001"))
+        b["timing"]["storage"]=dict(left_nnz=2560,left_payload_bytes=32772,dense_left_bytes=2097152,index_bytes=4)
+        data=dict(metadata=dict(revision="abc",run_id="sparse",sparse_protocol="Finite checks and prepared five-diagonal operands"),results={"sparse_matmul_512x32_f64/kernix":a,"sparse_matmul_512x32_f64/scipy":b})
+        original=copy.deepcopy(data)
+        with tempfile.TemporaryDirectory() as d,patch.object(report,"render_chart"):
+            root=Path(d);report.render_report(root,data)
+            for name in ["README.md","report.html"]:
+                text=(root/name).read_text()
+                for value in ["45064","32772","2097152","SciPy", "CSR"]:self.assertIn(value,text)
+            self.assertIn("12.50000000000001",(root/"README.md").read_text())
+        self.assertEqual(p.family("sparse_matmul_512x32_f64"),"sparse")
+        self.assertEqual(data,original)
+
     def test_decimal_unit_conversion_keeps_original_digits_and_large_integers(self):
         for ns, expected in [
             ("126333.00000000001", "126.33300000000001"),

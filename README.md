@@ -16,18 +16,18 @@ Install stable Rust and Cargo from [rustup](https://rustup.rs), then:
 ```sh
 cargo new tensor-demo
 cd tensor-demo
-cargo add kernix --git https://github.com/moderubias/kernix --tag v0.12.0
+cargo add kernix --git https://github.com/moderubias/kernix --tag v0.13.0
 ```
 
 ```toml
 [dependencies]
-kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0" }
+kernix = { version = "0.13.0", git = "https://github.com/moderubias/kernix", tag = "v0.13.0" }
 ```
 
-The signed Git tag is the currently verified 0.12.0 installation route. Registry
-rollout is waiting for crates.io to index the three accepted packages; the normal
-crates.io install is not complete. External consumers verify this Git source on
-Rust 1.86 with std, no_std and Wasm. See the [verification record](docs/QA-0.12.0.md#source-and-registry-status).
+The signed Git tag provides an installation route independent of registry index
+propagation. Publication and downstream verification are recorded in
+[release QA](docs/QA-0.13.0.md); the previous [0.12 rollout](docs/QA-0.12.0.md#source-and-registry-status)
+was accepted by crates.io while its canonical index update remained pending.
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
 recommended. A C/C++ compiler or native linear algebra runtime is not needed by
@@ -50,7 +50,7 @@ Optional backends preserve access to the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0", default-features = false }
+kernix = { version = "0.13.0", git = "https://github.com/moderubias/kernix", tag = "v0.13.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -77,8 +77,29 @@ minimum-norm solutions for deficient or underdetermined systems; its separate ba
 solve avoids the extra right factorization. See the [solver contracts](docs/NUMERICS.md#column-pivoted-qr-and-rank-truncated-solving-09).
 Both f32 and f64 support arbitrary input strides.
 Pivot tolerances are explicit rejection policies; a small residual does not prove
-small solution error for an ill-conditioned matrix. SVD, eigenproblems, sparse and
-complex algebra are planned extensions, rather than available APIs.
+small solution error for an ill-conditioned matrix. SVD, eigenproblems, sparse factorizations and complex algebra remain planned extensions.
+Rank-two sparse products are available through `Matrix` and `CsrMatrix`; see below.
+
+## Dense or sparse, one matrix API
+
+`Matrix::from_rows`, `from_values` and `from_tensor` select Dense or CSR once,
+using actual initialized payload sizes including CSR indices. `matmul` and `matvec`
+dispatch on storage without converting operands. Existing `Tensor` APIs are unchanged.
+
+```rust
+use kernix::{Matrix, MatrixStorage, tensor};
+let a = Matrix::from_rows([[2.0f64, 0., 0., 0.], [0., 3., 0., 0.]])?;
+assert_eq!(a.storage_kind(), MatrixStorage::Csr);
+let y = a.matvec(&tensor![1.0, 2.0, 3.0, 4.0]?)?;
+assert_eq!(y.storage_slice(), &[2.0, 6.0]);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Explicit CSR/COO construction avoids a full dense input. Borrowed CSC transposes
+share buffers. Sparse products can fill in; `matmul_with_limit` bounds stored
+output entries. Automatic selection is a memory policy; speed depends on the
+pattern. This initial finite-real CPU API has no sparse autodiff or factorization.
+[Usage, costs and contracts](docs/SPARSE.md) · `cargo run --example sparse`.
 
 ## First tensor computation
 
@@ -423,7 +444,7 @@ package provenance, checks and remaining performance gaps.
 On macOS 15+ with a suitable Apple SDK, enable the optional `accelerate` feature:
 
 ```toml
-kernix = { version = "0.12.0", git = "https://github.com/moderubias/kernix", tag = "v0.12.0", features = ["accelerate"] }
+kernix = { version = "0.13.0", git = "https://github.com/moderubias/kernix", tag = "v0.13.0", features = ["accelerate"] }
 ```
 
 Use `kernix::accelerate::AccelerateExecutor::new()?`, then `cpu.matmul(&a, &b)?`.

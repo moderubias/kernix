@@ -19,6 +19,7 @@ jobs:
       - run: cargo test --workspace --all-features --locked
       - run: cargo run -p kernix --example train_patterns --locked
       - run: cargo run -p kernix --example temporal_state --locked
+      - run: cargo run -p kernix --example sparse --locked
       - run: python tools/check_doc_examples.py
       - run: python tools/check_ergonomics.py
       - run: python tools/check_operation_support.py

@@ -7,6 +7,7 @@ mod gradient_checks;
 mod pivoted;
 mod profile;
 mod reuse;
+mod sparse;
 #[cfg(not(feature = "legacy-autograd"))]
 mod training;
 use kernix::{
@@ -678,6 +679,7 @@ fn main() {
     }
     faer::set_global_parallelism(faer::Par::Seq);
     let result = match workload {
+        name if name.starts_with("sparse_") => sparse::run(name, library, mode),
         "parallel_matmul_into_64_f64" => reuse::parallel(mode, 64, false),
         "parallel_matmul_into_128_f64" => reuse::parallel(mode, 128, false),
         "parallel_matmul_into_256_f64" => reuse::parallel(mode, 256, false),

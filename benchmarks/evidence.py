@@ -18,6 +18,11 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 ACCELERATE_CASES = ['matmul_128_f64','matmul_256_f64','matmul_128_f32','matmul_256_f32']
 CASES = {
+    'sparse_matvec_2048_f64':['kernix','kernix-dense','faer','scipy','numpy'],
+    'sparse_matmul_512x32_f64':['kernix','kernix-dense','faer','scipy','numpy'],
+    'sparse_matmul_512x32_f32':['kernix','kernix-dense','faer','scipy','numpy'],
+    'sparse_product_256_f64':['kernix','kernix-dense','scipy','numpy'],
+    'sparse_auto_512_f64':['kernix','kernix-dense','scipy','numpy'],
     'solve_cholesky_128x1_f64':['kernix','nalgebra','faer'],
     'solve_cholesky_256x64_f64':['kernix','nalgebra','faer'],
     'solve_cholesky_512x128_f64':['kernix','nalgebra','faer'],
@@ -77,11 +82,11 @@ def clean_revision(root=ROOT):
     return command('git','rev-parse','HEAD',cwd=root)
 
 
-def measurement_schedule(seed, legacy_autograd=False, legacy_pivoted=False, legacy_rank_updates=False):
+def measurement_schedule(seed, legacy_autograd=False, legacy_pivoted=False, legacy_rank_updates=False, legacy_sparse=False):
     schedule=[(workload,library) for workload,libraries in CASES.items()
               if not (legacy_autograd and workload.startswith('training_'))
               and not (legacy_pivoted and workload.startswith(('pivoted_qr_','min_norm_')))
-              for library in libraries if not (legacy_rank_updates and workload.startswith('cholesky_rank_') and library=='kernix')]
+              for library in libraries if not (legacy_sparse and workload.startswith('sparse_') and library=='kernix') and not (legacy_rank_updates and workload.startswith('cholesky_rank_') and library=='kernix')]
     random.Random(seed).shuffle(schedule)
     return schedule
 
@@ -148,11 +153,58 @@ def apply_accelerate_policy():
     if function()!=0:raise ValueError('Accelerate single-thread policy could not be verified')
 
 
-def numpy_case(workload,mode):
+def sparse_operation(workload, library):
+    import numpy as np
+    from scipy.sparse import csr_array
+    n,cols,product,construction={
+        'sparse_matvec_2048_f64':(2048,1,False,False),
+        'sparse_matmul_512x32_f64':(512,32,False,False),
+        'sparse_matmul_512x32_f32':(512,32,False,False),
+        'sparse_product_256_f64':(256,256,True,False),
+        'sparse_auto_512_f64':(512,512,False,True),
+    }[workload]
+    dtype=np.float32 if workload.endswith('f32') else np.float64
+    a=np.zeros((n,n),dtype=dtype)
+    for i in range(n):
+        for d in range(5):a[i,(i+n+d-2)%n]=(d+1)/16
+    b=a.copy() if product else ((np.arange(n*cols)%17).astype(dtype)-8).reshape(n,cols)/8
+    if cols==1:b=b.reshape(n)
+    left=csr_array(a) if library=='scipy' else a
+    right=csr_array(b) if library=='scipy' and product else b
+    operation=(lambda:csr_array(a)) if construction and library=='scipy' else ((lambda:a.copy()) if construction else (lambda:left@right))
+    stored=csr_array(a) if library=='scipy' else a
+    storage=dict(left_nnz=5*n,left_payload_bytes=int(stored.data.nbytes+stored.indices.nbytes+stored.indptr.nbytes) if library=='scipy' else int(a.nbytes),dense_left_bytes=int(a.nbytes),index_bytes=int(stored.indices.itemsize) if library=='scipy' else 0,pattern='cyclic five diagonals',setup_excluded=not construction,finite_validation='Kernix Matrix checks finite inputs/results; NumPy/SciPy have different nonfinite contracts')
+    def check(out):
+        expected=np.zeros((n,cols),dtype=np.float64)
+        if construction:
+            for i in range(n):
+                for d in range(5):expected[i,(i+n+d-2)%n]=(d+1)/16
+        elif product:
+            for i in range(n):
+                for d in range(5):
+                    k=(i+n+d-2)%n
+                    for e in range(5):expected[i,(k+n+e-2)%n]+=(d+1)*(e+1)/256
+        else:
+            for i in range(n):
+                for d in range(5):
+                    k=(i+n+d-2)%n
+                    for j in range(cols):expected[i,j]+=(d+1)/16*((k*cols+j)%17-8)/8
+        dense=out.toarray() if hasattr(out,'toarray') else out
+        assert dense.dtype==dtype and dense.shape==((n,) if cols==1 else (n,cols))
+        error=float(np.max(np.abs(dense.reshape(n,cols)-expected)))
+        assert error==0.
+        return dict(coordinate_max_absolute_error=error,budget=0.,left_nnz=5*n,pattern='cyclic five diagonals; no pruning')
+    return operation,check,storage
+
+
+def numpy_case(workload,mode,library="numpy"):
     import numpy as np
     if sys.platform=='darwin' and 'accelerate' in np.show_config(mode='dicts')['Build Dependencies']['blas']['name'].lower():
         apply_accelerate_policy()
-    if workload.startswith('create_'):
+    storage=None
+    if workload.startswith('sparse_'):
+        operation,check,storage=sparse_operation(workload,library)
+    elif workload.startswith('create_'):
         one=workload.startswith('create_ones_');value=1.0 if one else 0.0
         operation=(lambda:np.ones((64,64),dtype=np.float32)) if one else (lambda:np.zeros((64,64),dtype=np.float32))
         def check(out):
@@ -254,14 +306,14 @@ def numpy_case(workload,mode):
     start=time.perf_counter_ns();first=operation();first_ns=time.perf_counter_ns()-start
     accuracy=check(first);del first
     if mode=='first':
-        return dict(first_call_return_ns=first_ns,accuracy=accuracy)
+        return dict(first_call_return_ns=first_ns,accuracy=accuracy,**({'storage':storage} if storage else {}))
     warmup_start=time.perf_counter_ns();warmup_calls=0
     while warmup_calls<8 or time.perf_counter_ns()-warmup_start<10_000_000:
         operation();warmup_calls+=1
     warmup_ns=time.perf_counter_ns()-warmup_start
     if mode=='resources':
         operation()
-        return dict(warmup_calls=warmup_calls,warmup_ns=warmup_ns,rust_allocator=None,process_peak_rss_bytes=peak_rss(),accuracy=accuracy)
+        return dict(warmup_calls=warmup_calls,warmup_ns=warmup_ns,rust_allocator=None,process_peak_rss_bytes=peak_rss(),accuracy=accuracy,**({'storage':storage} if storage else {}))
     calls=[]
     for _ in range(256):
         start=time.perf_counter_ns();operation();calls.append(time.perf_counter_ns()-start)
@@ -275,7 +327,7 @@ def numpy_case(workload,mode):
     for _ in range(256):
         start=time.perf_counter_ns();timers.append(time.perf_counter_ns()-start)
     return dict(first_call_return_ns=first_ns,warmup_calls=warmup_calls,warmup_ns=warmup_ns,per_call=distribution(calls),batch_means=distribution(batches),
-                batch_call_counts=counts,timer_pair=distribution(timers),process_peak_rss_bytes=peak_rss(),accuracy=accuracy)
+                batch_call_counts=counts,timer_pair=distribution(timers),process_peak_rss_bytes=peak_rss(),accuracy=accuracy,**({'storage':storage} if storage else {}))
 
 
 def snapshot(revision,dest):
@@ -354,16 +406,20 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run_id',nargs='?')
     parser.add_argument('--seed',type=int,default=20261022,help='seed for shuffled workload/library process order')
+    parser.add_argument('--git-baseline',help='pin all Kernix crates to this immutable release tag when registry propagation is pending')
+    parser.add_argument('--python-library',choices=['numpy','scipy'],default='numpy',help=argparse.SUPPRESS)
     parser.add_argument('--registry-baseline',help='pin all Kernix crates to this published version')
     parser.add_argument('--require-openblas',action='store_true')
     parser.add_argument('--worker',nargs=2,metavar=('WORKLOAD','MODE'),help=argparse.SUPPRESS)
     args=parser.parse_args()
     if args.worker:
-        print(json.dumps(numpy_case(*args.worker)));return
+        print(json.dumps(numpy_case(*args.worker,library=args.python_library)));return
     if not args.run_id or Path(args.run_id).name!=args.run_id or args.run_id in {'.','..'}:
         parser.error('run_id must be one path component')
+    if args.registry_baseline and args.git_baseline:parser.error('choose only one baseline source')
+    baseline_version=args.registry_baseline or (args.git_baseline.removeprefix('v') if args.git_baseline else None)
     revision=clean_revision()
-    accelerate = sys.platform=='darwin' and (not args.registry_baseline or tuple(map(int,args.registry_baseline.split('.'))) >= (0,11,0))
+    accelerate = sys.platform=='darwin' and (not baseline_version or tuple(map(int,baseline_version.split('.'))) >= (0,11,0))
     if accelerate:
         for w in ACCELERATE_CASES: CASES[w].append('kernix-accelerate')
     os.environ.update(RAYON_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1')
@@ -373,14 +429,15 @@ def main():
         raise ValueError('this run requires a NumPy OpenBLAS build')
     dest=ROOT/'web/benchmarks'/args.run_id;dest.mkdir(parents=True,exist_ok=False)
     manifest=ROOT/'benchmarks/harness/Cargo.toml'
-    if args.registry_baseline:
+    if baseline_version:
         import re
-        if not re.fullmatch(r'\d+\.\d+\.\d+',args.registry_baseline):raise ValueError('invalid baseline version')
+        if not re.fullmatch(r'\d+\.\d+\.\d+',baseline_version):raise ValueError('invalid baseline version')
         driver=ROOT/'web/drivers'/args.run_id;shutil.copytree(ROOT/'benchmarks/harness/src',driver/'src')
-        text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+',f'kernix = {{ version = "={args.registry_baseline}", default-features = false, features = ["std", "parallel"] }}',text)
-        if tuple(map(int,args.registry_baseline.split('.'))) < (0,11,0):
+        pin=('git = "https://github.com/moderubias/kernix", rev = "'+command('git','rev-parse',args.git_baseline+'^{commit}')+'"') if args.git_baseline else ('version = "='+baseline_version+'"')
+        text=manifest.read_text(encoding='utf-8');text=re.sub(r'kernix = \{[^\n]+','kernix = { '+pin+', default-features = false, features = ["std", "parallel"] }',text)
+        if tuple(map(int,baseline_version.split('.'))) < (0,11,0):
             text=text.replace('accelerate = ["kernix/accelerate"]','accelerate = []')
-        text=text.replace('[profile.release]',f'kernix-core = "={args.registry_baseline}"\nkernix-ops = "={args.registry_baseline}"\n\n[profile.release]')
+        text=text.replace('[profile.release]','kernix-core = { '+pin+' }\nkernix-ops = { '+pin+' }\n\n[profile.release]')
         manifest=driver/'Cargo.toml';manifest.write_text(text, encoding='utf-8')
         shutil.copyfile(ROOT/'benchmarks/harness/Cargo.lock',manifest.with_name('Cargo.lock'))
         command('cargo','metadata','--format-version','1','--manifest-path',str(manifest))
@@ -388,12 +445,13 @@ def main():
     binaries=ROOT/'web/binaries'/args.run_id
     binaries.mkdir(parents=True,exist_ok=False)
     numpy_threads=configure_numpy_threads(configuration,binaries)
-    legacy=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,6,0))
-    legacy_autograd=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,7,0))
-    legacy_pivoted=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,9,0))
-    legacy_rank_updates=bool(args.registry_baseline and tuple(map(int,args.registry_baseline.split('.'))) < (0,12,0))
+    legacy=bool(baseline_version and tuple(map(int,baseline_version.split('.'))) < (0,6,0))
+    legacy_autograd=bool(baseline_version and tuple(map(int,baseline_version.split('.'))) < (0,7,0))
+    legacy_pivoted=bool(baseline_version and tuple(map(int,baseline_version.split('.'))) < (0,9,0))
+    legacy_rank_updates=bool(baseline_version and tuple(map(int,baseline_version.split('.'))) < (0,12,0))
+    legacy_sparse=bool(baseline_version and tuple(map(int,baseline_version.split('.'))) < (0,13,0))
     for mode,features in [('time',[]),('resources',['--features','allocation-counting'])]:
-        enabled=(['accelerate'] if accelerate else [])+(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])+(['legacy-rank-updates'] if legacy_rank_updates else [])
+        enabled=(['accelerate'] if accelerate else [])+(['allocation-counting'] if mode=='resources' else [])+(['legacy-constructors'] if legacy else [])+(['legacy-autograd'] if legacy_autograd else [])+(['legacy-pivoted'] if legacy_pivoted else [])+(['legacy-rank-updates'] if legacy_rank_updates else [])+(['legacy-sparse'] if legacy_sparse else [])
         features=['--features',','.join(enabled)] if enabled else []
         target=ROOT/'benchmarks/harness/target'
         command('cargo','build','--release','--locked','--manifest-path',str(manifest),'--target-dir',str(target),*features)
@@ -417,18 +475,18 @@ def main():
                 vcs=json.loads(vcs_file.read_text(encoding='utf-8')) if vcs_file.exists() else None))
     kernix_version=next(p['version'] for p in library_packages if p['name']=='kernix')
     minimum_norm_algorithm=('pivoted QR plus scaled implicit RZ' if tuple(map(int,kernix_version.split('.'))) >= (0,10,0) else 'pivoted QR plus scaled right QR')
-    metadata=dict(schema_version=2,unavailable_rank_modification_api=legacy_rank_updates,unavailable_observations=[w+"/kernix" for w in CASES if legacy_rank_updates and w.startswith("cholesky_rank_")],rank_modification_protocol="Kernix/nalgebra: prepared base factor, owned modified factor; refactor: same Kernix version, full factorization of preformed modified matrix; base setup and matrix formation excluded",minimum_norm_algorithm=minimum_norm_algorithm,accelerate_variant=accelerate,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
+    metadata=dict(schema_version=2,unavailable_sparse_api=legacy_sparse,sparse_protocol='Rank two; cyclic five diagonals; exact dyadic values; 1 worker; owned output; prepared operands except auto construction. Kernix Matrix finite checks vs peer IEEE policies; payload excludes capacity, metadata and allocator overhead. CSR indices usize in Kernix/faer and actual recorded SciPy width. SpGEMM heap merge vs SciPy column accumulator; fill-in depends on pattern. Construction: Kernix clones a Vec then validates/scans/compresses; SciPy borrows dense input and allocates CSR output; NumPy/dense Kernix copy only. Construction compares API trade-offs, not identical algorithms. No universal sparse speed or density threshold claim.',unavailable_rank_modification_api=legacy_rank_updates,unavailable_observations=[w+"/kernix" for w in CASES if (legacy_rank_updates and w.startswith("cholesky_rank_")) or (legacy_sparse and w.startswith("sparse_"))],rank_modification_protocol="Kernix/nalgebra: prepared base factor, owned modified factor; refactor: same Kernix version, full factorization of preformed modified matrix; base setup and matrix formation excluded",minimum_norm_algorithm=minimum_norm_algorithm,accelerate_variant=accelerate,run_id=args.run_id,revision=revision,tree=command('git','rev-parse','HEAD^{tree}'),
         crates_tree=command('git','rev-parse',revision+':crates'),library_packages=library_packages,
         kernix_constructor_api=('full (legacy baseline)' if legacy else 'zeros/ones'),
         unavailable_workloads=[w for w in CASES if (legacy_autograd and w.startswith('training_')) or (legacy_pivoted and w.startswith(('pivoted_qr_','min_norm_')))],
         unavailable_reason=('registry lacks the corresponding Tape or pivoted/minimum-norm APIs; no substitute algorithms used as historical Kernix' if legacy_autograd or legacy_pivoted else None),
         effective_harness_rustflags=fingerprints,dirty_before=False,dirty_after=False,timestamp_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
-        library_source=('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision),
-        environment=environment(cpu),numpy_version=np.__version__,numpy_configuration=configuration,numpy_thread_policy=numpy_threads,
+        library_source=('git '+args.git_baseline+' '+command('git','rev-parse',args.git_baseline+'^{commit}') if args.git_baseline else ('registry '+args.registry_baseline if args.registry_baseline else 'workspace '+revision)),
+        environment=environment(cpu),scipy_version=__import__('scipy').__version__,numpy_version=np.__version__,numpy_configuration=configuration,numpy_thread_policy=numpy_threads,
         explicit_execution={w:dict(workers=2,affinity_cpus=parallel_cpus,output='reused; allocated before first call',wrapper='RefCell borrow included; pool construction excluded') for w in CASES if w.startswith('parallel_matmul_into_')},
         dependency_tree=command('cargo','tree','--locked','--manifest-path',str(manifest)),
         binary_sha256={m:hashlib.sha256(p.read_bytes()).hexdigest() for m,p in builds.items()})
-    schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted,legacy_rank_updates)
+    schedule=measurement_schedule(args.seed,legacy_autograd,legacy_pivoted,legacy_rank_updates,legacy_sparse)
     metadata['measurement_order_seed']=args.seed
     metadata['measurement_order']=[w+'/'+lib for w,lib in schedule]
     results={}
@@ -437,7 +495,7 @@ def main():
             if original_affinity is not None:
                 os.sched_setaffinity(0,set(parallel_cpus) if workload.startswith('parallel_matmul_into_') else {cpu})
             def worker(mode):
-                if library=='numpy':return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode))
+                if library in {'numpy','scipy'}:return json.loads(command(sys.executable,str(Path(__file__).resolve()),'--worker',workload,mode,'--python-library',library))
                 binary=builds['resources' if mode=='resources' else 'time']
                 return json.loads(command(str(binary),workload,library,mode))
             timing=worker('time');resources=worker('resources')

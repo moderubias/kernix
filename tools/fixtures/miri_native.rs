@@ -133,3 +133,17 @@ mod tests {
         assert_eq!(guard, [7.0, 10.0, 15.0, 22.0]);
     }
 }
+
+#[test]
+fn sparse_owned_buffers_transposed_borrows_and_heap_merge() {
+    use kernix_ops::{CsrMatrix, Matrix};
+    let a=CsrMatrix::from_triplets([2,3],vec![(1,2,3.0f64),(0,0,2.),(0,0,1.)]).unwrap();
+    let b=CsrMatrix::from_triplets([3,2],vec![(0,1,4.),(2,0,5.)]).unwrap();
+    let c=a.matmul_with_limit(&b,2).unwrap();
+    assert_eq!(c.to_dense().unwrap().storage_slice(),&[0.,12.,15.,0.]);
+    let v=kernix_ops::prelude::Tensor::from_values([2],vec![2.,4.]).unwrap();
+    assert_eq!(a.transpose().matvec(&v).unwrap().storage_slice(),&[6.,0.,12.]);
+    let a=Matrix::sparse(a).unwrap();
+    let b=Matrix::dense(b.to_dense().unwrap()).unwrap();
+    assert_eq!(a.matmul(&b).unwrap().into_dense().unwrap().storage_slice(),&[0.,12.,15.,0.]);
+}

@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix="kernix-doc-examples-") as directory:
                 'edition="2024"\n[dependencies]\nkernix={path='
                 + json.dumps((ROOT / "crates/kernix").as_posix()) + '}\n')
     (package / "Cargo.toml").write_text(manifest, encoding="utf-8")
-    documents = (ROOT / "README.md", ROOT / "docs/USER_GUIDE.md", ROOT / "docs/API-ERGONOMICS.md")
+    documents = (ROOT / "README.md", ROOT / "docs/USER_GUIDE.md", ROOT / "docs/API-ERGONOMICS.md", ROOT / "docs/SPARSE.md")
     source = "\n".join('#![doc=include_str!(' + json.dumps(p.as_posix()) + ')]'
                        for p in documents)
     (package / "src/lib.rs").write_text(source, encoding="utf-8")

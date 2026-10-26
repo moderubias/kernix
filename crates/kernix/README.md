@@ -21,7 +21,7 @@ cargo add kernix
 
 ```toml
 [dependencies]
-kernix = "0.12.0"
+kernix = "0.13.0"
 ```
 
 The declared minimum Rust version is 1.86, using Edition 2024. Stable Rust is
@@ -45,7 +45,7 @@ Optional backends preserve access to the portable CPU path.
 For an allocator-equipped `no_std` application:
 
 ```toml
-kernix = { version = "0.12.0", default-features = false }
+kernix = { version = "0.13.0", default-features = false }
 ```
 
 `no_std` does not mean allocation-free. Shapes above rank six, tensor outputs and
@@ -394,7 +394,7 @@ or evidence that an unspecified complete model reaches 120 FPS.
 On macOS 15+ with a suitable Apple SDK, enable the optional `accelerate` feature:
 
 ```toml
-kernix = { version = "0.12.0", features = ["accelerate"] }
+kernix = { version = "0.13.0", features = ["accelerate"] }
 ```
 
 Use `kernix::accelerate::AccelerateExecutor::new()?`, then `cpu.matmul(&a, &b)?`.
@@ -411,3 +411,9 @@ Kiyoshima Licensing **Open profile**, **MIT OR Apache-2.0**, at your option.
 [KIYOSHIMA.json](KIYOSHIMA.json) records the machine-readable passport. The profile
 adds no restrictions to the controlling standard licenses. Verify with
 `klicense verify-project .` using the Kiyoshima licensing utility.
+
+Rank-two `Matrix` chooses Dense/CSR by initialized payload size and dispatches
+`matmul`/`matvec` without converting inputs. `CsrMatrix` provides generic checked
+CSR/COO assembly, zero-copy CSC transpose views and sparse products with an
+optional output-entry cap. Existing `Tensor` APIs remain unchanged. Sparse
+arithmetic is finite-real CPU/no_std+alloc, with no sparse gradients/factorization.

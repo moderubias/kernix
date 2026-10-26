@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.0
+
+- Add automatic finite-real rank-two `Matrix` Dense/CSR selection by payload size,
+  with explicit storage controls and unchanged existing Tensor contracts.
+- Add validated generic CSR/COO construction, ordered duplicate accumulation,
+  borrowed CSC transpose views, SpMV, mixed dense/sparse multiplication and
+  sparse products with bounded row-heap scratch and an optional output-entry cap.
+- Preserve dtype, fallible allocation and no_std + alloc. Document conversion costs,
+  finite arithmetic, fill-in and unsupported sparse differentiation/factorization.
+- Benchmark five-diagonal products and construction against dense Kernix, faer,
+  SciPy CSR and NumPy on identical exact dyadic fixtures, recording index widths
+  and initialized payload bytes separately from timing.
+
+
 ## 0.12.0
 
 - Preserve existing public signatures and add owned Cholesky rank-one updates and

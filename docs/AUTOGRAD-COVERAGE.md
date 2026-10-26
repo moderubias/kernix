@@ -1,8 +1,8 @@
-# Forward and reverse-mode coverage (0.12 series)
+# Forward and reverse-mode coverage (0.13 series)
 
 Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.
 
-Scope: exported CPU numerical free functions, dense factor methods, RGB frame
+Scope: exported CPU numerical free functions, dense/sparse matrix methods, RGB frame
 methods and the Tensor reshape/permutation/slice counterparts of Tape operations.
 Shape/layout/storage lifecycle APIs, configuration, optimizers and checkpoints
 are outside this numerical inventory. Every public Tape method is classified;
@@ -209,6 +209,47 @@ No operation silently detaches: unsupported recording requires explicit caller c
 | `where_select` | unsupported | — | No Tape recording API. |
 | `zip_map` | unsupported | — | No Tape recording API. |
 | `zip_mut` | unsupported | — | No Tape recording API. |
+| `sparse::CscView::column_offsets` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CscView::dims` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CscView::get` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CscView::matmul_dense` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CscView::matvec` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CscView::row_indices` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CscView::transpose` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CscView::values` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::column_indices` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::dims` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::from_parts` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::from_tensor` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::from_triplets` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::get` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::into_parts` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::matmul` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CsrMatrix::matmul_dense` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CsrMatrix::matmul_with_limit` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CsrMatrix::matvec` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::CsrMatrix::nnz` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::payload_bytes` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::row_offsets` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::to_dense` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::transpose` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::CsrMatrix::values` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::as_dense` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::as_sparse` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::dense` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::dims` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::from_rows` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::from_tensor` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::from_triplets` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::from_values` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::into_csr` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::into_dense` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::matmul` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::Matrix::matmul_with_limit` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::Matrix::matvec` | unsupported | — | Finite real sparse/automatic matrix arithmetic; no Tape recording, no implicit dtype conversion. Explicit output/resource contracts in rustdoc. |
+| `sparse::Matrix::payload_bytes` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::sparse` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
+| `sparse::Matrix::storage_kind` | not_applicable | — | Checked construction, inspection, ownership transfer or explicit representation conversion; no recording. |
 
 The checker detects missing/new exports, stale Tape method names, duplicate rows,
 unclassified recording methods and missing regression-test evidence. It does not

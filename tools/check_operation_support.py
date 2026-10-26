@@ -64,6 +64,9 @@ def discover(root=ROOT):
     names.update('linalg::PivotedQr::'+n for n in methods(pivoted,'PivotedQr'))
     for typename in ['Lu', 'Cholesky', 'Qr']:
         names.update(f'linalg::{typename}::{n}' for n in methods((ops / 'linalg.rs').read_text(encoding='utf-8'), typename))
+    sparse = '\n'.join(p.read_text(encoding='utf-8') for p in sorted((ops / 'sparse').glob('*.rs')))
+    for typename in ['CsrMatrix', 'CscView', 'Matrix']:
+        names.update(f'sparse::{typename}::{name}' for name in methods(sparse, typename))
     names.update('vision::RgbFrame::' + n for n in methods((ops / 'vision.rs').read_text(encoding='utf-8'), 'RgbFrame'))
     names.update(['Tensor::reshape_view', 'Tensor::permute', 'Tensor::slice_axis'])
     tape = methods((root / 'crates/kernix/src/autograd.rs').read_text(encoding='utf-8'), 'Tape') - CONTROL
@@ -73,7 +76,7 @@ def discover(root=ROOT):
 def render(data):
     lines = [f"# Forward and reverse-mode coverage ({data['series']} series)", '',
              'Generated from `OPERATION-SUPPORT.json`; run `python tools/check_operation_support.py`.', '',
-             'Scope: exported CPU numerical free functions, dense factor methods, RGB frame',
+             'Scope: exported CPU numerical free functions, dense/sparse matrix methods, RGB frame',
              'methods and the Tensor reshape/permutation/slice counterparts of Tape operations.',
              'Shape/layout/storage lifecycle APIs, configuration, optimizers and checkpoints',
              'are outside this numerical inventory. Every public Tape method is classified;',

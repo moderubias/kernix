@@ -2,7 +2,7 @@
 
 Kernix is a general linear algebra and tensor library. Numerical analysis, data
 processing, simulations and neural models use the same validated shape/layout
-foundation. This guide follows the public 0.12 API; the linked rustdoc contains
+foundation. This guide follows the public 0.13 API; the linked rustdoc contains
 function-specific types, errors and runnable examples. The project is experimental.
 
 ## Choose the layer
@@ -293,3 +293,9 @@ including negative steps. It copies selected values into the owned graph; its VJ
 scatters into an input-shaped zero buffer and accumulates overlapping branches.
 Plain `Tensor::slice_axis` remains a zero-copy view for inference. General integer
 indexing and duplicate scatter-write semantics are separate future work.
+
+## Sparse matrices (0.13)
+
+`Matrix` adds automatic Dense/CSR selection and storage-aware rank-two products.
+Existing `Tensor` operations retain their public contracts. See [sparse usage and costs](SPARSE.md)
+and run `cargo run --example sparse` for a complete dense/sparse composition.

@@ -83,3 +83,18 @@ mod modification_tests {
         for(&v,e)in x.storage_slice().iter().zip([1.0,2.0]) {assert!((v-e).abs()<1e-5);}
     }
 }
+
+/// Dense/CSR selection and borrowed transpose use only alloc and existing traits.
+pub fn sparse_workflow() -> Result<Tensor<f32>, kernix::SparseError> {
+    let a=Matrix::from_rows([[2.0f32,0.,0.,0.,0.,0.,0.,0.],[0.,3.,0.,0.,0.,0.,0.,0.]])?;
+    let b=Matrix::from_rows([[1.0f32],[2.],[3.],[4.],[5.],[6.],[7.],[8.]])?;
+    assert_eq!(a.storage_kind(), MatrixStorage::Csr);
+    a.matmul(&b)?.into_dense()
+}
+#[cfg(test)]
+mod sparse_tests {
+    #[test]
+    fn sparse_executes_without_std() {
+        assert_eq!(super::sparse_workflow().unwrap().storage_slice(),&[2.,6.]);
+    }
+}

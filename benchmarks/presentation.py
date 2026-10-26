@@ -12,6 +12,7 @@ import re
 import subprocess
 
 FAMILIES = {
+    "sparse": "Sparse matrices & memory",
     "matmul": "Matrix multiplication",
     "parallel": "Explicit parallel execution",
     "algebra": "Decompositions & solvers",
@@ -25,6 +26,8 @@ FAMILIES = {
 
 
 def family(w):
+    if w.startswith("sparse_"):
+        return "sparse"
     if w.startswith(("parallel_", "matmul_reuse_")):
         return "parallel"
     if w.startswith(("matmul_sum_backward_", "training_", "dense_sgd_")):
@@ -45,6 +48,10 @@ def family(w):
 
 
 def contract(w):
+    if w.startswith("sparse_auto_"):
+        return "Construction · dense copy or compression · preparation costs included"
+    if w.startswith("sparse_"):
+        return "1 worker · five diagonals · prepared operands · owned output · finite contracts differ"
     if w.startswith("solve_"):
         return "1 worker · prepared reusable factor · owned output · factorization excluded"
     if w.startswith("cholesky_rank_"):
@@ -423,6 +430,10 @@ def render(dest, data, baseline, paired, h):
         )
         if meta.get("unavailable_rank_modification_api"):
             numerical += " This registry baseline has no rank modification API; Kernix modification entries are omitted, not replaced."
+    if any(w.startswith("sparse_") for w, _ in groups):
+        numerical += " " + meta.get("sparse_protocol", "Sparse fixtures: consult the retained method for nonzero patterns and validation policies.")
+        if meta.get("unavailable_sparse_api"):
+            numerical += " This baseline has no Kernix Matrix API; missing observations are omitted, not fabricated."
     libs = [lib for lib in h["libraries"] if any(lib in values for _, values in groups)]
     libs += sorted({lib for _, values in groups for lib in values} - set(libs))
     columns = "".join(f'<th scope="col">{esc(names(lib))}</th>' for lib in libs)
@@ -562,6 +573,20 @@ def render(dest, data, baseline, paired, h):
     if not intervals:
         intervals = '<div class="empty-state"><h3>No paired process evidence</h3><p>Absolute observations are available. Repeated calls within one process do not supply a process-level confidence interval.</p></div>'
     count = f"{len(ratios)} of {len(groups)} workloads have paired evidence."
+    memory=[]
+    for w, values in groups:
+        for lib, record in values.items():
+            store=record.get("timing",{}).get("storage")
+            if store:
+                memory.append((" · ".join(filter(None,label(w))),names(lib),store))
+    if memory:
+        md += ["", "## Matrix memory", "", "Initialized input payload bytes, including sparse indices/offsets. Excludes capacity, object metadata, allocator overhead and construction peak. Same five-diagonal values; SciPy index width is measured rather than assumed.", "", "| Workload | Implementation | Stored entries | Payload bytes | Dense bytes | Index bytes |", "|---|---|---:|---:|---:|---:|"]
+        rows=[]
+        for title,lib,store in memory:
+            cells=[title,lib,str(store["left_nnz"]),str(store["left_payload_bytes"]),str(store["dense_left_bytes"]),str(store["index_bytes"])]
+            md.append("| "+" | ".join(cells)+" |")
+            rows.append("<tr>"+"".join("<td>"+esc(c)+"</td>" for c in cells)+"</tr>")
+        details.insert(0,'<section><h3>Matrix memory · initialized input payload</h3><p>Bytes include sparse indices/offsets; exclude unused capacity, metadata, allocator overhead and construction peak. Index widths can differ.</p><div class="table-scroll"><table><thead><tr><th>Workload</th><th>Implementation</th><th>Entries</th><th>Payload bytes</th><th>Dense bytes</th><th>Index bytes</th></tr></thead><tbody>'+"".join(rows)+'</tbody></table></div></section>')
     md += [
         "",
         "## Version comparison",

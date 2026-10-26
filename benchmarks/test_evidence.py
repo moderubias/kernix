@@ -16,6 +16,13 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn(('cholesky_rank_update_256_f64','nalgebra'),legacy)
         self.assertIn(('solve_cholesky_256x64_f64','kernix'),legacy)
 
+    def test_legacy_sparse_only_omits_missing_kernix_api(self):
+        schedule=evidence.measurement_schedule(123,legacy_sparse=True)
+        self.assertNotIn(('sparse_product_256_f64','kernix'),schedule)
+        self.assertIn(('sparse_product_256_f64','kernix-dense'),schedule)
+        self.assertIn(('sparse_product_256_f64','scipy'),schedule)
+        self.assertIn(('matmul_128_f64','kernix'),schedule)
+
     def test_parallel_affinity_never_invents_unavailable_cpus(self):
         self.assertIsNone(evidence.parallel_affinity(None))
         self.assertEqual(evidence.parallel_affinity({7}),[7])
