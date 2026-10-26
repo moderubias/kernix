@@ -92,7 +92,7 @@ two-worker reusable-output operations remain separately labelled.
   compact-WY fallback without changing input data.
 - Strict formatting, Clippy, rustdoc, Rust 1.86, 15 executable Markdown examples,
   four no_std workflows including real MSRV execution and wasm compilation.
-  Ten normal/five allocator harness tests, 37 report tests and seven tool tests.
+  Ten normal/five allocator harness tests, 37 report tests and eight tool tests.
 - [Source CI](https://github.com/moderubias/kernix/actions/runs/40270611006): all nine
   jobs pass, including actual Linux x86/ARM, Windows/macOS runtime tests and
   wasm/i686/ARM compile checks.

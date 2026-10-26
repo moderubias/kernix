@@ -45,7 +45,10 @@ The ndarray/Candle softmax comparisons are explicit stable compositions.
 Prepared-factor solve cases borrow the same finite RHS and return an owned
 solution; factorization is outside timing for Kernix, nalgebra and faer. The
 single-column case guards latency while the wide cases measure multiple-RHS
-reuse. Known solutions are validated independently of the decomposition.
+reuse. The fixture is a well-conditioned symmetric tridiagonal matrix stored
+in ordinary dense memory; this is not a sparse solver benchmark. Known solutions
+are validated independently of the decomposition. Matrix structure can affect
+peer implementations, so these observations are not a complete dense-solve ranking.
 
 Rank-one Cholesky cases start from a prepared factor and return an owned modified
 factor. Nalgebra clones its factor before its in-place update. The separately
