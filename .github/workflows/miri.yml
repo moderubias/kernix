@@ -11,6 +11,7 @@ permissions:
 jobs:
   miri:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
@@ -26,4 +27,6 @@ jobs:
           PROPTEST_DISABLE_FAILURE_PERSISTENCE: '1'
           MIRIFLAGS: -Zmiri-env-forward=PROPTEST_DISABLE_FAILURE_PERSISTENCE
       - name: Exercise checked native matrix wrappers
-        run: cargo +nightly miri test -p kernix-ops --test native_kernel_tests
+        # SIMD kernels are disabled by cfg(miri). Check addressing, bounds and
+        # output contracts here; full large cases execute in hardware/ASan CI.
+        run: python tools/check_miri.py
