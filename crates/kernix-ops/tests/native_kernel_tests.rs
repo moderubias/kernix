@@ -249,6 +249,9 @@ fn large_positive_gapped_strides_match_coordinate_oracles_in_both_dtypes() {
                 (64, 64, 64),
                 (65, 67, 69),
                 (128, 128, 128),
+                (32, 128, 128),
+                (128, 32, 128),
+                (128, 128, 32),
             ] {
                 let ar = 2 * k + 5;
                 let bc = 3 * k + 7;

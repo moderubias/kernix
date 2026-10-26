@@ -74,6 +74,10 @@ macro_rules! floating {
                     && k >= 32
                     && n >= 32
                     && m.saturating_mul(k).saturating_mul(n) >= 64 * 64 * 64
+                    // Panels benefit from this packing policy on tested x86 hosts.
+                    // General positive-stride views are enabled on Windows only:
+                    // the broader policy regressed Linux transpose-128 latency.
+                    && (cfg!(target_os = "windows") || m.min(k).min(n) == 32)
                     && a.strides.iter().all(|&s| s > 0)
                     && b.strides.iter().all(|&s| s > 0)
                     && gemm_common::simd::V3::try_new().is_some()

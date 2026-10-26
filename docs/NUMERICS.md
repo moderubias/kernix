@@ -129,7 +129,10 @@ orientation, writing the same C-order output; this does not materialize a transp
 Small/skinny products, negative/zero-stride rank-two inputs, no_std and other targets
 retain matrixmultiply. Since 0.12, positive-stride rank-two views on std/x86-64
 can also use the same serial native engine when all dimensions are at least 32
-and m*k*n is at least 64³. Borrowed transposes, F-order and gapped inputs need no
+and m*k*n is at least 64³. Outside Windows, this extension is limited to
+panels whose smallest dimension is 32; broader positive-stride dispatch
+regressed measured Linux transpose-128 latency and is deferred.
+Borrowed transposes, F-order and gapped inputs need no
 materialized tensor copies; native packing workspace can still allocate/cache. Noncontiguous batches retain the checked reference path.
 Custom scalar implementations and all shape/storage checks remain unchanged.
 Native engines may use FMA and reassociation; ordered mode remains available via

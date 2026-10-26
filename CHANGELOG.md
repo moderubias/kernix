@@ -10,8 +10,8 @@
 - Use compact-WY QR for sufficiently large tall/square matrices, cached triangular
   panels and tiled layout conversion. Reuse the eventual Q output as product
   scratch; retain individual reflectors when native kernels decline or overflow.
-- Accelerate large positive-stride x86-64/std matrix views through existing serial
-  GEMM capabilities. Preserve ordered, negative-stride and portable paths.
+- Accelerate eligible positive-stride x86-64/std panels and Windows matrix views
+  through existing serial GEMM capabilities. Preserve ordered, negative-stride and portable paths.
 - Add comparative prepared-factor solve, rank-modification, transposed-view and
   larger QR fixtures. Missing historical APIs stay unavailable, never substituted.
 
