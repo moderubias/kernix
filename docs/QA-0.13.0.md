@@ -85,7 +85,8 @@ All three packages were built and verified from clean source 7c11b21 by ordinary
 `cargo publish --workspace --locked`. Actual registry downloads contain 48 core,
 80 ops and 28 facade files. Every packaged source/legal file, clean VCS identity,
 normalized registry dependency and cross-crate lock checksum matches the archive.
-No private research, audit PDF, benchmark artifacts or scratch files are packaged.
+Packages contain the declared source, tests, examples and license metadata.
+Benchmark outputs are distributed separately.
 
 | Package | Actual SHA-256 |
 |---|---|
@@ -120,3 +121,11 @@ GitHub PNG links resolve. New rows include readable payload/index-width tables
 and a construction-trade-off caption. Firefox 320/768/1440 checks pass on current,
 legacy, Mac and paired views, including the memory table/resources tab, filters,
 reset/focus, the 98-report catalogue and A4 print.
+
+The [public release](https://github.com/moderubias/kernix/releases/tag/v0.13.0)
+contains four assets. All were downloaded back from GitHub and matched by SHA-256;
+all three ZIPs also pass their internal hash manifests and offline-link checks.
+Actual GitHub rendering at 1440/320 verifies the sparse family, readable captions,
+loaded inline charts and image-enlargement links. The [report commit CI](https://github.com/moderubias/kernix/actions/runs/40293944480)
+passes all nine jobs, and its [assurance run](https://github.com/moderubias/kernix/actions/runs/40293944296)
+passes all four. The crates tree remains identical to the signed publication tag.
